@@ -1,3 +1,13 @@
+# Fork
+
+This is a fork of ComBind that is removing all uses of all proprietary API calls
+or proprietary software. This will produce similar (if not the exact same) results
+as the original ComBind and it will be completely free to use.
+
+This fork will focus on the use of [Gnina](https://github.com/gnina/gnina) as the
+docking software rather than Glide. Mostly because Glide costs money, but also because
+Gnina is a deep-learning based docking pipeline.
+
 # ComBind
 
 ComBind integrates data-driven modeling and physics-based docking for
@@ -37,7 +47,7 @@ These raw inputs need to be properly stored so that the rest of the pipeline
 can recognize them.
 
 The structure(s) should be stored in a directory `structures/raw`.
-Each structure should be split into two files `NAME_prot.mae` and `NAME_lig.mae`
+Each structure should be split into two files `NAME_prot.pdb` and `NAME_lig.pdb`
 containing only the protein and only the ligand, respectively.
 
 If you'd prefer to prepare your structures yourself, save your
@@ -51,8 +61,8 @@ chemical structure.
 
 ### Data preparation and docking
 
-Use the following command to prepare the structural data using Schrodinger's
-prepwizard, align the structures to each other, and produce a docking grid.
+Use the following command to prepare the structural data using [ProDy](https://github.com/prody/ProDy), 
+align the structures to each other, and produce a docking template line.
 
 ```
 combind structprep
