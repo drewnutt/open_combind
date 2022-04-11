@@ -162,23 +162,8 @@ $SCHRODINGER/utilities/glide_sort -best_by_title -use_prop_d r_i_combind_score -
 
 Start by cloning this git repository.
 
-ComBind requires access to Glide along with several other Schrodinger tools
-and the Schrodinger Python API.
-
-First, make sure that you have a SCHRODINGER environmental variable set
-pointing to the root of the schrodinger software installation.
-
-You can only access the Schrodinger Python API using their interpretter.
-Creating a virtual environment that makes their interpretter the default
-python interpretter is the simplest way to do this. To create the environment
-and upgrade the relevant packages run the following:
-
-```
-$SCHRODINGER/run schrodinger_virtualenv.py schrodinger.ve
-source schrodinger.ve/bin/activate
-pip install --upgrade numpy sklearn scipy pandas lmdb
-```
+ComBind requires access to [Gnina](https://github.com/gnina/gnina), [ProDy](https://github.com/prody/ProDy),
+[OpenBabel](https://openbabel.org/wiki/Main_Page), and [RDKit](https://github.com/rdkit/rdkit).
 
 To setup the environment before each use, run
-`source schrodinger.vs/bin/activate` to activate the environment and then
-run `source setup.sh` to set combind specific environmental variables.
+`source setup.sh` to set combind specific environmental variables.
