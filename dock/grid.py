@@ -1,58 +1,57 @@
 import os
 import subprocess
 from glob import glob
-from schrodinger.structure import StructureReader
-from schrodinger.structutils.transform import get_centroid
+# from schrodinger.structure import StructureReader
+# from schrodinger.structutils.transform import get_centroid
 
-GRID_IN = """
-GRID_CENTER {x},{y},{z}
-GRIDFILE {pdb}.zip
-INNERBOX 15,15,15
-OUTERBOX 30,30,30
-RECEP_FILE {prot}
-"""
+# GRID_IN = """
+# GRID_CENTER {x},{y},{z}
+# GRIDFILE {pdb}.zip
+# INNERBOX 15,15,15
+# OUTERBOX 30,30,30
+# RECEP_FILE {prot}
+# """
 
-CMD = "glide -WAIT {infile}"
-INFILE = '{pdb}.in'
-ZIPFILE = '{pdb}.zip'
+# CMD = "glide -WAIT {infile}"
+CMD = "gnina -r {prot} --autobox_ligand {abox_lig} --num_modes 100"
 
-def centroid(ligfile):
-    with StructureReader(ligfile) as st:
-        st = next(st)
-    c = get_centroid(st)
-    x,y,z = c[:3]
-    return x, y, z
+# not necessary because Gnina can use ligand to define autobox
+# def centroid(ligfile):
+#     with StructureReader(ligfile) as st:
+#         st = next(st)
+#     c = get_centroid(st)
+#     x,y,z = c[:3]
+#     return x, y, z
 
 def make_grid(pdb,
-              PROTFILE='structures/proteins/{pdb}_prot.mae',
-              LIGFILE='structures/ligands/{pdb}_lig.mae',
-              CWD='structures/grids/{pdb}',
-              grid_in=None):
-    if grid_in is None:
-        grid_in = GRID_IN
+              PROTFILE='structures/proteins/{pdb}_prot.pdb',
+              LIGFILE='structures/ligands/{pdb}_lig.mol2',
+              DOCKTEMP='structures/template/{pdb}'):
+    # if grid_in is None:
+    #     grid_in = GRID_IN
 
-    cwd = os.path.abspath(CWD.format(pdb=pdb))
-    zipfile = os.path.abspath(cwd+'/'+ZIPFILE.format(pdb=pdb))
-    infile = os.path.abspath(cwd+'/'+INFILE.format(pdb=pdb))
     ligfile = os.path.abspath(LIGFILE.format(pdb=pdb))
     protfile = os.path.abspath(PROTFILE.format(pdb=pdb))
-    cmd = CMD.format(infile=os.path.basename(infile))
+    docktemp = os.path.abspath(DOCKTEMP.format(pdb=pdb))
+    cmd = CMD.format(prot=protfile,abox_lig=ligfile)
 
-    if os.path.exists(zipfile):
-        return # Done.
+    # if os.path.exists(zipfile):
+    #     return # Done.
     if not (os.path.exists(ligfile) and os.path.exists(protfile)):
         print(ligfile, protfile)
         return # Not ready.
 
     print('making grid', pdb)
 
-    for path in glob(cwd + '/*'):
-        os.remove(path)
-    os.makedirs(cwd, exist_ok=True)
+    print(os.path.dirname(os.path.abspath(docktemp)))
+    os.makedirs(os.path.dirname(os.path.abspath(docktemp)), exist_ok=True)
 
-    x, y, z = centroid(ligfile)
+    with open(docktemp, 'w') as template:
+        template.write(cmd)
 
-    with open(infile, 'w') as fp:
-        fp.write(grid_in.format(x=x, y=y, z=z, pdb=pdb, prot=protfile))
+    # x, y, z = centroid(ligfile)
 
-    subprocess.run(cmd, cwd=cwd, shell=True)
+    # with open(infile, 'w') as fp:
+    #     fp.write(grid_in.format(x=x, y=y, z=z, pdb=pdb, prot=protfile))
+
+    # subprocess.run(cmd, cwd=cwd, shell=True)

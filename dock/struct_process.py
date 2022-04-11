@@ -1,63 +1,62 @@
 import os
-from schrodinger.structure import StructureReader
+# from schrodinger.structure import StructureReader
+from prody import parsePDB, writePDB
 from subprocess import run
+import numpy as np
 
-command = '$SCHRODINGER/utilities/prepwizard -WAIT -rehtreat -watdist 0 {}_in.mae {}_out.mae'
+# command = '$SCHRODINGER/utilities/prepwizard -WAIT -rehtreat -watdist 0 {}_in.mae {}_out.mae'
 
-def load_complex(prot_in, lig_in, struct):
+def load_complex(prot_in, lig_id):
 
-    prot_st = next(StructureReader(prot_in))
-    
-    if not os.path.exists(lig_in): 
-        prot_st.title = struct
-        return prot_st
+    prot_st = parsePDB(prot_in)
+    chains = np.unique(prot_st.getChids())
+    fchain = chains[0]
 
-    lig_st = next(StructureReader(lig_in))
+    #filter protein to remove waters and other non-protein things
+    prot_only = prot_st.select('protein')
+    waters = prot_st.select('water')
+    heteros = prot_st.select('hetero and not water')
+    important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
+    if important_ligand is None:
+        important_ligand = prot_st.select(f'resname {lig_id}')
+    compl = prot_only + important_ligand
 
-    assert len(lig_st.chain) == 1, struct
-    for c in lig_st.chain:
-        c.name = 'L'
-
-    alpha = 'ABCDEFGHIJKMNOPQRST'
-    alpha_count = 0
-    for c in prot_st.chain:
-        if c.name.strip() == '': continue
-
-        c.name = alpha[alpha_count]
-        alpha_count += 1
-
-    merged_st = lig_st.merge(prot_st)
-    merged_st.title = struct
-    return merged_st
+    return compl, prot_only, waters, heteros
 
 def struct_process(structs,
-                   protein_in='structures/raw/{pdb}_prot.mae',
-                   ligand_in='structures/raw/{pdb}_lig.mae',
-                   processed_in='structures/processed/{pdb}/{pdb}_in.mae',
-                   processed_out='structures/processed/{pdb}/{pdb}_out.mae',
-                   processed_sh='structures/processed/{pdb}/process.sh'):
+                   protein_in='structures/raw/{pdbid}.pdb',
+                   ligand_info='structures/raw/{pdbid}.info',
+                   filtered_protein='structures/processed/{pdbid}/{pdbid}_prot.pdb',
+                   filtered_complex='structures/processed/{pdbid}/{pdbid}_complex.pdb',
+                   filtered_hetero='structures/processed/{pdbid}/{pdbid}_het.pdb',
+                   filtered_water='structures/processed/{pdbid}/{pdbid}_wat.pdb'):
 
     for struct in structs:
-        _protein_in = protein_in.format(pdb=struct)
-        _ligand_in = ligand_in.format(pdb=struct)
-        _processed_in = processed_in.format(pdb=struct)
-        _processed_out = processed_out.format(pdb=struct)
-        _processed_sh = processed_sh.format(pdb=struct)
-        _workdir = os.path.dirname(_processed_sh)
+        _protein_in = protein_in.format(pdbid=struct)
+        _ligand_info = ligand_info.format(pdbid=struct)
+        _filtered_protein = filtered_protein.format(pdbid=struct)
+        _filtered_complex = filtered_complex.format(pdbid=struct)
+        _filtered_water = filtered_water.format(pdbid=struct)
+        _filtered_hetero = filtered_hetero.format(pdbid=struct)
+        _workdir = os.path.dirname(_filtered_protein)
 
-        if os.path.exists(_processed_out):
+        if os.path.exists(_filtered_protein):
             continue
 
+        lig_id = open(_ligand_info,'r').readlines()[0].strip('\n')
         print('processing', struct)
 
         os.system('mkdir -p {}'.format(os.path.dirname(_workdir)))
         os.system('rm -rf {}'.format(_workdir))
         os.system('mkdir {}'.format(_workdir))
 
-        merged_st = load_complex(_protein_in, _ligand_in, struct)
-        merged_st.write(_processed_in)
+        compl, prot, waters, het = load_complex(_protein_in, lig_id)
+        writePDB(_filtered_protein,prot)
+        writePDB(_filtered_water,waters)
+        writePDB(_filtered_hetero,het)
+        writePDB(_filtered_complex,compl)
 
-        with open('{}/process_in.sh'.format(_workdir), 'w') as f:
-            f.write('#!/bin/bash\n')
-            f.write(command.format(struct, struct))
-        run('sh process_in.sh', shell=True, cwd=_workdir)
+        # with open('{}/process_in.sh'.format(_workdir), 'w') as f:
+        #     f.write('#!/bin/bash\n')
+        #     f.write(command.format(struct, struct))
+        # run('sh process_in.sh', shell=True, cwd=_workdir)

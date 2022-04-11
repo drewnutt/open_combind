@@ -5,7 +5,7 @@ import numpy as np
 import click
 import os
 from glob import glob
-from schrodinger.structure import StructureReader, StructureWriter
+# from schrodinger.structure import StructureReader, StructureWriter
 
 from utils import *
 
@@ -37,20 +37,20 @@ def structprep(struct, grid_struct):
     \b
     structures/
         raw/
-            structure_name_prot.mae
-            structure_name_lig.mae
+            structure_name.pdb
+            structure_name.info (first line is Resname of ligand)
             ...
         processed/
-            structure_name/structure_name_out.mae
+            structure_name/structure_name_prot.pdb
             ...
         aligned/
-            structure_name/rot-structure_name_query.mae
+            structure_name/structure_name_aligned.pdb
             ...
         proteins/
-            structure_name_prot.mae
+            structure_name_prot.pdb
             ...
         ligands/
-            structure_name_lig.mae
+            structure_name_lig.pdb
             ...
         grids/
             structure_name/structure_name.zip
@@ -69,8 +69,8 @@ def structprep(struct, grid_struct):
 
     assert os.path.exists('structures'), 'No structures directory.'
 
-    structs = sorted(glob('structures/raw/*_prot.mae*'))
-    structs = [struct.split('/')[-1].split('_prot')[0] for struct in structs]
+    structs = sorted(glob('structures/raw/*.pdb*'))
+    structs = [struct.split('/')[-1].split('.pdb')[0] for struct in structs]
     
     if not struct:
         struct = structs[0]
@@ -190,7 +190,7 @@ def dock(grid, root, ligands, screen, processes):
 @main.command()
 @click.argument('root')
 @click.argument('poseviewers', nargs=-1)
-@click.option('--native', default='structures/ligands/*_lig.mae')
+@click.option('--native', default='structures/ligands/*_lig.sdf')
 @click.option('--ifp-version', default=ifp_version)
 @click.option('--mcss-version', default=mcss_version)
 @click.option('--shape-version', default=shape_version)
