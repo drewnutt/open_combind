@@ -1,9 +1,12 @@
 import os
+import gzip
 import numpy as np
 import pandas as pd
 from glob import glob
-from schrodinger.structure import StructureReader
-from schrodinger.structutils.rmsd import ConformerRmsd
+# from schrodinger.structure import StructureReader
+# from schrodinger.structutils.rmsd import ConformerRmsd
+from plumbum.cmd import obrms
+from rdkit.Chem import AllChem as Chem
 from utils import basename, mp, mkdir, np_load
 
 IFP = {'rd1':    {'version'           : 'rd1',
@@ -18,6 +21,7 @@ IFP = {'rd1':    {'version'           : 'rd1',
                    'contact_scale_cut' : 1.75,},
       }
 
+# add an option to change which score you get from gnina
 class Features:
     """
     Organize feature computation and loading.
@@ -50,14 +54,14 @@ class Features:
 
         # single features
         if name == 'rmsd':
-            return pv.replace('_pv.maegz', '_rmsd.npy')
+            return pv.replace('.sdf.gz', '_rmsd.npy')
         elif name == 'gscore':
-            return pv.replace('_pv.maegz', '_gscore.npy')
+            return pv.replace('.sdf.gz', '_gscore.npy')
         elif name == 'name':
-            return pv.replace('_pv.maegz', '_name.npy')
+            return pv.replace('.sdf.gz', '_name.npy')
         elif name == 'ifp':
             suffix = '_ifp_{}.csv'.format(self.ifp_version)
-            return pv.replace('_pv.maegz', suffix)
+            return pv.replace('.sdf.gz', suffix)
 
         # pair features
         elif name == 'shape':
@@ -127,14 +131,14 @@ class Features:
 
     def compute_single_features(self, pvs, native_poses):
         # For single features, there is no need to keep sub-sets of ligands
-        # seperated,  so just merge them at the outset to simplify the rest of
+        # separated,  so just merge them at the outset to simplify the rest of
         # the method.
         if type(pvs[0]) == list:
             pvs = [pv for _pvs in pvs for pv in _pvs]
 
         pvs = [os.path.abspath(pv) for pv in pvs]
 
-        print('Extracting glide scores.')
+        print('Extracting GNINA scores.')
         for pv in pvs:
             out = self.path('gscore', pv=pv)
             if not os.path.exists(out):
@@ -198,40 +202,38 @@ class Features:
     # Methods to calculate features
     def compute_name(self, pv, out):
         names = []
-        with StructureReader(pv) as sts:
-            next(sts)
-            for st in sts:
-                names += [st.property['s_m_title']]
-                if len(names) == self.max_poses:
-                    break
+        sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
+        for idx, st in enumerate(sts):
+            names += [f"{st.GetProp('_Name')}_{str(idx)}"]
+            if len(names) == self.max_poses:
+                break
         np.save(out, names)
 
     def compute_gscore(self, pv, out):
+        # Will need to change StructureReader to rdkit and get the gnina score
+        print(pv)
         gscores = []
-        with StructureReader(pv) as sts:
-            next(sts)
-            for st in sts:
-                gscores += [st.property['r_i_docking_score']]
-                if len(gscores) == self.max_poses:
-                    break
+        sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
+        for st in sts:
+            gscores += [float(st.GetProp('CNNaffinity'))]
+            if len(gscores) == self.max_poses:
+                break
         np.save(out, gscores)
 
     def compute_rmsd(self, pv, native_poses, out):
         rmsds = []
-        with StructureReader(pv) as sts:
-            protein = next(sts)
-            for st in sts:
-                name = st.property['s_m_title']
-                if name in native_poses:
-                    native = native_poses[name]
-                    try:
-                        conf_rmsd = ConformerRmsd(native, st).calculate()
-                    except:
-                        print(f'RMSD failed for {name}')
-                        conf_rmsd = -1
-                else:
-                    conf_rmsd = -1
-                rmsds += [conf_rmsd]
+        name = pv.split('-')[0]
+        if name in native_poses:
+            native = native_poses[name]
+            try:
+                obrms_out = obrms[native, pv,'--firstonly']()
+                messy_rmsds = obrms_out.strip().split('\n')
+                rmsds = [float(r.split()[-1]) for r in messy_rmsds]
+            except:
+                print(f'RMSD failed for {name}')
+        else:
+            rmsds = [-1] * self.max_poses
+
         np.save(out, rmsds)
 
     def compute_ifp(self, pv, out):

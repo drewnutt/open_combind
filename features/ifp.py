@@ -8,7 +8,7 @@ import click
 import numpy as np
 import pandas as pd
 from rdkit.Chem import MolFromSmarts
-from rdkit.Chem.rdmolfiles import MaeMolSupplier
+from rdkit.Chem.AllChem import ForwardSDMolSupplier, MolFromPDBFile
 import gzip
 
 ################################################################################
@@ -350,10 +350,14 @@ def fingerprint(protein, ligand, settings):
     return pd.DataFrame.from_dict(fp)
 
 def fingerprint_poseviewer(input_file, poses, settings):
+    # Maybe can use PDBMolSupplier to get the protein here as well
+    prot_fname = input_file.split('-to-')[-1].replace('-docked.sdf.gz','_prot.pdb')
+    prot_file = f"structures/proteins/{prot_fname}"
+
     fps = []
     with gzip.open(input_file) as fp:
-        mols =  MaeMolSupplier(fp, removeHs=False)
-        protein = Molecule(next(mols), True, settings)
+        mols = ForwardSDMolSupplier(fp, removeHs=False)
+        protein = Molecule(MolFromPDBFile(prot_file), True, settings)
         
         for i, ligand in enumerate(mols):
             if i == poses: break
