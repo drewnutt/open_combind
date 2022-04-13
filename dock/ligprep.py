@@ -4,7 +4,7 @@ import subprocess
 from plumbum.cmd import obabel
 
 def ligprocess(input_file, output_file):
-    obabel[input_file,'-O',output_file]()
+    obabel[input_file,'-O',output_file, '--gen3d']()
             # Remove explicit stereochemistry specifications. These cause
             # errors in downstream steps.
             # for k in st.property.keys():
