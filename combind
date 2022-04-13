@@ -5,6 +5,7 @@ import numpy as np
 import click
 import os
 from glob import glob
+from plumbum.cmd import obabel
 # from schrodinger.structure import StructureReader, StructureWriter
 
 from utils import *
@@ -29,7 +30,7 @@ def structprep(struct, grid_struct):
     Prepare structures and make a docking grid.
 
     "struct" specifies the name of the structure for which to make a docking
-    grid. (Not the full path, generally just the PDB code.) Defaults to the
+    template file. (Not the full path, generally just the PDB code.) Defaults to the
     structure with alphabetically lowest name.
 
     The following directory structure is required:
@@ -52,8 +53,8 @@ def structprep(struct, grid_struct):
         ligands/
             structure_name_lig.pdb
             ...
-        grids/
-            structure_name/structure_name.zip
+        template/
+            structure_name/structure_name
             ...
 
     The process can be started from any step, e.g. if you have processed
@@ -86,10 +87,13 @@ def structprep(struct, grid_struct):
     struct_sort(structs)
     make_grid(grid_struct)
 
+# Not super sure what is absolutely necessary in this step, especially if starting from sdf
+# instead of starting from smiles
 @main.command()
 @click.argument('smiles')
 @click.option('--root', default='ligands')
 @click.option('--multiplex', is_flag=True)
+# @click.option('--sdffile', is_flag=True)
 @click.option('--ligand-names', default='ID')
 @click.option('--ligand-smiles', default='SMILES')
 @click.option('--delim', default=',')
@@ -114,6 +118,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
     """
     from dock.ligprep import ligprep
     mkdir(root)
+    # if not sdffile:
     ligands = pd.read_csv(smiles, sep=delim)
     print('Prepping {} mols from {} in {}'.format(len(ligands), smiles, root))
 
@@ -121,14 +126,16 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
         _name = os.path.splitext(os.path.basename(smiles))[0]
         _root = f'{root}/{_name}'
         _smiles = f'{_root}/{_name}.smi'
-        _mae = os.path.splitext(_smiles)[0] + '.maegz'
+        _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
-        if not os.path.exists(_mae):
+        if not os.path.exists(_sdf):
             mkdir(_root)
             with open(_smiles, 'w') as fp:
                 for _, ligand in ligands.iterrows():
                     fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
             ligprep(_smiles)
+
+        
 
     else:
         unfinished = []
@@ -136,22 +143,25 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
             _name = ligand[ligand_names]
             _root = f'{root}/{_name}'
             _smiles = f'{_root}/{_name}.smi'
-            _mae = os.path.splitext(_smiles)[0] + '.maegz'
+            _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
-            if not os.path.exists(_mae):
+            if not os.path.exists(_sdf):
                 mkdir(_root)
                 with open(_smiles, 'w') as fp:
                     fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
                 unfinished += [(_smiles,)]
         mp(ligprep, unfinished, processes)
+    # if sdffile:
+        # make new function that goes from big sdffile to individual files with proper names
+
 
 @main.command()
 @click.argument('ligands', nargs=-1)
 @click.option('--root', default='docking')
 @click.option('--grid')
 @click.option('--screen', is_flag=True)
-@click.option('--processes', default=1)
-def dock(grid, root, ligands, screen, processes):
+@click.option('--slurm', is_flag=True)
+def dock(grid, root, ligands, screen, slurm):
     """
     Dock "ligands" to "grid".
 
@@ -165,25 +175,31 @@ def dock(grid, root, ligands, screen, processes):
     from dock.dock import dock
 
     if grid is None:
-        grid = glob('structures/grids/*/*.zip')
+        grid = glob('structures/template/*.template')
         if grid:
             grid = grid[0]
         else:
-            print('No grids in default location (structures/grids)'
+            print('No templates in default location (structures/template)'
                   ', please specify path.')
             exit()
+
 
     ligands = [os.path.abspath(lig) for lig in ligands if 'nonames' not in lig]
     grid = os.path.abspath(grid)
     root = os.path.abspath(root)
 
     mkdir(root)
-    unfinished = []
+    ligs = []
+    _roots = []
+    names = []
     for ligand in ligands:
         name = '{}-to-{}'.format(basename(ligand), basename(grid))
         _root = '{}/{}'.format(root, name)
-        unfinished += [(grid, ligand, _root, name, not screen)]
-    mp(dock, unfinished, processes)
+        ligs.append(ligand)
+        _roots.append(_root)
+        names.append(name)
+    print(f"Writing docking file for {len(ligs)} ligands")
+    dock(grid, ligands, _roots, names, not screen, slurm=slurm)
 
 ################################################################################
 

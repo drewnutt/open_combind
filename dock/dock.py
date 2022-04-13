@@ -1,56 +1,88 @@
-from schrodinger.structure import StructureReader, StructureWriter
-from schrodinger.structutils.rmsd import ConformerRmsd
+# from schrodinger.structure import StructureReader, StructureWriter
+# from schrodinger.structutils.rmsd import ConformerRmsd
 import os
 import subprocess
 
-GLIDE_ES4 = '''GRIDFILE  {grid}
-LIGANDFILE   {ligands}
-DOCKING_METHOD   confgen
-POSES_PER_LIG   100
-POSTDOCK_NPOSE   100
-PRECISION   SP
-NENHANCED_SAMPLING   4
-'''
+# GLIDE_ES4 = '''GRIDFILE  {grid}
+# LIGANDFILE   {ligands}
+# DOCKING_METHOD   confgen
+# POSES_PER_LIG   100
+# POSTDOCK_NPOSE   100
+# PRECISION   SP
+# NENHANCED_SAMPLING   4
+# '''
 
-GLIDE = '''GRIDFILE  {grid}
-LIGANDFILE   {ligands}
-DOCKING_METHOD   confgen
-POSES_PER_LIG   30
-POSTDOCK_NPOSE   30
-PRECISION   SP
-'''
+# GLIDE = '''GRIDFILE  {grid}
+# LIGANDFILE   {ligands}
+# DOCKING_METHOD   confgen
+# POSES_PER_LIG   30
+# POSTDOCK_NPOSE   30
+# PRECISION   SP
+# '''
 
-def docking_failed(glide_log):
-    if not os.path.exists(glide_log):
+GNINA = ' -l {lig} --num_modes 100 -o {out} --exhaustiveness {exh} > {log} \n'
+
+def docking_failed(gnina_log):
+    if not os.path.exists(gnina_log):
         return False
-    with open(glide_log) as fp:
+    with open(gnina_log) as fp:
         logtxt = fp.read()
-    phrases = ['** NO ACCEPTABLE LIGAND POSES WERE FOUND **',
-               'NO VALID POSES AFTER MINIMIZATION: SKIPPING.',
-               'No Ligand Poses were written to external file',
-               'GLIDE WARNING: Skipping refinement, etc. because rough-score step failed.']
+    # phrases = ['** NO ACCEPTABLE LIGAND POSES WERE FOUND **',
+    #            'NO VALID POSES AFTER MINIMIZATION: SKIPPING.',
+    #            'No Ligand Poses were written to external file',
+    #            'GLIDE WARNING: Skipping refinement, etc. because rough-score step failed.']
+    # Need to compile list of Gnina failure logs
+        phrases = []
     return any(phrase in logtxt for phrase in phrases)
 
-def dock(grid, ligands, root, name, enhanced, infile=None, reference=None):
+def dock(template, ligands, root, name, enhanced, infile=None, reference=None, slurm=False):
+    outfile = "{inlig}-docked.sdf.gz"
     if infile is None:
-        infile = GLIDE_ES4 if enhanced else GLIDE
-    glide_in = '{}/{}.in'.format(root, name)
-    glide_pv = '{}/{}_pv.maegz'.format(root, name)
-    glide_log = '{}/{}.log'.format(root, name)
-    glide_cmd = 'glide -WAIT -LOCAL -RESTART {}'.format(os.path.basename(glide_in))
+        infile = GNINA
+    exh = 8
+    if enhanced:
+        exh = 16
+    dock_template = open(template).readlines()[0].strip('\n')
+    recname = os.path.splitext(os.path.split(dock_template.split('-r')[-1].strip().split(' ')[0])[1])[0]
+    # aboxname = os.path.splitext(os.path.split(dock_template.split('--autobox_ligand')[-1].strip().split(' ')[0])[1])[0]
+    dock_line = dock_template + infile
 
-    if os.path.exists(glide_pv):
-        return
+    gnina_in = '{}_docking_file.txt'.format(recname)
+    with open(gnina_in, 'w') as fp:
+        for lig, _r, n in zip(ligands, root, name):
+            out = outfile.format(inlig=n)
+            gnina_log = f"{recname}_{n}.log"
 
-    if enhanced and docking_failed(glide_log):
-        return
+            if os.path.exists(outfile):
+                return
 
-    if not os.path.exists(root):
-        os.system('mkdir {}'.format(root))
-    with open(glide_in, 'w') as fp:
-        fp.write(infile.format(grid=grid, ligands=ligands, reference=reference))
+            if enhanced and docking_failed(gnina_log):
+                return
 
-    subprocess.run(glide_cmd, cwd=root, shell=True)
+            if not os.path.exists(_r):
+                os.system('mkdir {}'.format(_r))
+            fp.write(dock_line.format(lig=lig,out=out,exh=exh,log=gnina_log))
+
+    if slurm:
+        receptor = dock_template.split('-r')[-1].strip().split(' ')[0]
+        abox = dock_template.split('--autobox_ligand')[-1].strip().split(' ')[0]
+        setup_slurm(gnina_in,ligands,receptor,abox)
+
+
+def setup_slurm(gnina_in,ligands,receptor,abox):
+    import tarfile
+
+    tarfiles = (receptor,abox,*ligands)
+    new_tar = gnina_in.replace('.txt','.tar.gz')
+    tar = tarfile.open(new_tar, "w:gz")
+
+    for fname in tarfiles:
+        tar.add(os.path.relpath(fname))
+    tar.close()
+
+    cwd = os.getcwd() + '/'
+    os.system(f'sed -i s,{cwd},,g {gnina_in}')
+
 
 def filter_native(native, pv, out, thresh):
     with StructureReader(native) as sts:
