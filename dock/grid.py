@@ -13,7 +13,7 @@ from glob import glob
 # """
 
 # CMD = "glide -WAIT {infile}"
-CMD = "gnina -r {prot} --autobox_ligand {abox_lig} --num_modes 100"
+CMD = "gnina -r {prot} --autobox_ligand {abox_lig} "
 
 # not necessary because Gnina can use ligand to define autobox
 # def centroid(ligfile):
@@ -26,7 +26,7 @@ CMD = "gnina -r {prot} --autobox_ligand {abox_lig} --num_modes 100"
 def make_grid(pdb,
               PROTFILE='structures/proteins/{pdb}_prot.pdb',
               LIGFILE='structures/ligands/{pdb}_lig.mol2',
-              DOCKTEMP='structures/template/{pdb}'):
+              DOCKTEMP='structures/template/{pdb}.template'):
     # if grid_in is None:
     #     grid_in = GRID_IN
 
