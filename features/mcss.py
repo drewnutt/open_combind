@@ -2,11 +2,18 @@ import tempfile
 import numpy as np
 import subprocess
 import os
-from schrodinger.structure import StructureReader, StructureWriter, SmilesStructure
-from schrodinger.structutils.rmsd import ConformerRmsd
-from schrodinger.structutils.analyze import generate_smiles
-from schrodinger.structutils.analyze import evaluate_smarts_canvas
+from rdkit.Chem import AllChem as Chem
+from rdkit.Chem import rdFMCS
+from plumbum.cmd import obrms
 
+# To compute the substructure similarity for a pair of candidate poses, the maximum common
+# substructure of the two ligands is identified using Canvas (Schrodinger LLC) and then mapped
+# onto each candidate pose. Finally, the RMSD between these two sets of atoms is computed and
+# used as the measure of substructure similarity. We defined custom atom and bond types for
+# computation of the common scaffold (Supplementary Table 6). Substructure similarity is not
+# considered for pairs of ligands with a maximum common substructure of less than half the size
+# of the smaller ligand. Hydrogen atoms were not included in the substructure nor when
+# determining the total number of atoms in each ligand.
 def mcss(sts1, sts2, mcss_types_file):
     """
     Computes rmsd between mcss for atoms in two poseviewer files.
@@ -14,125 +21,97 @@ def mcss(sts1, sts2, mcss_types_file):
     Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
     """
     memo = {}
-    sts1 = [merge_halogens(st.copy()) for st in sts1]
-    sts2 = [merge_halogens(st.copy()) for st in sts2]
+    # sts1 = [merge_halogens(st.copy()) for st in sts1]
+    # sts2 = [merge_halogens(st.copy()) for st in sts2]
 
     rmsds = []
     for j, st1 in enumerate(sts1):
-        smi1 = generate_smiles(st1)
-        n_st1_atoms = n_atoms(st1)
+        n_st1_atoms = st1.GetNumHeavyAtoms()
+        smi1 = Chem.MolToSmiles(st1)
         rmsds += [np.zeros(len(sts2)) + float('inf')]
         for i, st2 in enumerate(sts2):
-            smi2 = generate_smiles(st2)
-            n_st2_atoms = n_atoms(st2)
-
+            n_st2_atoms = st2.GetNumHeavyAtoms()
+            smi2 = Chem.MolToSmiles(st2)
             if (smi1, smi2) in memo:
-                mcss, n_mcss_atoms = memo[(smi1, smi2)]
+                mcss, n_mcss_atoms, remove_idxs = memo[(smi1, smi2)]
             else:
-                mcss = compute_mcss(st1, st2, mcss_types_file)
-                # Capitalizing is useful to prevent invalid structures.
-                # This structure isn't used for anything other than
-                # counting atoms.
-                mcss_st = SmilesStructure(mcss['st1'][0].split(',')[0].upper()).get2dStructure()
-                n_mcss_atoms = n_atoms(mcss_st)
-                memo[(smi1, smi2)] = (mcss, n_mcss_atoms)
-                memo[(smi2, smi1)] = ({'st1': mcss['st2'], 'st2': mcss['st1']}, n_mcss_atoms)
+                mcss, n_mcss_atoms, remove_idxs = compute_mcss(st1, st2, mcss_types_file)
+                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, remove_idxs)
+                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':remove_idxs['st2'],'st2':remove_idxs['st2']})
 
             if (2*n_mcss_atoms <= min(n_st1_atoms, n_st2_atoms)
                 or n_mcss_atoms <= 10):
                 continue
 
-            rmsds[-1][i] = compute_mcss_rmsd(st1, st2, mcss)
+            rmsds[-1][i] = compute_mcss_rmsd(st1, st2, remove_idxs)
 
     return np.vstack(rmsds)
 
-def compute_mcss_rmsd(st1, st2, mcss):
+def compute_mcss_rmsd(st1, st2, remove_idxs):
     """
     Compute minimum rmsd between mcss(s).
 
-    Takes into account that there can be multiple mcss smarts patterns (
-    i.e. two patterns that are the same size) and each smarts pattern could
+    Takes into account that the mcss smarts pattern could
     map to multiple atom indices (e.g. symetric groups).
+
+    remove_idxs: dictionary with keys 'st1' and 'st2' that have lists
+    of atom indices lists to remove to create the MCSS for each pose
     """
     rmsd = float('inf')
-    for smarts1, smarts2 in zip(mcss['st1'], mcss['st2']):
-        atom_idxs1 = evaluate_smarts_canvas(st1, smarts1)
-        atom_idxs2 = evaluate_smarts_canvas(st2, smarts2)
-
-        for atom_idx1 in atom_idxs1:
-            for atom_idx2 in atom_idxs2:
-                _rmsd = calculate_rmsd(st1, st2, atom_idx1, atom_idx2)
-                rmsd = min(_rmsd, rmsd)
+    for rmatom_idx1 in remove_idxs['st1']:
+        ss1 = get_substructure(st1,rmatom_idx1)
+        for rmatom_idx2 in remove_idxs['st2']:
+            ss2 = get_substructure(st2,rmatom_idx1)
+            _rmsd = calculate_rmsd(ss1, ss2)
+            rmsd = min(_rmsd, rmsd)
     return rmsd
 
 def compute_mcss(st1, st2, mcss_types_file):
     """
     Compute smarts patterns for mcss(s) between two structures.
     """
-    cmd = "$SCHRODINGER/utilities/canvasMCS -imae {} -ocsv {} -stop 10 -atomtype C {}"
-    with tempfile.TemporaryDirectory() as wd:
-        mae = wd+'/temp.maegz'
-        csv = wd+'/temp.csv'
+    res = rdFMCS.FindMCS([st1,st2])
+    if not res.canceled:
+        mcss = res.smartsString
+        num_atoms = res.numAtoms
+    else:
+        mcss = '[#6]'
+        num_atoms = 1
+    mcss_mol = Chem.MolFromSmarts(mcss)
+    rmv_idx = {'st1': mcss_to_rmv_idx(st1, mcss_mol),
+            'st2': mcss_to_rmv_idx(st2, mcss_mol)}
 
-        st1.title = 'st1'
-        st2.title = 'st2'
-        stwr = StructureWriter(mae)
-        stwr.append(st1)
-        stwr.append(st2)
-        stwr.close()
+    return mcss, num_atoms, rmv_idx
 
-        r = subprocess.run(cmd.format(os.path.basename(mae), os.path.basename(csv),
-                                      os.path.abspath(mcss_types_file)),
-                           cwd=wd, shell=True, stderr=subprocess.PIPE)
-
-
-        # mcss can fail with memory usage error, generally when macrocycles
-        # are present. just skip such cases.
-        failed = 'memory usage' in str(r.stderr)
-
-        if not failed:
-            assert os.path.exists(csv)
-            mcss = {'st1': [], 'st2': []}
-            with open(csv) as fp:
-                fp.readline()
-                for line in fp:
-                    lig = line.strip().split(',')[1]
-                    smarts = line.strip().split(',')[-1]
-                    mcss[lig] += [smarts]
-        else:
-            print('mcss failed')
-            mcss = {'st1': ['C'], 'st2': ['C']}
-    return mcss
-
-def calculate_rmsd(pose1, pose2, atom_idx1, atom_idx2):
+def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     """
-    Calculates the RMSD between the atoms atom_idx1 in pose1
-    and the atoms atom_idx2 in pose2.
+    Calculates the RMSD between pose1 and pose2.
 
-    pose1, pose2: schrodinger.structure
-    atom_idx1, atom_idx2: [int, ...]
-    merge_halogens: If true then change the atomic number of all halogens
-                    to 9 (the atomic number of flourine) before computing
-                    rmsds. This allows for MCSS that treat all halogens
-                    the same.
+    pose1, pose2: rdkit.Mol
+    eval_rmsd: verify that RMSD calculation is the same as obrms
     """
-    substructure1 = pose1.extract(atom_idx1)
-    substructure2 = pose2.extract(atom_idx2)
-    try:
-        calc = ConformerRmsd(substructure1, substructure2)
-        calc.use_heavy_atom_graph = True
-        calc.renumber_structures = True
-        rmsd = calc.calculate()
-    except:
-        # This is necessary because there is a bug in the
-        # Schrodinger software that results in incorrect
-        # atom indices being used when the heavy_atom_graph
-        # is used. That being said, the above is more reliable
-        # than the below, so should be tried first.
-        calc = ConformerRmsd(substructure1, substructure2)
-        calc.use_heavy_atom_graph = True
-        calc.renumber_structures = False
-        rmsd = calc.calculate()
+    rmsd = Chem.GetBestRMS(pose1,pose2)
+    if eval_rmsd:
+        obrmsd = calculate_rmsd_slow(pose1,pose2)
+        assert np.isclose(obrmsd,rmsd,atol=1E-4), print(f"obrms:{obrmsd}\nrdkit:{rmsd}")
+    return rmsd
+
+def calculate_rmsd_slow(pose1,pose2):
+    with tempfile.TemporaryDirectory() as tempd:
+        tmp1 = f'{tempd}/tmp1.sdf'
+        tmp2 = f'{tempd}/tmp2.sdf'
+
+        writer = Chem.SDWriter(tmp1)
+        writer.write(pose1)
+        writer.close()
+
+        writer = Chem.SDWriter(tmp2)
+        writer.write(pose2)
+        writer.close()
+
+        raw_rmsd = obrms[tmp1,tmp2]()
+        rmsd = float(raw_rmsd.strip().split()[-1])
+
     return rmsd
 
 def merge_halogens(structure):
@@ -146,5 +125,32 @@ def merge_halogens(structure):
             atom.atomic_number = 9
     return structure
 
-def n_atoms(st):
-    return sum(atom.element != 'H' for atom in st.atom)
+def mcss_to_rmv_idx(mol,mcss_mol):
+    """
+    Finds the atom indices that need to be removed from mol
+    to be left with the mcss
+    """
+    mol_mcss = mol.GetSubstructMatches(mcss_mol)
+    mol_fidx = set(range(mol.GetNumAtoms()))
+    remove_idxs = []
+    for keep_idx in mol_mcss:
+        remove_idxs.append(sorted(list(mol_fidx - set(keep_idx)),reverse=True))
+
+    return remove_idxs
+
+def get_substructure(mol, remove_idxs):
+    """
+    Gets the substructure of mol by removing the atoms with indices
+    in remove_idxs
+    """
+    rw_mol = Chem.RWMol(mol)
+    for idx in sorted(remove_idxs,reverse=True):
+        rw_mol.RemoveAtom(idx)
+
+    assert rw_mol.GetNumAtoms() == (mol.GetNumAtoms() - len(remove_idxs))
+
+    substruct = Chem.Mol(rw_mol)
+    Chem.SanitizeMol(substruct)
+    return substruct
+# def n_atoms(st):
+#     return sum(atom.element != 'H' for atom in st.atom)
