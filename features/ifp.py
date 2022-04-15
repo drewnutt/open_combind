@@ -13,21 +13,21 @@ import gzip
 
 ################################################################################
 
-def _convert_mae(original_mae, converted_mae, poses):
-    from schrodinger.structure import StructureReader, StructureWriter
-    with StructureReader(original_mae) as sts, StructureWriter(converted_mae) as writer:
-        for i, st in enumerate(sts):
-            if i > poses:
-                break
-            for k in st.property.keys():
-                if 'title' not in k:
-                    st.property.pop(k)
-            writer.append(st)
+# def _convert_mae(original_mae, converted_mae, poses):
+#     from schrodinger.structure import StructureReader, StructureWriter
+#     with StructureReader(original_mae) as sts, StructureWriter(converted_mae) as writer:
+#         for i, st in enumerate(sts):
+#             if i > poses:
+#                 break
+#             for k in st.property.keys():
+#                 if 'title' not in k:
+#                     st.property.pop(k)
+#             writer.append(st)
 
-def convert_mae(original_mae, converted_mae, poses=float('inf')):
-    imp = 'import sys; sys.path.append("{}"); import ifp'.format(os.path.dirname(os.path.abspath(__file__)))
-    cmd = 'ifp._convert_mae("{}", "{}", {})'.format(original_mae, converted_mae, poses)
-    os.system('run python3 -c \'{};{}\''.format(imp, cmd))
+# def convert_mae(original_mae, converted_mae, poses=float('inf')):
+#     imp = 'import sys; sys.path.append("{}"); import ifp'.format(os.path.dirname(os.path.abspath(__file__)))
+#     cmd = 'ifp._convert_mae("{}", "{}", {})'.format(original_mae, converted_mae, poses)
+#     os.system('run python3 -c \'{};{}\''.format(imp, cmd))
 
 ################################################################################
 def resname(atom):
@@ -303,6 +303,7 @@ def nodigits(s):
     return ''.join([i for i in s if not i.isdigit()])
 
 def compute_scores(raw, settings):
+    # print("computing scores")
     if settings['level'] == 'atom':
         raw['protein_res'] = [r['protein_res']+':'+nodigits(r['protein_atom'])
                               for _, r in raw.iterrows()]
@@ -350,10 +351,10 @@ def fingerprint(protein, ligand, settings):
     return pd.DataFrame.from_dict(fp)
 
 def fingerprint_poseviewer(input_file, poses, settings):
-    # Maybe can use PDBMolSupplier to get the protein here as well
     prot_fname = input_file.split('-to-')[-1].replace('-docked.sdf.gz','_prot.pdb')
     prot_file = f"structures/proteins/{prot_fname}"
 
+    # print(input_file)
     fps = []
     with gzip.open(input_file) as fp:
         mols = ForwardSDMolSupplier(fp, removeHs=False)
@@ -378,10 +379,10 @@ def fingerprint_poseviewer(input_file, poses, settings):
 def ifp(settings, input_file, output_file, poses, convert=False):
     settings['nonpolar'] = {6:1.7, 9:1.47, 17:1.75, 35:1.85, 53:1.98}
 
-    if convert:
-        temp = tempfile.NamedTemporaryFile(suffix='.maegz')
-        convert_mae(input_file, temp.name, poses)
-        input_file = temp.name
+    # if convert:
+    #     temp = tempfile.NamedTemporaryFile(suffix='.maegz')
+    #     convert_mae(input_file, temp.name, poses)
+    #     input_file = temp.name
 
     # Compute atom-level interactions.
     fps = fingerprint_poseviewer(input_file, poses, settings)
@@ -389,6 +390,7 @@ def ifp(settings, input_file, output_file, poses, convert=False):
     # Compute residue-level scores.
     scores = compute_scores(fps, settings)
 
+    # print("done with scores")
     # Write to files
     fps = fps.set_index(['pose', 'label', 'protein_res', 'protein_atom', 'ligand_atom'])
     fps = fps.sort_index()
