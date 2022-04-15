@@ -62,7 +62,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
         query = parsePDB(f'{_workdir}/{_query_fname}')
         query_to_align = query.select(f'calpha and within {dist} of hetero')
         target = parsePDB(f'{_workdir}/{_template_fname}')
-        target_to_align = query.select(f'calpha and within {dist} of hetero')
+        target_to_align = target.select(f'calpha and within {dist} of hetero')
         t = calcTransformation(query_to_align, target_to_align)
         t.apply(query)
         writePDB(aligned_prot.format(pdbid=struct),query)
