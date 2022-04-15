@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from utils import mp
 
 def merge_hbonds(ifp):
     """
@@ -35,7 +36,10 @@ def ifp_tanimoto(ifps1, ifps2, feature):
     ifps2 = [ifp.set_index('protein_res') for ifp in ifps2]
 
     sims = np.zeros((len(ifps1), len(ifps2)))
+    print(len(ifps1))
     for i, ifp1 in enumerate(ifps1):
+        if i % 100 == 0:
+            print(i)
         for j, ifp2 in enumerate(ifps2):
             total = ifp1['score'].sum() + ifp2['score'].sum()
             overlap = ifp1.join(ifp2, rsuffix='_2', how='inner')
@@ -44,3 +48,36 @@ def ifp_tanimoto(ifps1, ifps2, feature):
 
             sims[i, j] = (1 + overlap) / (2 + total - overlap)
     return sims
+
+def ifp_tanimoto_mp(ifps1, ifps2, feature, processes):
+    """
+    Computes the tanimoto distance between ifp1 and ifp2 for feature.
+    """
+    if feature == 'hbond':
+        ifps1 = [merge_hbonds(ifp) for ifp in ifps1]
+        ifps2 = [merge_hbonds(ifp) for ifp in ifps2]
+
+    ifps1 = [ifp.loc[ifp.label == feature] for ifp in ifps1]
+    ifps2 = [ifp.loc[ifp.label == feature] for ifp in ifps2]
+
+    ifps1 = [ifp.set_index('protein_res') for ifp in ifps1]
+    ifps2 = [ifp.set_index('protein_res') for ifp in ifps2]
+
+    sims = np.zeros((len(ifps1), len(ifps2)))
+    unfinished = [(ifp1, i, ifps2) for i, ifp1 in enumerate(ifps1)]
+    results = mp(calc_sim,unfinished,processes)
+    for sims_row, i in results:
+        sims[i,:] = sims_row
+    return sims
+
+def calc_sim(ifp1,i,ifps2):
+    sims = np.zeros((1,len(ifps2)))
+    for j, ifp2 in enumerate(ifps2):
+        total = ifp1['score'].sum() + ifp2['score'].sum()
+        overlap = ifp1.join(ifp2, rsuffix='_2', how='inner')
+        overlap = overlap['score']**0.5 * overlap['score_2']**0.5
+        overlap = overlap.sum()
+        sims[0,j] = (1 + overlap) / (2 + total - overlap)
+
+    return (sims, i)
+
