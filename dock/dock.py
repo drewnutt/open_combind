@@ -1,26 +1,7 @@
-# from schrodinger.structure import StructureReader, StructureWriter
-# from schrodinger.structutils.rmsd import ConformerRmsd
 import os
 import subprocess
 
-# GLIDE_ES4 = '''GRIDFILE  {grid}
-# LIGANDFILE   {ligands}
-# DOCKING_METHOD   confgen
-# POSES_PER_LIG   100
-# POSTDOCK_NPOSE   100
-# PRECISION   SP
-# NENHANCED_SAMPLING   4
-# '''
-
-# GLIDE = '''GRIDFILE  {grid}
-# LIGANDFILE   {ligands}
-# DOCKING_METHOD   confgen
-# POSES_PER_LIG   30
-# POSTDOCK_NPOSE   30
-# PRECISION   SP
-# '''
-
-GNINA = ' -l {lig} --num_modes 100 -o {out} --exhaustiveness {exh} > {log} \n'
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 100 > {log} \n'
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
@@ -84,27 +65,27 @@ def setup_slurm(gnina_in,ligands,receptor,abox):
     os.system(f'sed -i s,{cwd},,g {gnina_in}')
 
 
-def filter_native(native, pv, out, thresh):
-    with StructureReader(native) as sts:
-        native = list(sts)
-        assert len(native) == 1, len(native)
-        native = native[0]
+# def filter_native(native, pv, out, thresh):
+#     with StructureReader(native) as sts:
+#         native = list(sts)
+#         assert len(native) == 1, len(native)
+#         native = native[0]
 
-    near_native = []
-    with StructureReader(pv) as reader:
-        receptor = next(reader)
-        for st in reader:
-            conf_rmsd = ConformerRmsd(native, st)
-            if conf_rmsd.calculate() < thresh:
-                near_native += [st]
+#     near_native = []
+#     with StructureReader(pv) as reader:
+#         receptor = next(reader)
+#         for st in reader:
+#             conf_rmsd = ConformerRmsd(native, st)
+#             if conf_rmsd.calculate() < thresh:
+#                 near_native += [st]
 
-    print('Found {} near-native poses'.format(len(near_native)))
-    if not near_native:
-        print('Resorting to native pose.')
-        native.property['r_i_docking_score'] = -10.0
-        near_native = [native]
+#     print('Found {} near-native poses'.format(len(near_native)))
+#     if not near_native:
+#         print('Resorting to native pose.')
+#         native.property['r_i_docking_score'] = -10.0
+#         near_native = [native]
 
-    with StructureWriter(out) as writer:
-        writer.append(receptor)
-        for st in near_native:
-            writer.append(st)
+#     with StructureWriter(out) as writer:
+#         writer.append(receptor)
+#         for st in near_native:
+#             writer.append(st)
