@@ -4,7 +4,7 @@ class PosePrediction:
     """
     Compute sets of poses that optimize the ComBind scoring function.
 
-    ligands ([str, ]): names of ligands fow which to predict poses.
+    ligands ([str, ]): names of ligands for which to predict poses.
     features ([str, ]): names of features for computing similarity scores.
     data ({}): Raw data.
     stats ({feature: {'native': score.DensityEstimate,
@@ -64,7 +64,7 @@ class PosePrediction:
                     raw = self.data[feature][(ligand1, ligand2)]
 
                     if raw[0, 0] == float('inf'):
-                        # Features should either all be tehre or all be absent.
+                        # Features should either all be there or all be absent.
                         assert np.all(raw == float('inf'))
                         continue
 
