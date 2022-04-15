@@ -109,9 +109,8 @@ class Features:
             _ifps = pd.read_csv(self.path('ifp', pv=pv))
             _ifps = [_ifps.loc[_ifps.pose==p] for p in range(max(_ifps.pose)+1)]
 
-            with StructureReader(pv) as sts:
-                protein = next(sts)
-                _poses = [st for st in sts]
+            sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+            _poses = [st for st in sts]
 
             keep = []
             for i in range(len(_names)):
@@ -162,7 +161,7 @@ class Features:
             if not os.path.exists(out):
                 self.compute_ifp(pv, out)
 
-    def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True):
+    def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         mkdir(self.root)
         rmsds1, gscores1, poses1, names1, ifps1 = self.load_single_features(pvs)
         out = self.path('rmsd1')
@@ -187,7 +186,7 @@ class Features:
             print('Computing interaction similarities.')
             for feature in self.ifp_features:
                 out = self.path(feature)
-                self.compute_ifp_pair(ifps1, ifps2,  feature, out)
+                self.compute_ifp_pair(ifps1, ifps2,  feature, out, processes=processes)
 
         if shape:
             print('Computing shape similarities.')
@@ -211,7 +210,6 @@ class Features:
 
     def compute_gscore(self, pv, out):
         # Will need to change StructureReader to rdkit and get the gnina score
-        print(pv)
         gscores = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
         for st in sts:
@@ -241,9 +239,13 @@ class Features:
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
 
-    def compute_ifp_pair(self, ifps1, ifps2, feature, out):
-        from features.ifp_similarity import ifp_tanimoto
-        tanimotos = ifp_tanimoto(ifps1, ifps2, feature)
+    def compute_ifp_pair(self, ifps1, ifps2, feature, out,processes=1):
+        if processes > 1:
+            from features.ifp_similarity import ifp_tanimoto_mp
+            tanimotos = ifp_tanimoto_mp(ifps1, ifps2, feature,processes)
+        else:
+            from features.ifp_similarity import ifp_tanimoto
+            tanimotos = ifp_tanimoto(ifps1, ifps2, feature)
         np.save(out, tanimotos)
 
     def compute_shape(self, poses1, poses2, out):
