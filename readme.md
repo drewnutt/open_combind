@@ -5,7 +5,7 @@ or proprietary software. This will produce similar (if not the exact same) resul
 as the original ComBind and it will be completely free to use.
 
 This fork will focus on the use of [Gnina](https://github.com/gnina/gnina) as the
-docking software rather than Glide. Mostly because Glide costs money, but also because
+docking software rather than Glide. Mostly because Glide is proprietary, but also because
 Gnina is a deep-learning based docking pipeline.
 
 # ComBind
@@ -52,12 +52,13 @@ containing only the protein and only the ligand, respectively.
 
 If you'd prefer to prepare your structures yourself, save your
 prepared files to `structures/proteins` and `structures/ligands`. Moreover,
-you could even just begin with a Glide docking grid which you prepared yourself
-by placing it in `docking/grids`.
+you could even just begin with a GNINA docking template file (i.e. `gnina -r <path_to_receptor_file> --autobox_ligand <path_to_crystal_ligand> `)
+placed on the first line of a file.
 
-Ligands should be specified in a csv file with a header line containing at
+Ligands can be specified in a csv file with a header line containing at
 least the entries "ID" and "SMILES", specifying the ligand name and the ligand
-chemical structure.
+chemical structure. Alternatively you can specify your ligands with a sdf
+containing an entry for each ligand.
 
 ### Data preparation and docking
 
@@ -69,7 +70,7 @@ combind structprep
 ```
 
 In parallel, you can prepare the ligand data using the following command.
-By default, the ligands will be written to seperate files (one ligand per file).
+By default, the ligands will be written to separate files (one ligand per file).
 You can specify the `--multiplex` flag to write all of the ligands to the same
 file.
 
@@ -77,10 +78,10 @@ file.
 combind ligprep ligands.csv
 ```
 
-Once the docking grid and ligand data have been prepared, you can run the
+Once the GNINA template file and ligand data have been prepared, you can run the
 docking. The arguments to the dock command are a list of ligand files to be
-docked. By default, the docking grid is the alphabetically first grid present
-in `structures/grids`; use the `--grid` option to specify a different grid.
+docked. By default, the GNINA template file is the alphabetically first template present
+in `structures/template`; use the `--template` option to specify a different template.
 
 ```
 combind dock ligands/*/*.maegz
@@ -89,7 +90,7 @@ combind dock ligands/*/*.maegz
 ### Featurization
 
 ```
-combind featurize features docking/*/*_pv.maegz
+combind featurize features docking/*/*.sdf.gz
 ```
 
 ### Pose prediction with ComBind
@@ -103,7 +104,7 @@ The resulting file will contain the protein structure followed by one pose (the
 one selected by ComBind) for each ligand.
 
 ```
-combind extract-top-poses poses.csv docking/*/*_pv.maegz
+combind extract-top-poses poses.csv docking/*/*.sdf.gz
 ```
 
 ## ComBindVS
@@ -135,6 +136,7 @@ combind dock ligands/library/library.maegz --screen
 ```
 
 ### ComBindVS
+![#f03c15](https://via.placeholder.com/15/f03c15/000000?text=+)![#f03c15](https://via.placeholder.com/15/f03c15/000000?text=+) I have not yet implemented open source CombindVS ![#f03c15](https://via.placeholder.com/15/f03c15/000000?text=+)![#f03c15](https://via.placeholder.com/15/f03c15/000000?text=+)
 
 To compute the ComBind scores for each pose, we need to compute the pairwise]
 features between each candidate pose to the helper ligand poses.

@@ -24,10 +24,10 @@ def main():
 
 @main.command()
 @click.argument('struct', default='')
-@click.option('--grid-struct')
-def structprep(struct, grid_struct):
+@click.option('--templ-struct')
+def structprep(struct, templ_struct):
     """
-    Prepare structures and make a docking grid.
+    Prepare structures and make a docking template file.
 
     "struct" specifies the name of the structure for which to make a docking
     template file. (Not the full path, generally just the PDB code.) Defaults to the
@@ -158,10 +158,10 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
 @main.command()
 @click.argument('ligands', nargs=-1)
 @click.option('--root', default='docking')
-@click.option('--grid')
+@click.option('--template')
 @click.option('--screen', is_flag=True)
 @click.option('--slurm', is_flag=True)
-def dock(grid, root, ligands, screen, slurm):
+def dock(template, root, ligands, screen, slurm):
     """
     Dock "ligands" to "grid".
 
@@ -174,10 +174,10 @@ def dock(grid, root, ligands, screen, slurm):
     """
     from dock.dock import dock
 
-    if grid is None:
-        grid = glob('structures/template/*.template')
-        if grid:
-            grid = grid[0]
+    if template is None:
+        template = glob('structures/template/*.template')
+        if template:
+            template = template[0]
         else:
             print('No templates in default location (structures/template)'
                   ', please specify path.')
@@ -185,7 +185,7 @@ def dock(grid, root, ligands, screen, slurm):
 
 
     ligands = [os.path.abspath(lig) for lig in ligands if 'nonames' not in lig]
-    grid = os.path.abspath(grid)
+    template = os.path.abspath(template)
     root = os.path.abspath(root)
 
     mkdir(root)
@@ -193,13 +193,13 @@ def dock(grid, root, ligands, screen, slurm):
     _roots = []
     names = []
     for ligand in ligands:
-        name = '{}-to-{}'.format(basename(ligand), basename(grid))
+        name = '{}-to-{}'.format(basename(ligand), basename(template))
         _root = '{}/{}'.format(root, name)
         ligs.append(ligand)
         _roots.append(_root)
         names.append(name)
     print(f"Writing docking file for {len(ligs)} ligands")
-    dock(grid, ligands, _roots, names, not screen, slurm=slurm)
+    dock(template, ligands, _roots, names, not screen, slurm=slurm)
 
 ################################################################################
 
@@ -222,10 +222,8 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
     native_poses = {}
     for native_path in glob(native):
         name = native_path.split('/')[-1].split('_lig')[0]
-        with StructureReader(native_path) as sts:
-            sts = list(sts)
-        assert len(sts) == 1
-        native_poses[name] = sts[0]
+        # sts = Chem.SDMolSupplier(native_path)
+        native_poses[name] = native_path
 
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
                         mcss_version=mcss_version, max_poses=max_poses)
@@ -277,7 +275,7 @@ def pose_prediction(root, out, ligands, alpha, stats_root,
     best_poses = ps.max_posterior(max_iterations, restart)
 
     with open(out, 'w') as fp:
-        fp.write('ID,POSE,COMBIND_RMSD,GLIDE_RMSD,BEST_RMSD\n')
+        fp.write('ID,POSE,COMBIND_RMSD,GNINA_RMSD,BEST_RMSD\n')
         for ligand in best_poses:
             rmsds = data['rmsd'][ligand]
             grmsd = rmsds[0]
@@ -316,34 +314,30 @@ def extract_top_poses(scores, original_pvs):
     """
     Write top-scoring poses to a single file.
     """
-    out = scores.replace('.csv', '_pv.maegz')
+    out = scores.replace('.csv', '.sdf.gz')
     scores = pd.read_csv(scores).set_index('ID')
 
-    with StructureWriter(out) as writer:
-        with StructureReader(original_pvs[0]) as sts:
-            prot = next(sts)
-            writer.append(prot)
+    writer = Chem.SDWriter(out)
 
-        counts = {}
-        written = []
-        for pv in original_pvs:
-            with StructureReader(original_pvs[0]) as sts:
-                prot = next(sts)
-                for st in sts:
-                    name = st.title
-                    if name not in counts:
-                        counts[name] = 0
-                    else:
-                        # counts is zero indexed.
-                        counts[name] += 1
+    counts = {}
+    written = []
+    for pv in original_pvs:
+        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+        for st in sts:
+            name = st.GetProp("_Name")
+            if name not in counts:
+                counts[name] = 0
+            else:
+                # counts is zero indexed.
+                counts[name] += 1
 
-                    if name in scores.index and scores.loc[name, 'POSE'] == counts[name]:
-                        writer.append(st)
-                        written += [name]
+            if name in scores.index and scores.loc[name, 'POSE'] == counts[name]:
+                writer.append(st)
+                written += [name]
 
-        assert len(written) == len(scores), written
-        for name in scores.index:
-            assert name in written
+    assert len(written) == len(scores), written
+    for name in scores.index:
+        assert name in written
 
 @main.command()
 @click.argument('pv')
