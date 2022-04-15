@@ -6,7 +6,6 @@ import click
 import os
 from glob import glob
 from plumbum.cmd import obabel
-# from schrodinger.structure import StructureReader, StructureWriter
 
 from utils import *
 
@@ -76,16 +75,16 @@ def structprep(struct, templ_struct):
     if not struct:
         struct = structs[0]
 
-    if not grid_struct:
-        grid_struct = struct
+    if not templ_struct:
+        templ_struct = struct
 
     print(f'Processing {structs}, aligning to {struct}, and creating a docking'
-          f' grid for {grid_struct}')
+          f' templ for {templ_struct}')
 
     struct_process(structs)
     struct_align(struct, structs)
     struct_sort(structs)
-    make_grid(grid_struct)
+    make_grid(templ_struct)
 
 # Not super sure what is absolutely necessary in this step, especially if starting from sdf
 # instead of starting from smiles
@@ -93,12 +92,12 @@ def structprep(struct, templ_struct):
 @click.argument('smiles')
 @click.option('--root', default='ligands')
 @click.option('--multiplex', is_flag=True)
-# @click.option('--sdffile', is_flag=True)
+@click.option('--sdffile', is_flag=True)
 @click.option('--ligand-names', default='ID')
 @click.option('--ligand-smiles', default='SMILES')
 @click.option('--delim', default=',')
 @click.option('--processes', default=1)
-def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, processes):
+def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, processes, sdffile):
     """
     Prepare ligands for docking, from smiles.
 
@@ -116,31 +115,13 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
 
     Multiprocessing is only supported for non-multiplexed mode.
     """
-    from dock.ligprep import ligprep
+    from dock.ligprep import ligprep, ligsplit
     mkdir(root)
-    # if not sdffile:
-    ligands = pd.read_csv(smiles, sep=delim)
-    print('Prepping {} mols from {} in {}'.format(len(ligands), smiles, root))
-
-    if multiplex:
-        _name = os.path.splitext(os.path.basename(smiles))[0]
-        _root = f'{root}/{_name}'
-        _smiles = f'{_root}/{_name}.smi'
-        _sdf = os.path.splitext(_smiles)[0] + '.sdf'
-
-        if not os.path.exists(_sdf):
-            mkdir(_root)
-            with open(_smiles, 'w') as fp:
-                for _, ligand in ligands.iterrows():
-                    fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-            ligprep(_smiles)
-
-        
-
-    else:
-        unfinished = []
-        for _, ligand in ligands.iterrows():
-            _name = ligand[ligand_names]
+    if not sdffile:
+        ligands = pd.read_csv(smiles, sep=delim)
+        print('Prepping {} mols from {} in {}'.format(len(ligands), smiles, root))
+        if multiplex:
+            _name = os.path.splitext(os.path.basename(smiles))[0]
             _root = f'{root}/{_name}'
             _smiles = f'{_root}/{_name}.smi'
             _sdf = os.path.splitext(_smiles)[0] + '.sdf'
@@ -148,12 +129,25 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
             if not os.path.exists(_sdf):
                 mkdir(_root)
                 with open(_smiles, 'w') as fp:
-                    fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                unfinished += [(_smiles,)]
-        mp(ligprep, unfinished, processes)
-    # if sdffile:
-        # make new function that goes from big sdffile to individual files with proper names
+                    for _, ligand in ligands.iterrows():
+                        fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
+                ligprep(_smiles)
+        else:
+            unfinished = []
+            for _, ligand in ligands.iterrows():
+                _name = ligand[ligand_names]
+                _root = f'{root}/{_name}'
+                _smiles = f'{_root}/{_name}.smi'
+                _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
+                if not os.path.exists(_sdf):
+                    mkdir(_root)
+                    with open(_smiles, 'w') as fp:
+                        fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
+                    unfinished += [(_smiles,)]
+            mp(ligprep, unfinished, processes)
+    else:
+        ligsplit(smiles, root)
 
 @main.command()
 @click.argument('ligands', nargs=-1)
@@ -237,7 +231,7 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
                                        mcss=not no_mcss, shape=not no_shape)
     else:
         features.compute_pair_features(poseviewers,
-                                       mcss=not no_mcss, shape=not no_shape)
+                                       mcss=not no_mcss, shape=not no_shape, processes=processes)
 
 ################################################################################
 
