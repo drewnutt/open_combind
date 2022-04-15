@@ -1,7 +1,7 @@
 from multiprocessing import Pool
 import os
 import numpy as np
-from schrodinger.structure import StructureReader, StructureWriter
+from rdkit import Chem
 
 def np_load(fname, halt=True, delete=False):
     fname = os.path.abspath(fname)
@@ -27,10 +27,15 @@ def pv_path(root, name):
     return '{}/{}/{}_pv.maegz'.format(root, name, name)
 
 def get_pose(pv, pose):
-    with StructureReader(pv) as sts:
-        for _ in range(pose+1):
-            next(sts)
-        st = next(sts)
+    if os.path.splitext(pv)[-1] == ".gz":
+        import gzip
+        pv = gzip.open(pv)
+    else:
+        pv = open(pv)
+    sts = Chem.ForwardSDMolSupplier(pv)
+    for i,st in enumerate(sts):
+        if i == pose:
+            break
     return st
 
 def basename(path):
