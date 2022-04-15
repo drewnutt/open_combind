@@ -2,28 +2,18 @@
 import os
 import subprocess
 from plumbum.cmd import obabel
+from rdkit.Chem import AllChem as Chem
 
 def ligprocess(input_file, output_file):
-    obabel[input_file,'-O',output_file, '--gen3d']()
-            # Remove explicit stereochemistry specifications. These cause
-            # errors in downstream steps.
-            # for k in st.property.keys():
-            #     if 's_st_EZ_' in k or 'Chiral' in k:
-            #         st.property.pop(k)
-
-            # Give each atom a unique name, ligands generated from smiles
-            # strings will not have any atom name by default.
-            # names = set()
-            # counts = {}
-            # for atom in st.atom:
-            #     if not atom.pdbname.strip():
-            #         if atom.element not in counts: counts[atom.element] = 0
-            #         counts[atom.element] += 1
-            #         atom.pdbname = atom.element + str(counts[atom.element])
-                    
-            #         assert atom.pdbname not in names, atom.pdbname
-            #         names.add(atom.pdbname)
-            # writer.append(st)
+    _,_,out = obabel[input_file,'-O',output_file, '--gen3d'].run()
+    if 'Error  in Do\n  3D coordinate generation failed' in out:
+        mol = Chem.MolFromSmiles(open(input_file).readlines()[0].strip())
+        mol.SetProp('_Name',os.path.basename(input_file).replace('.smi',''))
+        Chem.EmbedMolecule(mol)
+        assert mol.GetConformer().Is3D(), f"can't make {input_file} into 3d"
+        writer = Chem.SDWriter(output_file)
+        writer.write(mol)
+        writer.close()
 
 def ligprep(smiles):
     sdf_file = smiles.replace('.smi', '.sdf')
