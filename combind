@@ -207,11 +207,13 @@ def dock(template, root, ligands, screen, slurm):
 @click.option('--screen', is_flag=True)
 @click.option('--max-poses', default=100)
 @click.option('--no-mcss', is_flag=True)
-@click.option('--no-shape', is_flag=True)
+@click.option('--use-shape', is_flag=True)
 @click.option('--processes', default=1)
 def featurize(root, poseviewers, native, ifp_version, mcss_version,
-              shape_version, screen, no_mcss, no_shape, processes, max_poses):
+              shape_version, screen, no_mcss, use_shape, processes, max_poses):
     from features.features import Features
+    if use_shape:
+        print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
 
     native_poses = {}
     for native_path in glob(native):
@@ -228,10 +230,10 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
         assert len(poseviewers) == 2
         features.compute_pair_features(poseviewers[:1],
                                        pvs2 = poseviewers[1:],
-                                       mcss=not no_mcss, shape=not no_shape)
+                                       mcss=not no_mcss, shape=use_shape)
     else:
         features.compute_pair_features(poseviewers,
-                                       mcss=not no_mcss, shape=not no_shape, processes=processes)
+                                       mcss=not no_mcss, shape=use_shape, processes=processes)
 
 ################################################################################
 
@@ -239,7 +241,7 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
 @click.argument('root')
 @click.argument('out')
 @click.argument('ligands', nargs=-1)
-@click.option('--features', default='shape,mcss,hbond,saltbridge,contact')
+@click.option('--features', default='mcss,hbond,saltbridge,contact')
 @click.option('--alpha', default=1.0)
 @click.option('--stats-root', default=stats_root)
 @click.option('--restart', default=500)
