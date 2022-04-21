@@ -44,6 +44,8 @@ def basename(path):
     return x
 
 def mp(function, unfinished, processes):
+    if processes == -1:  # Will use all available cpus if processes is -1
+        processes = None
     if unfinished:
         with Pool(processes=processes) as pool:
             x = pool.starmap(function, unfinished)
