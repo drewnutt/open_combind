@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 
 import pandas as pd
 import numpy as np
@@ -101,14 +101,13 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
     """
     Prepare ligands for docking, from smiles.
 
-    Specifically, this will run Schrodinger's ligprep and then perform
-    additional processing to make the ligands readable by rdkit and to assign
-    atom names.
+    Specifically, this will utilize RDKit to generate a 3D conformer for each of the ligands 
 
     "smiles" should be a `delim` delimited file with columns "ligand-names"
-    and "ligand-smiles".
+    and "ligand-smiles". Alternatively, "smiles" can be a SDF file with multiple
+    ligands as different entries, but you must specify "--sdffile").
     
-    "root" specifies where the processed ligands will be written. 
+    "root" specifies where the processed ligands will be written.
 
     By default, an individual file will be made for each ligand. If multiplex is
     set, then only one file, containing all the ligands, will be produced.
@@ -147,7 +146,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
                     unfinished += [(_smiles,)]
             mp(ligprep, unfinished, processes)
     else:
-        ligsplit(smiles, root)
+        ligsplit(smiles, root, multiplex=multiplex, processes=processes)
 
 @main.command()
 @click.argument('ligands', nargs=-1)
