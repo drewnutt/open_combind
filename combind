@@ -99,13 +99,13 @@ def structprep(struct, templ_struct):
 @click.option('--processes', default=1)
 def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, processes, sdffile):
     """
-    Prepare ligands for docking, from smiles.
+    Prepare ligands for docking, from smiles or sdf.
 
     Specifically, this will utilize RDKit to generate a 3D conformer for each of the ligands 
 
     "smiles" should be a `delim` delimited file with columns "ligand-names"
     and "ligand-smiles". Alternatively, "smiles" can be a SDF file with multiple
-    ligands as different entries, but you must specify "--sdffile").
+    ligands as different entries, but you must specify "--sdffile".
     
     "root" specifies where the processed ligands will be written.
 
