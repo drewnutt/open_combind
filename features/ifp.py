@@ -11,25 +11,6 @@ from rdkit.Chem import MolFromSmarts
 from rdkit.Chem.AllChem import ForwardSDMolSupplier, MolFromPDBFile
 import gzip
 
-################################################################################
-
-# def _convert_mae(original_mae, converted_mae, poses):
-#     from schrodinger.structure import StructureReader, StructureWriter
-#     with StructureReader(original_mae) as sts, StructureWriter(converted_mae) as writer:
-#         for i, st in enumerate(sts):
-#             if i > poses:
-#                 break
-#             for k in st.property.keys():
-#                 if 'title' not in k:
-#                     st.property.pop(k)
-#             writer.append(st)
-
-# def convert_mae(original_mae, converted_mae, poses=float('inf')):
-#     imp = 'import sys; sys.path.append("{}"); import ifp'.format(os.path.dirname(os.path.abspath(__file__)))
-#     cmd = 'ifp._convert_mae("{}", "{}", {})'.format(original_mae, converted_mae, poses)
-#     os.system('run python3 -c \'{};{}\''.format(imp, cmd))
-
-################################################################################
 def resname(atom):
     info = atom.GetPDBResidueInfo()
     if info is None:
@@ -376,13 +357,8 @@ def fingerprint_poseviewer(input_file, poses, settings):
     fps.loc[fps['hydrogen'].isna(), 'hydrogen'] = ''
     return fps
 
-def ifp(settings, input_file, output_file, poses, convert=False):
+def ifp(settings, input_file, output_file, poses):
     settings['nonpolar'] = {6:1.7, 9:1.47, 17:1.75, 35:1.85, 53:1.98}
-
-    # if convert:
-    #     temp = tempfile.NamedTemporaryFile(suffix='.maegz')
-    #     convert_mae(input_file, temp.name, poses)
-    #     input_file = temp.name
 
     # Compute atom-level interactions.
     fps = fingerprint_poseviewer(input_file, poses, settings)
@@ -405,7 +381,6 @@ def ifp(settings, input_file, output_file, poses, convert=False):
 @click.argument('input_file')
 @click.argument('output_file')
 @click.argument('poses', default=100)
-@click.option('--convert', is_flag=True)
 @click.option('--level', default='residue')
 @click.option('--hbond_dist_cut', default=3.0)
 @click.option('--hbond_dist_opt', default=2.5)
@@ -415,8 +390,8 @@ def ifp(settings, input_file, output_file, poses, convert=False):
 @click.option('--sb_dist_opt', default=4.0)
 @click.option('--contact_scale_cut', default=1.75)
 @click.option('--contact_scale_opt', default=1.50)
-def main(input_file, output_file, poses, convert, **settings):
-    ifp(settings, input_file, output_file, poses, convert)
+def main(input_file, output_file, poses, **settings):
+    ifp(settings, input_file, output_file, poses)
 
 if __name__ == '__main__':
     main()
