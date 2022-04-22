@@ -37,7 +37,7 @@ def mcss(sts1, sts2, mcss_types_file):
             else:
                 mcss, n_mcss_atoms, remove_idxs = compute_mcss(st1, st2, mcss_types_file)
                 memo[(smi1, smi2)] = (mcss, n_mcss_atoms, remove_idxs)
-                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':remove_idxs['st2'],'st2':remove_idxs['st2']})
+                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':remove_idxs['st2'],'st2':remove_idxs['st1']})
 
             if (2*n_mcss_atoms <= min(n_st1_atoms, n_st2_atoms)
                 or n_mcss_atoms <= 10):
@@ -61,7 +61,7 @@ def compute_mcss_rmsd(st1, st2, remove_idxs):
     for rmatom_idx1 in remove_idxs['st1']:
         ss1 = get_substructure(st1,rmatom_idx1)
         for rmatom_idx2 in remove_idxs['st2']:
-            ss2 = get_substructure(st2,rmatom_idx1)
+            ss2 = get_substructure(st2,rmatom_idx2)
             _rmsd = calculate_rmsd(ss1, ss2)
             rmsd = min(_rmsd, rmsd)
     return rmsd
@@ -70,7 +70,8 @@ def compute_mcss(st1, st2, mcss_types_file):
     """
     Compute smarts patterns for mcss(s) between two structures.
     """
-    res = rdFMCS.FindMCS([st1,st2])
+    res = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
+            completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact)
     if not res.canceled:
         mcss = res.smartsString
         num_atoms = res.numAtoms
@@ -90,6 +91,7 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     pose1, pose2: rdkit.Mol
     eval_rmsd: verify that RMSD calculation is the same as obrms
     """
+    assert pose1.HasSubstructMatch(pose2) and pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
     rmsd = Chem.GetBestRMS(pose1,pose2)
     if eval_rmsd:
         obrmsd = calculate_rmsd_slow(pose1,pose2)
