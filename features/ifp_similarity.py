@@ -41,12 +41,16 @@ def ifp_tanimoto(ifps1, ifps2, feature):
         if i % 100 == 0:
             print(i)
         for j, ifp2 in enumerate(ifps2):
+            if j > i:
+                break
             total = ifp1['score'].sum() + ifp2['score'].sum()
             overlap = ifp1.join(ifp2, rsuffix='_2', how='inner')
             overlap = overlap['score']**0.5 * overlap['score_2']**0.5
             overlap = overlap.sum()
 
             sims[i, j] = (1 + overlap) / (2 + total - overlap)
+    sims = mirror_bottom_triangle(sims)
+
     return sims
 
 def ifp_tanimoto_mp(ifps1, ifps2, feature, processes):
@@ -68,11 +72,15 @@ def ifp_tanimoto_mp(ifps1, ifps2, feature, processes):
     results = mp(calc_sim,unfinished,processes)
     for sims_row, i in results:
         sims[i,:] = sims_row
+    
+    sims = mirror_bottom_triangle(sims)
     return sims
 
 def calc_sim(ifp1,i,ifps2):
     sims = np.zeros((1,len(ifps2)))
     for j, ifp2 in enumerate(ifps2):
+        if j > i:
+            break
         total = ifp1['score'].sum() + ifp2['score'].sum()
         overlap = ifp1.join(ifp2, rsuffix='_2', how='inner')
         overlap = overlap['score']**0.5 * overlap['score_2']**0.5
@@ -81,3 +89,13 @@ def calc_sim(ifp1,i,ifps2):
 
     return (sims, i)
 
+def mirror_bottom_triangle(matrix):
+    # This way is slow, but makes intuitive sense
+    # n, m = matrix.shape
+    # top_indices = np.triu_indices(n,m=m,k=1)
+    # matrix[top_indices] = matrix.T[top_indices]
+
+    # Much faster way
+    matrix = matrix + matrix.T - np.diag(np.diag(matrix))
+
+    return matrix
