@@ -3,8 +3,6 @@ import gzip
 import numpy as np
 import pandas as pd
 from glob import glob
-# from schrodinger.structure import StructureReader
-# from schrodinger.structutils.rmsd import ConformerRmsd
 from plumbum.cmd import obrms
 from rdkit.Chem import AllChem as Chem
 from utils import basename, mp, mkdir, np_load
@@ -47,7 +45,7 @@ class Features:
             return '{}/{}'.format(self.root, name)
 
         if self.pv_root != self.root+'/docking':
-            if pv1 is not None:
+            if pv is not None:
                 pv = pv.replace(self.pv_root), self.root+'/single'
             if pv2 is not None:
                 pv2 = pv2.replace(self.pv_root), self.root+'/single'
@@ -186,17 +184,20 @@ class Features:
             print('Computing interaction similarities.')
             for feature in self.ifp_features:
                 out = self.path(feature)
-                self.compute_ifp_pair(ifps1, ifps2,  feature, out, processes=processes)
+                if not os.path.exists(out):
+                    self.compute_ifp_pair(ifps1, ifps2,  feature, out, processes=processes)
 
         if shape:
             print('Computing shape similarities.')
             out = self.path('shape')
-            self.compute_shape(poses1, poses2, out)
+            if not os.path.exists(out):
+                self.compute_shape(poses1, poses2, out)
 
         if mcss:
             print('Computing mcss similarities.')
             out = self.path('mcss')
-            self.compute_mcss(poses1, poses2, out)
+            # if not os.path.exists(out):
+            self.compute_mcss(poses1, poses2, out, processes=processes)
 
     # Methods to calculate features
     def compute_name(self, pv, out):
@@ -239,10 +240,10 @@ class Features:
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
 
-    def compute_ifp_pair(self, ifps1, ifps2, feature, out,processes=1):
-        if processes > 1:
+    def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
+        if processes != 1:
             from features.ifp_similarity import ifp_tanimoto_mp
-            tanimotos = ifp_tanimoto_mp(ifps1, ifps2, feature,processes)
+            tanimotos = ifp_tanimoto_mp(ifps1, ifps2, feature, processes)
         else:
             from features.ifp_similarity import ifp_tanimoto
             tanimotos = ifp_tanimoto(ifps1, ifps2, feature)
@@ -255,7 +256,11 @@ class Features:
         sims = shape(poses2, poses1, version=self.shape_version).T
         np.save(out, sims)
 
-    def compute_mcss(self, poses1, poses2, out):
-        from features.mcss import mcss
-        rmsds = mcss(poses1, poses2, self.mcss_file)
+    def compute_mcss(self, poses1, poses2, out, processes=1):
+        if processes != 1:
+            from features.mcss import mcss_mp
+            rmsds = mcss_mp(poses1, poses2, self.mcss_file, processes)
+        else:
+            from features.mcss import mcss
+            rmsds = mcss(poses1, poses2, self.mcss_file)
         np.save(out, rmsds)

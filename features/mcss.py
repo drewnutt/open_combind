@@ -4,7 +4,8 @@ import subprocess
 import os
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
-from plumbum.cmd import obrms
+# from plumbum.cmd import obrms
+from utils import mp
 
 # To compute the substructure similarity for a pair of candidate poses, the maximum common
 # substructure of the two ligands is identified using Canvas (Schrodinger LLC) and then mapped
@@ -24,12 +25,15 @@ def mcss(sts1, sts2, mcss_types_file):
     # sts1 = [merge_halogens(st.copy()) for st in sts1]
     # sts2 = [merge_halogens(st.copy()) for st in sts2]
 
+    bad_apples = []
     rmsds = []
-    for j, st1 in enumerate(sts1):
+    for i, st1 in enumerate(sts1):
         n_st1_atoms = st1.GetNumHeavyAtoms()
         smi1 = Chem.MolToSmiles(st1)
-        rmsds += [np.zeros(len(sts2)) + float('inf')]
-        for i, st2 in enumerate(sts2):
+        rmsds += [np.zeros(len(sts2))]
+        for j, st2 in enumerate(sts2):
+            if j > i:  # only calculate lower triangle
+                break
             n_st2_atoms = st2.GetNumHeavyAtoms()
             smi2 = Chem.MolToSmiles(st2)
             if (smi1, smi2) in memo:
@@ -41,11 +45,57 @@ def mcss(sts1, sts2, mcss_types_file):
 
             if (2*n_mcss_atoms <= min(n_st1_atoms, n_st2_atoms)
                 or n_mcss_atoms <= 10):
+                bad_apples += [(i,j)]
                 continue
 
-            rmsds[-1][i] = compute_mcss_rmsd(st1, st2, remove_idxs)
+            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, remove_idxs)
 
-    return np.vstack(rmsds)
+    rmsds_bottom = np.vstack(rmsds)
+    print(rmsds_bottom)
+    if len(bad_apples):
+        xind,yind = np.array(bad_apples).T
+        rmsds_bottom[(xind,yind)] = float('inf')
+    return rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
+
+def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
+    """
+    Computes rmsd between mcss for atoms in two poseviewer files.
+
+    Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
+    """
+    memo = {}
+    # sts1 = [merge_halogens(st.copy()) for st in sts1]
+    # sts2 = [merge_halogens(st.copy()) for st in sts2]
+
+    unfinished = []
+    for j, st1 in enumerate(sts1):
+        n_st1_atoms = st1.GetNumHeavyAtoms()
+        smi1 = Chem.MolToSmiles(st1)
+        # rmsds += [np.zeros(len(sts2))]
+        for i, st2 in enumerate(sts2):
+            if i > j:  # only calculate lower triangle
+                break
+            n_st2_atoms = st2.GetNumHeavyAtoms()
+            smi2 = Chem.MolToSmiles(st2)
+            if (smi1, smi2) in memo:
+                mcss, n_mcss_atoms, remove_idxs = memo[(smi1, smi2)]
+            else:
+                mcss, n_mcss_atoms, remove_idxs = compute_mcss(st1, st2, mcss_types_file)
+                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, remove_idxs)
+                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':remove_idxs['st2'],'st2':remove_idxs['st1']})
+
+            retain_inf = False
+            if (2*n_mcss_atoms <= min(n_st1_atoms, n_st2_atoms)
+                or n_mcss_atoms <= 10):
+                retain_inf = True
+            unfinished += [(st1,i,st2,j,remove_idxs,retain_inf)]
+
+    results = mp(compute_mcss_rmsd_mp,unfinished,processes)
+
+    rows, cols, values = zip(*results)
+    rmsds_bottom = np.zeros((len(sts1),len(sts2)))
+    rmsds_bottom[rows,cols] = values
+    return rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
 
 def compute_mcss_rmsd(st1, st2, remove_idxs):
     """
@@ -65,6 +115,22 @@ def compute_mcss_rmsd(st1, st2, remove_idxs):
             _rmsd = calculate_rmsd(ss1, ss2)
             rmsd = min(_rmsd, rmsd)
     return rmsd
+
+def compute_mcss_rmsd_mp(st1, i, st2, j, remove_idxs, retain_inf):
+    """
+    Compute minimum rmsd between mcss(s).
+
+    Takes into account that the mcss smarts pattern could
+    map to multiple atom indices (e.g. symetric groups).
+
+    remove_idxs: dictionary with keys 'st1' and 'st2' that have lists
+    of atom indices lists to remove to create the MCSS for each pose
+    """
+    if retain_inf:
+        rmsd = float('inf')
+    else:
+        rmsd = compute_mcss_rmsd(st1,st2,remove_idxs)
+    return (i,j, rmsd)
 
 def compute_mcss(st1, st2, mcss_types_file):
     """
@@ -93,28 +159,28 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     """
     assert pose1.HasSubstructMatch(pose2) and pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
     rmsd = Chem.GetBestRMS(pose1,pose2)
-    if eval_rmsd:
-        obrmsd = calculate_rmsd_slow(pose1,pose2)
-        assert np.isclose(obrmsd,rmsd,atol=1E-4), print(f"obrms:{obrmsd}\nrdkit:{rmsd}")
+    # if eval_rmsd:
+    #     obrmsd = calculate_rmsd_slow(pose1,pose2)
+    #     assert np.isclose(obrmsd,rmsd,atol=1E-4), print(f"obrms:{obrmsd}\nrdkit:{rmsd}")
     return rmsd
 
-def calculate_rmsd_slow(pose1,pose2):
-    with tempfile.TemporaryDirectory() as tempd:
-        tmp1 = f'{tempd}/tmp1.sdf'
-        tmp2 = f'{tempd}/tmp2.sdf'
+# def calculate_rmsd_slow(pose1,pose2):
+#     with tempfile.TemporaryDirectory() as tempd:
+#         tmp1 = f'{tempd}/tmp1.sdf'
+#         tmp2 = f'{tempd}/tmp2.sdf'
 
-        writer = Chem.SDWriter(tmp1)
-        writer.write(pose1)
-        writer.close()
+#         writer = Chem.SDWriter(tmp1)
+#         writer.write(pose1)
+#         writer.close()
 
-        writer = Chem.SDWriter(tmp2)
-        writer.write(pose2)
-        writer.close()
+#         writer = Chem.SDWriter(tmp2)
+#         writer.write(pose2)
+#         writer.close()
 
-        raw_rmsd = obrms[tmp1,tmp2]()
-        rmsd = float(raw_rmsd.strip().split()[-1])
+#         raw_rmsd = obrms[tmp1,tmp2]()
+#         rmsd = float(raw_rmsd.strip().split()[-1])
 
-    return rmsd
+#     return rmsd
 
 def merge_halogens(structure):
     """
