@@ -196,8 +196,8 @@ class Features:
         if mcss:
             print('Computing mcss similarities.')
             out = self.path('mcss')
-            # if not os.path.exists(out):
-            self.compute_mcss(poses1, poses2, out, processes=processes)
+            if not os.path.exists(out):
+                self.compute_mcss(poses1, poses2, out, processes=processes)
 
     # Methods to calculate features
     def compute_name(self, pv, out):
