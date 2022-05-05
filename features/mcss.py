@@ -157,8 +157,14 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     pose1, pose2: rdkit.Mol
     eval_rmsd: verify that RMSD calculation is the same as obrms
     """
-    assert pose1.HasSubstructMatch(pose2) and pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
-    rmsd = Chem.GetBestRMS(pose1,pose2)
+    assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
+    try:
+        rmsd = Chem.GetBestRMS(pose1,pose2)
+    except:
+        try:
+            rmsd = Chem.GetBestRMS(pose2,pose1)
+        except:
+            print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, GetBestRMS doesn't work either way")
     # if eval_rmsd:
     #     obrmsd = calculate_rmsd_slow(pose1,pose2)
     #     assert np.isclose(obrmsd,rmsd,atol=1E-4), print(f"obrms:{obrmsd}\nrdkit:{rmsd}")
