@@ -174,7 +174,7 @@ def compute_mcss(st1, st2, mcss_types_file):
         # but this is slow, so only should do it when we need to do it (but checking is also slow)
         newres = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
                 completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact,
-                ringCompare=rdFMCS.RingCompare.StrictRingFusion)
+                ringCompare=rdFMCS.RingCompare.PermissiveRingFusion)
         mcss, num_atoms, mcss_mol = get_info_from_results(newres)
     substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
                     'st2': st2.GetSubstructMatches(mcss_mol)}
