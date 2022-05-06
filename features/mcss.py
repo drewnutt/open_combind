@@ -37,25 +37,30 @@ def mcss(sts1, sts2, mcss_types_file):
             n_st2_atoms = st2.GetNumHeavyAtoms()
             smi2 = Chem.MolToSmiles(st2)
             if (smi1, smi2) in memo:
-                mcss, n_mcss_atoms, remove_idxs = memo[(smi1, smi2)]
+                mcss, n_mcss_atoms, keep_idxs = memo[(smi1, smi2)]
             else:
-                mcss, n_mcss_atoms, remove_idxs = compute_mcss(st1, st2, mcss_types_file)
-                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, remove_idxs)
-                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':remove_idxs['st2'],'st2':remove_idxs['st1']})
+                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, mcss_types_file)
+                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, keep_idxs)
+                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
-            if (2*n_mcss_atoms <= min(n_st1_atoms, n_st2_atoms)
-                or n_mcss_atoms <= 10):
-                bad_apples += [(i,j)]
+            if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
+                # or n_mcss_atoms <= 10):
+                bad_apples += [(i,j)] #,2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms),n_mcss_atoms <= 10,st1.GetProp("_Name"),st2.GetProp("_Name"))]
                 continue
 
-            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, remove_idxs)
+            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, keep_idxs)
 
     rmsds_bottom = np.vstack(rmsds)
     print(rmsds_bottom)
     if len(bad_apples):
-        xind,yind = np.array(bad_apples).T
-        rmsds_bottom[(xind,yind)] = float('inf')
-    return rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
+        xind, yind= np.array(bad_apples).T
+        # bad_apples_arr = np.array(bad_apples).T
+        # np.save('bad_apples.npy',bad_apples_arr)
+        # xind, yind = (bad_apples_arr[:2,:]).astype(np.int64)
+        # filled_matrix[(xind,yind)] = -1 #float('inf')
+        rmsds_bottom[(xind,yind)] = -1 #float('inf')
+    filled_matrix = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
+    return filled_matrix
 
 def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
     """
@@ -78,26 +83,33 @@ def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
             n_st2_atoms = st2.GetNumHeavyAtoms()
             smi2 = Chem.MolToSmiles(st2)
             if (smi1, smi2) in memo:
-                mcss, n_mcss_atoms, remove_idxs = memo[(smi1, smi2)]
+                mcss, n_mcss_atoms, keep_idxs = memo[(smi1, smi2)]
             else:
-                mcss, n_mcss_atoms, remove_idxs = compute_mcss(st1, st2, mcss_types_file)
-                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, remove_idxs)
-                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':remove_idxs['st2'],'st2':remove_idxs['st1']})
+                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, mcss_types_file)
+                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, keep_idxs)
+                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
             retain_inf = False
-            if (2*n_mcss_atoms <= min(n_st1_atoms, n_st2_atoms)
-                or n_mcss_atoms <= 10):
+            if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
+                # or n_mcss_atoms <= 10):
                 retain_inf = True
-            unfinished += [(st1,i,st2,j,remove_idxs,retain_inf)]
+            unfinished += [(st1,i,st2,j,keep_idxs,retain_inf)]
 
     results = mp(compute_mcss_rmsd_mp,unfinished,processes)
 
     rows, cols, values = zip(*results)
+    # row_col_val = np.array([rows,cols,values])
+    # non_inf = row_col_val[row_col_val[:,2] >= 0]
+    # inf_vals = row_col_val[row_col_val[:,2] < 0][:,:-1]
     rmsds_bottom = np.zeros((len(sts1),len(sts2)))
+    # rmsds_bottom[non_inf[:,0].astype(np.int64),non_inf[:,1].astype(np.int64)] = non_inf[:,2]
+    # full_simi_mat[inf_vals[:,0].astype(np.int64),inf_vals[:,1].astype(np.int64)] = -1 #float('inf')
     rmsds_bottom[rows,cols] = values
-    return rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
+    full_simi_mat = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
+    # full_simi_mat[inf_vals[:,1].astype(np.int64),inf_vals[:,0].astype(np.int64)] = -1 #float('inf')
+    return full_simi_mat
 
-def compute_mcss_rmsd(st1, st2, remove_idxs):
+def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
     """
     Compute minimum rmsd between mcss(s).
 
@@ -108,47 +120,67 @@ def compute_mcss_rmsd(st1, st2, remove_idxs):
     of atom indices lists to remove to create the MCSS for each pose
     """
     rmsd = float('inf')
-    for rmatom_idx1 in remove_idxs['st1']:
-        ss1 = get_substructure(st1,rmatom_idx1)
-        for rmatom_idx2 in remove_idxs['st2']:
-            ss2 = get_substructure(st2,rmatom_idx2)
+    for kpatom_idx1 in keep_idxs['st1']:
+        ss1 = subMol(st1,kpatom_idx1)
+        if names:
+            ss1.SetProp('_Name', st1.GetProp('_Name'))
+        for kpatom_idx2 in keep_idxs['st2']:
+            ss2 = subMol(st2,kpatom_idx2)
+            if names:
+                ss2.SetProp('_Name', st2.GetProp('_Name'))
             _rmsd = calculate_rmsd(ss1, ss2)
             rmsd = min(_rmsd, rmsd)
     return rmsd
 
-def compute_mcss_rmsd_mp(st1, i, st2, j, remove_idxs, retain_inf):
+def compute_mcss_rmsd_mp(st1, i, st2, j, keep_idxs, retain_inf):
     """
     Compute minimum rmsd between mcss(s).
 
     Takes into account that the mcss smarts pattern could
     map to multiple atom indices (e.g. symetric groups).
 
-    remove_idxs: dictionary with keys 'st1' and 'st2' that have lists
-    of atom indices lists to remove to create the MCSS for each pose
+    keep_idxs: dictionary with keys 'st1' and 'st2' that have lists
+    of atom indices lists to keep to create the MCSS for each pose
     """
     if retain_inf:
-        rmsd = float('inf')
+        rmsd = -1
     else:
-        rmsd = compute_mcss_rmsd(st1,st2,remove_idxs)
+        rmsd = compute_mcss_rmsd(st1,st2,keep_idxs, names=False)
     return (i,j, rmsd)
+
+def get_info_from_results(mcss_res):
+    if not mcss_res.canceled:
+        mcss = mcss_res.smartsString
+        num_atoms = mcss_res.numAtoms
+    else:
+        mcss = '[#6]'
+        num_atoms = 1
+    mcss_mol = Chem.MolFromSmarts(mcss)
+    return mcss, num_atoms, mcss_mol
 
 def compute_mcss(st1, st2, mcss_types_file):
     """
     Compute smarts patterns for mcss(s) between two structures.
     """
-    res = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
-            completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact)
-    if not res.canceled:
-        mcss = res.smartsString
-        num_atoms = res.numAtoms
-    else:
-        mcss = '[#6]'
-        num_atoms = 1
-    mcss_mol = Chem.MolFromSmarts(mcss)
-    rmv_idx = {'st1': mcss_to_rmv_idx(st1, mcss_mol),
-            'st2': mcss_to_rmv_idx(st2, mcss_mol)}
+    try:
+        res = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
+                completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact)
+        mcss, num_atoms, mcss_mol = get_info_from_results(res)
+        pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
+        pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
+        assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
+    except AssertionError:
+        # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
+        # but this is slow, so only should do it when we need to do it (but checking is also slow)
+        newres = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
+                completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact,
+                ringCompare=rdFMCS.RingCompare.StrictRingFusion)
+        mcss, num_atoms, mcss_mol = get_info_from_results(newres)
+    substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
+                    'st2': st2.GetSubstructMatches(mcss_mol)}
 
-    return mcss, num_atoms, rmv_idx
+
+    return mcss, num_atoms, substruct_idx#, rmv_idx
 
 def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     """
@@ -199,18 +231,17 @@ def merge_halogens(structure):
             atom.atomic_number = 9
     return structure
 
-def mcss_to_rmv_idx(mol,mcss_mol):
-    """
-    Finds the atom indices that need to be removed from mol
-    to be left with the mcss
-    """
-    mol_mcss = mol.GetSubstructMatches(mcss_mol)
-    mol_fidx = set(range(mol.GetNumAtoms()))
-    remove_idxs = []
-    for keep_idx in mol_mcss:
-        remove_idxs.append(sorted(list(mol_fidx - set(keep_idx)),reverse=True))
-
-    return remove_idxs
+def subMol(mol, match):
+    #not sure why this functionality isn't implemented natively
+    #but get the interconnected bonds for the match
+    atoms = set(match)
+    bonds = set()
+    for a in atoms:
+        atom = mol.GetAtomWithIdx(a)
+        for b in atom.GetBonds():
+            if b.GetOtherAtomIdx(a) in atoms:
+                bonds.add(b.GetIdx())
+    return Chem.PathToSubmol(mol,list(bonds))
 
 def get_substructure(mol, remove_idxs):
     """
@@ -226,5 +257,16 @@ def get_substructure(mol, remove_idxs):
     substruct = Chem.Mol(rw_mol)
     Chem.SanitizeMol(substruct)
     return substruct
-# def n_atoms(st):
-#     return sum(atom.element != 'H' for atom in st.atom)
+
+def mcss_to_rmv_idx(mol, mcss_mol):
+    """
+    Finds the atom indices that need to be removed from mol
+    to be left with the mcss
+    """
+    mol_mcss = mol.GetSubstructMatches(mcss_mol)
+    mol_fidx = set(range(mol.GetNumAtoms()))
+    remove_idxs = []
+    for keep_idx in mol_mcss:
+        remove_idxs.append(sorted(list(mol_fidx - set(keep_idx)),reverse=True))
+
+    return remove_idxs
