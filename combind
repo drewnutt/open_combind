@@ -5,7 +5,6 @@ import numpy as np
 import click
 import os
 from glob import glob
-from plumbum.cmd import obabel
 
 from utils import *
 
