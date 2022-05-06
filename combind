@@ -215,9 +215,10 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
 
     native_poses = {}
     for native_path in glob(native):
-        name = native_path.split('/')[-1].split('_lig')[0]
+        name = native_path.split('/')[-1].replace('.sdf','')
         # sts = Chem.SDMolSupplier(native_path)
         native_poses[name] = native_path
+    print(native_poses)
 
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
                         mcss_version=mcss_version, max_poses=max_poses)

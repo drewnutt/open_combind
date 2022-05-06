@@ -210,7 +210,6 @@ class Features:
         np.save(out, names)
 
     def compute_gscore(self, pv, out):
-        # Will need to change StructureReader to rdkit and get the gnina score
         gscores = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
         for st in sts:
@@ -221,7 +220,8 @@ class Features:
 
     def compute_rmsd(self, pv, native_poses, out):
         rmsds = []
-        name = pv.split('-')[0]
+        name = pv.split('/')[-1].split('-')[0]
+        print(name)
         if name in native_poses:
             native = native_poses[name]
             try:
@@ -231,6 +231,7 @@ class Features:
             except:
                 print(f'RMSD failed for {name}')
         else:
+            print(name)
             rmsds = [-1] * self.max_poses
 
         np.save(out, rmsds)
