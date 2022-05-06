@@ -66,7 +66,7 @@ Use the following command to prepare the structural data using [ProDy](https://g
 align the structures to each other, and produce a docking template line.
 
 ```
-combind structprep
+python combind structprep
 ```
 
 In parallel, you can prepare the ligand data using the following command.
@@ -75,28 +75,30 @@ You can specify the `--multiplex` flag to write all of the ligands to the same
 file.
 
 ```
-combind ligprep ligands.csv
+python combind ligprep ligands.csv
 ```
 
 Once the GNINA template file and ligand data have been prepared, you can run the
 docking. The arguments to the dock command are a list of ligand files to be
 docked. By default, the GNINA template file is the alphabetically first template present
-in `structures/template`; use the `--template` option to specify a different template.
+in `structures/template`; use the `--template` option to specify a different template. Additionally,
+you can utilize `--slurm` to create a tarball of all of the necessary files and update the docking `.txt`
+file to use paths in the tarball.
 
 ```
-combind dock ligands/*/*.maegz
+python combind dock ligands/*/*.sdf
 ```
 
 ### Featurization
 
 ```
-combind featurize features docking/*/*.sdf.gz
+python combind featurize features docking/*/*.sdf.gz
 ```
 
 ### Pose prediction with ComBind
 
 ```
-combind pose-prediction features poses.csv
+python combind pose-prediction features poses.csv
 ```
 
 Optionally, you can extract the poses selected by ComBind to a single file.
@@ -104,7 +106,7 @@ The resulting file will contain the protein structure followed by one pose (the
 one selected by ComBind) for each ligand.
 
 ```
-combind extract-top-poses poses.csv docking/*/*.sdf.gz
+python combind extract-top-poses poses.csv docking/*/*.sdf.gz
 ```
 
 ## ComBindVS
