@@ -203,8 +203,10 @@ class Features:
     def compute_name(self, pv, out):
         names = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
+        docked_fname = os.path.basename(pv).split('.')[0]
+        docked_to = docked_fname.split('-to-')[-1]
         for idx, st in enumerate(sts):
-            names += [f"{st.GetProp('_Name')}_{str(idx)}"]
+            names += [f"{st.GetProp('_Name')}_{str(idx)}-to-{docked_to}"]
             if len(names) == self.max_poses:
                 break
         np.save(out, names)
