@@ -204,7 +204,7 @@ class Features:
         names = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
         docked_fname = os.path.basename(pv).split('.')[0]
-        name = docked_fname.replace('-docked')
+        name = docked_fname.replace('-docked','')
         for idx, st in enumerate(sts):
             names += [name]
             if len(names) == self.max_poses:
