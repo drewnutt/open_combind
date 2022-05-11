@@ -29,19 +29,19 @@ def mcss(sts1, sts2, mcss_types_file):
     rmsds = []
     for i, st1 in enumerate(sts1):
         n_st1_atoms = st1.GetNumHeavyAtoms()
-        smi1 = Chem.MolToSmiles(st1)
+        sma1 = Chem.MolToSmarts(st1)
         rmsds += [np.zeros(len(sts2))]
         for j, st2 in enumerate(sts2):
             if j > i:  # only calculate lower triangle
                 break
             n_st2_atoms = st2.GetNumHeavyAtoms()
-            smi2 = Chem.MolToSmiles(st2)
-            if (smi1, smi2) in memo:
-                mcss, n_mcss_atoms, keep_idxs = memo[(smi1, smi2)]
+            sma2 = Chem.MolToSmarts(st2)
+            if (sma1, sma2) in memo:
+                mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
             else:
                 mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, mcss_types_file)
-                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, keep_idxs)
-                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
+                memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
+                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
             if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
                 # or n_mcss_atoms <= 10):
@@ -75,19 +75,19 @@ def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
     unfinished = []
     for j, st1 in enumerate(sts1):
         n_st1_atoms = st1.GetNumHeavyAtoms()
-        smi1 = Chem.MolToSmiles(st1)
+        sma1 = Chem.MolToSmarts(st1)
         # rmsds += [np.zeros(len(sts2))]
         for i, st2 in enumerate(sts2):
             if i > j:  # only calculate lower triangle
                 break
             n_st2_atoms = st2.GetNumHeavyAtoms()
-            smi2 = Chem.MolToSmiles(st2)
-            if (smi1, smi2) in memo:
-                mcss, n_mcss_atoms, keep_idxs = memo[(smi1, smi2)]
+            sma2 = Chem.MolToSmarts(st2)
+            if (sma1, sma2) in memo:
+                mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
             else:
                 mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, mcss_types_file)
-                memo[(smi1, smi2)] = (mcss, n_mcss_atoms, keep_idxs)
-                memo[(smi2,smi1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
+                memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
+                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
             retain_inf = False
             if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
