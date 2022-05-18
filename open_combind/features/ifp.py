@@ -135,11 +135,11 @@ class Molecule:
         # These are pulled from pharmit's positive and negative ions
         pos_smartss = [('[+,+2,+3,+4]', 0, [0]), #positive ions first
                     ('[$(CC)](=N)N', 2, [1,2]),
-                    ('[$(C(N)(N)=N)]', 0, [1,2]),
-                    ('[$(n1cc[nH]c1)]', 0, [1,2])]
+                    ('C(N)(N)=N', 0, [1,2,3]),
+                    ('[$([nH]1cncc1)]', 0, [0])]
         neg_smartss =[('[-,-2,-3,-4]', 0, [0]),
                     ('C(=O)[O-,OH,OX1]', 0,[1,2]),
-                    ('[$([S,P](=O)[O-,OH,OX1])]', 0,[1,2]),
+                    ('[S,P](=O)[O-,OH,OX1]', 2,[1,2]),
                     ('c1[nH1]nnn1', 0,[1,2]),
                     ('c1nn[nH1]n1', 0, [1,2]),
                     ('C(=O)N[OH1,O-,OX1]', 0, [1,2]),
