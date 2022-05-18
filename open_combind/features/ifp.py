@@ -130,16 +130,33 @@ class Molecule:
 
     def _symmetric_charged_ligand_atoms(self):
         ligand_groups = {}
-        smartss = [('[CX3](=O)[O-]', 2, [1, 2]),
-                   ('[CX3](=[NH2X3+])[NH2X3]', 1, [1, 2])]
+        # smartss = [('[CX3](=O)[O-,OH]', 2, [1, 2]),
+        #            ('[CX3](=[NH2X3+])[NH2X3]', 1, [1, 2])]
+        # These are pulled from pharmit's positive and negative ions
+        pos_smartss = [('[+,+2,+3,+4]', 0, [0]), #positive ions first
+                    ('[$(CC)](=N)N', 2, [1,2]),
+                    ('[$(C(N)(N)=N)]', 0, [1,2]),
+                    ('[$(n1cc[nH]c1)]', 0, [1,2])]
+        neg_smartss =[('[-,-2,-3,-4]', 0, [0]),
+                    ('C(=O)[O-,OH,OX1]', 0,[1,2]),
+                    ('[$([S,P](=O)[O-,OH,OX1])]', 0,[1,2]),
+                    ('c1[nH1]nnn1', 0,[1,2]),
+                    ('c1nn[nH1]n1', 0, [1,2]),
+                    ('C(=O)N[OH1,O-,OX1]', 0, [1,2]),
+                    ('C(=O)N[OH1,O-]', 0, [1,2]),
+                    ('CO(=N[OH1,O-])', 0,[1,2]),
+                    ('[$(N-[SX4](=O)(=O)[CX4](F)(F)F)]', 0,[1,2])]
 
+        smartss = [(ss,k,v,+1) for ss, k, v in pos_smartss] + [(ss,k,v,-1) for ss, k, v in neg_smartss]
         idx_to_atom = {atom.GetIdx(): atom for atom in self.mol.GetAtoms()}
 
-        for smarts, k, v in smartss:
+        for smarts, k, v, charge in smartss:
             mol = MolFromSmarts(smarts)
             matches = self.mol.GetSubstructMatches(mol)
+            if len(matches):
+                print(smarts)
             for match in matches:
-                ligand_groups[match[k]] = [idx_to_atom[match[_v]] for _v in v]
+                ligand_groups[match[k]] = ([idx_to_atom[match[_v]] for _v in v], charge)
         return ligand_groups
 
 ################################################################################
@@ -208,18 +225,18 @@ def saltbridge_compute(protein, ligand, settings):
 
     saltbridges = []
     for protein_atom in protein.charged:
-        for ligand_atom in ligand.charged:
-            lig_charge = ligand_atom.GetFormalCharge()
+        for ligand_atoms, lig_charge in ligand.charge_groups.values():
+            # lig_charge = ligand_atom.GetFormalCharge()
             protein_charge = protein_atom.GetFormalCharge()
             if lig_charge * protein_charge >= 0: continue
 
             # Expand protein_atom and ligand_atom to all symetric atoms
             # ... think carboxylates and guanidiniums.
-            if ('saltbridge_resonance' in settings and
-                ligand_atom.GetIdx() in ligand.charge_groups):
-                ligand_atoms = ligand.charge_groups[ligand_atom.GetIdx()]
-            else:
-                ligand_atoms = [ligand_atom]
+            # if ('saltbridge_resonance' in settings and
+            #     ligand_atom.GetIdx() in ligand.charge_groups):
+            #     ligand_atoms = ligand.charge_groups[ligand_atom.GetIdx()]
+            # else:
+            #     ligand_atoms = [ligand_atom]
             
             if ('saltbridge_resonance' in settings and
                 resname(protein_atom) in protein.charge_groups):
