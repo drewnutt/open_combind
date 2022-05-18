@@ -51,7 +51,6 @@ def mcss(sts1, sts2, mcss_types_file):
             rmsds[-1][j] = compute_mcss_rmsd(st1, st2, keep_idxs)
 
     rmsds_bottom = np.vstack(rmsds)
-    print(rmsds_bottom)
     if len(bad_apples):
         xind, yind= np.array(bad_apples).T
         # bad_apples_arr = np.array(bad_apples).T
@@ -60,7 +59,7 @@ def mcss(sts1, sts2, mcss_types_file):
         # filled_matrix[(xind,yind)] = -1 #float('inf')
         rmsds_bottom[(xind,yind)] = -1 #float('inf')
     filled_matrix = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
-    return filled_matrix
+    return np.where(filled_matrix<0,np.inf,filled_matrix)
 
 def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
     """
@@ -107,7 +106,7 @@ def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
     rmsds_bottom[rows,cols] = values
     full_simi_mat = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
     # full_simi_mat[inf_vals[:,1].astype(np.int64),inf_vals[:,0].astype(np.int64)] = -1 #float('inf')
-    return full_simi_mat
+    return np.where(full_simi_mat<0,np.inf,full_simi_mat)
 
 def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
     """
