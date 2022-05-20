@@ -168,7 +168,7 @@ class Features:
         np.save(out, gscores1)
         out = self.path('name1')
         np.save(out, names1)
-        if pvs2 == None:
+        if pvs2 is None:
             (rmsds2, gscores2, poses2, names2, ifps2
                 ) = rmsds1, gscores1, poses1, names1, ifps1
         else:
