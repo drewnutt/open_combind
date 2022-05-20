@@ -1,7 +1,8 @@
 import os
 import subprocess
+from glob import glob
 
-GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 100 > {log} \n'
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log} \n'
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
@@ -16,10 +17,26 @@ def docking_failed(gnina_log):
         phrases = []
     return any(phrase in logtxt for phrase in phrases)
 
+def check_dock_line(infile):
+    if not infile.endswith('\n'):
+        infile += '\n'
+
+    assert '{lig}' in infile, "need to have {lig} in your docking line to specify ligand"
+    assert '{out}' in infile, "need to have {out} in your docking line to specify outfile"
+    assert '{log}' in infile, "need to have {log} in your docking line to specify logfile"
+    if '{exh}' not in infile:
+        print('Warning: your docking line does not contain {exh}\n\
+                Docking will use either your specified exhaustiveness \
+                (if specified) or the default GNINA exchaustiveness of 8')
+
+    return infile
+
 def dock(template, ligands, root, name, enhanced, infile=None, reference=None, slurm=False):
     outfile = "{inlig}-docked.sdf.gz"
     if infile is None:
         infile = GNINA
+    else:
+        infile = check_dock_line(infile)
     exh = 8
     if enhanced:
         exh = 16
@@ -53,7 +70,8 @@ def dock(template, ligands, root, name, enhanced, infile=None, reference=None, s
 def setup_slurm(gnina_in,ligands,receptor,abox):
     import tarfile
 
-    tarfiles = (receptor,abox,*ligands)
+    native_ligs = glob('structures/ligands/*.sdf')
+    tarfiles = (receptor,abox,*ligands,*native_ligs)
     new_tar = gnina_in.replace('.txt','.tar.gz')
     tar = tarfile.open(new_tar, "w:gz")
 
