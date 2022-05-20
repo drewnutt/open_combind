@@ -15,11 +15,11 @@ def read_stats(stats_root, features):
             stats[interaction][dist] = DensityEstimate.read(fname)
     return stats
 
-def pair_features(protein, data_root, pairs_root):
-    interactions = ['hbond',  'saltbridge', 'contact', 'shape', 'mcss']
-    features = Features(data_root + '/' + protein, max_poses=100)
-    features.load_features(interactions)
-    features = features.get_view()
+def pair_features(protein, data_root, pairs_root, interactions=['hbond',  'saltbridge', 'contact', 'shape', 'mcss']):
+    features = Features(f'{data_root}/{protein}/features/', max_poses=100)
+    features.load_features()
+    ligand_names = sorted(set(features.raw['name1']))
+    features = features.get_view(ligand_names,interactions)
 
     # get cross-docked ligands
     ligands = []
@@ -61,7 +61,8 @@ def compute_stats(protein, pairs_root, stats_root, features):
     for feature in features:
         if feature == 'mcss':
             sd = 0.03*6
-            domain = (0, 6)
+            domain = (0, 15)
+            df = df[~np.isinf(df[feature])]
         else:
             sd = 0.03
             domain = (0, 1)
@@ -70,6 +71,8 @@ def compute_stats(protein, pairs_root, stats_root, features):
         ref_vals = df.loc[:, feature]
         nat = DensityEstimate(domain=domain, sd=sd).fit(nat_vals)
         ref = DensityEstimate(domain=domain, sd=sd).fit(ref_vals)
+        if not os.path.isdir(f'{stats_root}/{protein}'):
+            os.makedirs(f'{stats_root}/{protein}')
         nat.write('{}/{}/native_{}.de'.format(stats_root, protein, feature))
         ref.write('{}/{}/reference_{}.de'.format(stats_root, protein, feature))
 
