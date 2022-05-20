@@ -153,8 +153,8 @@ class Molecule:
         for smarts, k, v, charge in smartss:
             mol = MolFromSmarts(smarts)
             matches = self.mol.GetSubstructMatches(mol)
-            if len(matches):
-                print(smarts)
+            # if len(matches):
+            #     print(smarts)
             for match in matches:
                 ligand_groups[match[k]] = ([idx_to_atom[match[_v]] for _v in v], charge)
         return ligand_groups
