@@ -55,6 +55,10 @@ class Features:
             return pv.replace('.sdf.gz', '_rmsd.npy')
         elif name == 'gscore':
             return pv.replace('.sdf.gz', '_gscore.npy')
+        elif name == 'gaff':
+            return pv.replace('.sdf.gz', '_gaff.npy')
+        elif name == 'vaff':
+            return pv.replace('.sdf.gz', '_vaff.npy')
         elif name == 'name':
             return pv.replace('.sdf.gz', '_name.npy')
         elif name == 'ifp':
@@ -98,10 +102,12 @@ class Features:
         return data
 
     def load_single_features(self, pvs, ligands=None):
-        rmsds, gscores, poses, names, ifps = [], [], [], [], []
+        rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
         for pv in pvs:
             _rmsds = np.load(self.path('rmsd', pv=pv))
             _gscores = np.load(self.path('gscore', pv=pv))
+            _gaffs = np.load(self.path('gaff', pv=pv))
+            _vaffs = np.load(self.path('vaff', pv=pv))
             _names = np.load(self.path('name', pv=pv))
 
             _ifps = pd.read_csv(self.path('ifp', pv=pv))
@@ -117,14 +123,18 @@ class Features:
                     keep += [i]
             rmsds += [_rmsds[keep]]
             gscores += [_gscores[keep]]
+            gaffs += [_gaffs[keep]]
+            vaffs += [_vaffs[keep]]
             names += [_names[keep]]
             poses += [_poses[i] for i in keep]
             ifps += [_ifps[i] for i in keep]
 
         rmsds = np.hstack(rmsds)
         names = np.hstack(names)
+        gaffs = np.hstack(gaffs)
         gscores = np.hstack(gscores)
-        return rmsds, gscores, poses, names, ifps
+        vaffs = np.hstack(vaffs)
+        return rmsds, gscores, gaffs, vaffs, poses, names, ifps
 
     def compute_single_features(self, pvs, native_poses):
         # For single features, there is no need to keep sub-sets of ligands
@@ -135,11 +145,23 @@ class Features:
 
         pvs = [os.path.abspath(pv) for pv in pvs]
 
-        print('Extracting GNINA scores.')
+        print('Extracting GNINA affinities.')
+        for pv in pvs:
+            out = self.path('gaff', pv=pv)
+            if not os.path.exists(out):
+                self.compute_gaff(pv, out)
+
+        print('Extracting GNINA pose score.')
         for pv in pvs:
             out = self.path('gscore', pv=pv)
             if not os.path.exists(out):
                 self.compute_gscore(pv, out)
+
+        print('Extracting Vina minimizedAffinity.')
+        for pv in pvs:
+            out = self.path('vaff', pv=pv)
+            if not os.path.exists(out):
+                self.compute_vaff(pv, out)
 
         print('Extracting names.')
         for pv in pvs:
@@ -161,11 +183,15 @@ class Features:
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         mkdir(self.root)
-        rmsds1, gscores1, poses1, names1, ifps1 = self.load_single_features(pvs)
+        rmsds1, gscores1, gaffs1, vaffs1, poses1, names1, ifps1 = self.load_single_features(pvs)
         out = self.path('rmsd1')
         np.save(out, rmsds1)
         out = self.path('gscore1')
         np.save(out, gscores1)
+        out = self.path('gaff1')
+        np.save(out, gaffs1)
+        out = self.path('vaff1')
+        np.save(out, vaffs1)
         out = self.path('name1')
         np.save(out, names1)
         if pvs2 is None:
@@ -211,14 +237,32 @@ class Features:
                 break
         np.save(out, names)
 
+    def compute_gaff(self, pv, out):
+        gaffs = []
+        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+        for st in sts:
+            gaffs += [float(st.GetProp('CNNaffinity'))]
+            if len(gaffs) == self.max_poses:
+                break
+        np.save(out, gaffs)
+
     def compute_gscore(self, pv, out):
         gscores = []
-        sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
+        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
         for st in sts:
-            gscores += [float(st.GetProp('CNNaffinity'))]
+            gscores += [float(st.GetProp('CNNscore'))]
             if len(gscores) == self.max_poses:
                 break
         np.save(out, gscores)
+
+    def compute_vaff(self, pv, out):
+        vaffs = []
+        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+        for st in sts:
+            vaffs += [float(st.GetProp('minimizedAffinity'))]
+            if len(vaffs) == self.max_poses:
+                break
+        np.save(out, vaffs)
 
     def compute_rmsd(self, pv, native_poses, out):
         rmsds = []
