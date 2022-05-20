@@ -3,7 +3,7 @@ from prody import parsePDB, writePDB
 from subprocess import run
 import numpy as np
 
-def load_complex(prot_in, lig_id):
+def load_complex(prot_in, lig_id, other_lig=None):
 
     prot_st = parsePDB(prot_in, altloc='all')
     chains = np.unique(prot_st.getChids())
@@ -17,15 +17,22 @@ def load_complex(prot_in, lig_id):
         prot_only = prot_only.select(f'altloc {altlocs[0]} or altloc {altlocs[1]}')
     waters = prot_st.select('water')
     heteros = prot_st.select('hetero and not water')
-    important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
-    if important_ligand is None:
-        important_ligand = prot_st.select(f'resname {lig_id}')
-    assert important_ligand is not None, f"no ligand found with resname {lig_id} for {prot_in}"
+    if len(lig_id) in [3,4]:
+        important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
+        if important_ligand is None:
+            important_ligand = prot_st.select(f'resname {lig_id}')
+        assert important_ligand is not None, f"no ligand found with resname {lig_id} for {prot_in}"
+    else:
+        important_ligand = prot_st.select(f'{lig_id}')
+        if other_lig is not None:
+            prot_only = prot_only.select(f'not {other_lig}')
+        assert important_ligand is not None, f"nothing found with {lig_id} for {prot_in} to select as ligand"
     if len(np.unique(important_ligand.getAltlocs())) > 1:
         altlocs = np.unique(important_ligand.getAltlocs())
         altlocs = [ alt if alt != ' ' else '_' for alt in altlocs]
         important_ligand = important_ligand.select(f'altloc {altlocs[0]}')
         important_ligand.setAltlocs(' ')
+    important_ligand = important_ligand.select('not water')
     compl = prot_only + important_ligand
 
     return compl, prot_only, waters, heteros
@@ -50,14 +57,25 @@ def struct_process(structs,
         if os.path.exists(_filtered_complex):
             continue
 
-        lig_id = open(_ligand_info,'r').readlines()[0].strip('\n')
+        other_lig = None
+        lig_info = open(_ligand_info,'r').readlines()
+        lig_info = [info_line.strip('\n') for info_line in lig_info]
+        if len(lig_info[0]) not in [3,4]:
+            lig_id = lig_info[1]
+            print(f"Non-standard RCSB ligand name:{lig_info[0]}")
+            print(f"Using {lig_id} as the selection criterion")
+            if len(lig_info) > 2:
+                other_lig = lig_info[2]
+        else:
+            lig_id = lig_info[0]
+        assert lig_id is not None
         print(f'processing {struct} with ligand {lig_id}')
 
         os.system('mkdir -p {}'.format(os.path.dirname(_workdir)))
         os.system('rm -rf {}'.format(_workdir))
         os.system('mkdir {}'.format(_workdir))
 
-        compl, prot, waters, het = load_complex(_protein_in, lig_id)
+        compl, prot, waters, het = load_complex(_protein_in, lig_id, other_lig=other_lig)
         writePDB(_filtered_protein,prot)
         if waters is not None:
             writePDB(_filtered_water,waters)
