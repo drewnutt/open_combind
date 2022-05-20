@@ -2,7 +2,6 @@ import os
 import gzip
 # import subprocess
 from rdkit.Chem import AllChem as Chem
-from utils import mp
 
 def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
     mol = Chem.Mol(inmol)
@@ -20,7 +19,7 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
             converged = not Chem.UFFOptimizeMolecule(mol, confId=conf)
             cenergy.append(Chem.UFFGetMoleculeForceField(mol, confId=conf).CalcEnergy())
         elif ff == 'MMFF':
-            converged = Chem.MMFFOptimizeMolecule(mol, confId=conf)
+            converged = not Chem.MMFFOptimizeMolecule(mol, confId=conf)
             mp = Chem.MMFFGetMoleculeProperties(mol)
             cenergy.append(
                     Chem.MMFFGetMoleculeForceField(mol, mp, confId=conf).CalcEnergy())
@@ -30,6 +29,7 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
     assert mol.GetConformer(best_conf).Is3D(), f"can't make {mol.GetProp('_Name')} into 3d"
 
     return mol, best_conf
+
 
 def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10,):
     mol, best_conf = make3DConf(inmol, num_confs=num_confs,
@@ -88,6 +88,7 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
             unfinished.append((ligand, _sdf, confgen, ff))
 
     if not multiplex:
+        from utils import mp
         print(f"Creating {len(unfinished)} ligands in {root}")
         mp(write3DConf, unfinished, processes)
     else:
@@ -103,8 +104,21 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
             writer.close()
         # write3DConf(ligand, f"{root}/{name}.sdf", confgen=confgen, ff=ff)
 
+def check_filetype(fname):
+    base_fname = os.path.basename(fname)
+    ext = base_fname.split('.')[-1]
+    return ext
+
+def process_both(inname,ext,outname):
+    if ext in ['csv','smi']:
+        ligprocess(inname,outname)
+    elif ext == 'sdf':
+        mol = next(Chem.ForwardSDMolSupplier(inname))
+        mol.SetProp('_Name', os.path.basename(input_file).replace('.sdf', ''))
+        write3DConf(mol, outname)
 
 if __name__ == '__main__':
     import sys
     input_file, output_file = sys.argv[1:]
-    ligprocess(input_file, output_file)
+    extension = check_filetype(input_file)
+    process_both(input_file, extension, output_file)
