@@ -24,7 +24,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
         selection_text = 'hetatm'
     else:
         selection_text = temp_liginfo[1]
-    template_to_align = template_st.select(f'calpha within {dist} of {selection_text})')
+    template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
     for struct in structs:
         query_path = filtered_protein.format(pdbid=struct)
         if align_successful(align_dir, struct):
@@ -51,7 +51,10 @@ def struct_align(template, structs, dist=15.0, retry=True,
         else:
             selection_text = q_liginfo[1]
         query_to_align = query.select(f'calpha within {dist} of {selection_text}')
-        query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=True,seqid=10,overlap=10)[0]
+        try:
+            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=True,seqid=10,overlap=10)[0]
+        except IndexError:
+            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=False,seqid=10,overlap=10)[0]
         transform = calcTransformation(query_match,template_match)
         query_aligned = transform.apply(query)
 
