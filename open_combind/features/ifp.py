@@ -60,6 +60,8 @@ class Molecule:
         self.contacts = self.init_contacts()
         self.hbond_donors, self.hbond_acceptors = self.init_hbond()
         self.charged, self.charge_groups = self.init_saltbridge()
+        # if is_protein:
+        #     print(self.charged)
 
     def init_contacts(self):
         coord, vdw, atom_name, res_name = [], [], [], []
@@ -114,15 +116,22 @@ class Molecule:
         charged = [atom for atom in self.mol.GetAtoms()
                    if atom.GetFormalCharge() != 0]
         if self.is_protein:
-            charge_groups = self._symmetric_charged_protein_atoms()
+            charge_groups = self._charged_protein_atoms()
         else:
             charge_groups = self._symmetric_charged_ligand_atoms()
         return charged, charge_groups
 
-    def _symmetric_charged_protein_atoms(self):
+    def _charged_protein_atoms(self):
         protein_groups = {}
         for protein_atom in self.mol.GetAtoms():
-            if atomname(protein_atom) in ['OD1', 'OD2', 'OE1', 'OE2', 'NH1', 'NH2']:
+            if atomname(protein_atom) in ['OD1', 'OD2', 'OE1', 'OE2', 'NH1', 'NH2','NZ','ND1']:
+                # residue_name = resname(protein_atom).split(':')[2]
+                # print(residue_name)
+                # if residue_name in ['ARG','HIS','LYS','ASP','GLU']:
+                #     print('in')
+                # else:
+                #     print(
+
                 if resname(protein_atom) not in protein_groups:
                     protein_groups[resname(protein_atom)] = []
                 protein_groups[(resname(protein_atom))] += [protein_atom]
@@ -223,11 +232,15 @@ def saltbridge_compute(protein, ligand, settings):
     # charge, but also the atom that is charged in the other resonance
     # structure.
 
+    # print(protein.charged)
     saltbridges = []
-    for protein_atom in protein.charged:
+    for residue_name, protein_atoms in protein.charge_groups.items():
         for ligand_atoms, lig_charge in ligand.charge_groups.values():
+            residue_id = resname(protein_atoms[0]).split(':')[2]
+            protein_charge = 1 * (residue_id in ['LYS','ARG','HIS']) - 1 * (residue_id in ['ASP','GLU'])
+            # print(ligand_atoms, lig_charge)
             # lig_charge = ligand_atom.GetFormalCharge()
-            protein_charge = protein_atom.GetFormalCharge()
+            # protein_charge = protein_atom.GetFormalCharge()
             if lig_charge * protein_charge >= 0: continue
 
             # Expand protein_atom and ligand_atom to all symetric atoms
@@ -238,11 +251,11 @@ def saltbridge_compute(protein, ligand, settings):
             # else:
             #     ligand_atoms = [ligand_atom]
             
-            if ('saltbridge_resonance' in settings and
-                resname(protein_atom) in protein.charge_groups):
-                protein_atoms = protein.charge_groups[resname(protein_atom)]
-            else:
-                protein_atoms = [protein_atom]
+            # if ('saltbridge_resonance' in settings and
+            #     resname(protein_atom) in protein.charge_groups):
+            #     protein_atoms = protein.charge_groups[resname(protein_atom)]
+            # else:
+            #     protein_atoms = [protein_atom]
 
             # Get minimum distance between any pair of protein and ligand
             # atoms in the groups.
@@ -255,6 +268,7 @@ def saltbridge_compute(protein, ligand, settings):
                         closest_protein_atom = _protein_atom
                         closest_ligand_atom = _ligand_atom
 
+            # print(dist)
             if dist < settings['sb_dist_cut']:
                 saltbridges += [{'label': 'saltbridge',
                                  'protein_res': resname(closest_protein_atom),
@@ -351,6 +365,7 @@ def fingerprint(protein, ligand, settings):
 def fingerprint_poseviewer(input_file, poses, settings):
     prot_fname = input_file.split('-to-')[-1].replace('-docked.sdf.gz','_prot.pdb')
     prot_file = f"structures/proteins/{prot_fname}"
+    # print(prot_file)
 
     # print(input_file)
     fps = []
@@ -359,9 +374,12 @@ def fingerprint_poseviewer(input_file, poses, settings):
         rdk_prot = MolFromPDBFile(prot_file)
         if rdk_prot is None:
             rdk_prot = MolFromPDBFile(prot_file,sanitize=False)
+            # print(rdk_prot)
         assert rdk_prot is not None, f"RDKit cannot read protein file {prot_file}"
 
         protein = Molecule(rdk_prot, True, settings)
+        assert protein is not None
+        # print(len(protein.charged))
         
         for i, ligand in enumerate(mols):
             if i == poses: break
