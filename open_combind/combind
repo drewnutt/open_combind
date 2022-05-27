@@ -210,10 +210,11 @@ def dock(template, root, ligands, screen, slurm, dock_file):
 @click.option('--screen', is_flag=True)
 @click.option('--max-poses', default=100)
 @click.option('--no-mcss', is_flag=True)
+@click.option('--no-cnn', is_flag=True)
 @click.option('--use-shape', is_flag=True)
 @click.option('--processes', default=1)
 def featurize(root, poseviewers, native, ifp_version, mcss_version,
-              shape_version, screen, no_mcss, use_shape, processes, max_poses):
+              shape_version, screen, no_mcss, use_shape, processes, max_poses, no_cnn):
     from features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
@@ -226,7 +227,7 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
     print(native_poses)
 
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
-                        mcss_version=mcss_version, max_poses=max_poses)
+                        mcss_version=mcss_version, max_poses=max_poses, cnn_scores=not no_cnn)
 
     features.compute_single_features(poseviewers, native_poses=native_poses)
 

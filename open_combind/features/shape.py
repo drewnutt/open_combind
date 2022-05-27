@@ -1,70 +1,62 @@
-import subprocess
 import os
 import tempfile
 import numpy as np
-from schrodinger.structure import StructureReader, StructureWriter
+from rdkit.Chem import ShapeTanimotoDist
+from utils import mp
 
-CMD = '$SCHRODINGER/shape_screen -shape {poses1} -screen {poses2} {typing} {norm} -distinct -inplace -NOJOBID'
+# CMD = '$SCHRODINGER/shape_screen -shape {poses1} -screen {poses2} {typing} {norm} -distinct -inplace -NOJOBID'
 
-def write_and_name(conformers, fname):
-    titles = []
-    with StructureWriter(fname) as writer:
-        for i, st in enumerate(conformers):
-            st = st.copy()
-            assert '-conf-' not in st.title
-            st.title = st.title + '-conf-{}'.format(i)
-            writer.append(st)
-            titles += [st.title]
-    return titles
+# This shape screening is based on the Schrodinger paper: https://doi.org/10.1021/ci2002704
+# Used a method which is quite similar to tanimoto similarity of the shapes but easier to calculate
+# Different atom/feature types of the overlaps:
+# Name    | Description
+# -----   |-------
+# None    |   all atoms equivalent (shape-only scoring)
+# QSAR    |   Phase QSAR atom types 
+# Element |   elemental atom types
+# MMod	|   MacroModel atom types (over 150 unique atom types)
+# Pharm	|   Phase pharmacophore feature types
 
-def shape(conformers1, conformers2, version='pharm_max'):
-    typing, norm = version.split('_')
+# QSAR atom types = hydrophobic, electron withdrawing, H-bond donor, negative ionic, positive ionic, and other
 
-    if typing == 'pharm':
-        typing = '-pharm'
-    elif typing == 'mmod':
-        typing = '-atomtypes mmod'
-    elif typing == 'element':
-        typing = '-atomtypes element'
-    elif typing == 'qsar':
-        typing = '-atomtypes qsar'
-    else:
-        assert False, 'Typing {} not supported.'.format(typing)
-
-    if norm == 'max':
-        norm = '-norm 1'
-    elif norm == 'min':
-        norm = '-norm 2'
-    else:
-        assert False, 'Norm {} not supported.'.format(norm)
-
-    with tempfile.TemporaryDirectory() as wd:
-        poses1 = wd+'/poses1.maegz'
-        poses2 = wd+'/poses2.maegz'
-        output = wd+'/poses1_align.maegz'
-        log    = wd+'/poses1_shape.log'
-
-        ligands1 = write_and_name(conformers1, poses1)
-        ligands2 = write_and_name(conformers2, poses2)
+# Pharmacophore feature types= aromatic, hydrophobic, H-bond acceptor, H-bond donor, negative ionic, and positive ionic.
+# Each site was represented by a hard sphere of radius 2 Ǻ, and as with the atom typing schemes, volume overlap scores were only computed between sites of the same type
 
 
-        cmd = CMD.format(poses1=os.path.basename(poses1),
-                         poses2=os.path.basename(poses2),
-                         typing=typing, norm=norm)
-        print(cmd)
-        subprocess.run(cmd, shell=True, cwd=wd)
-        print('subprocess complete')
+def shape(conformers1, conformers2, version=None):
+    shape_sims = []
+    for i, conf1 in enumerate(conformers1):
+        shape_sims += [np.zeros(len(conformers2)]
+        for j, conf2 in enumerate(conformers2):
+            if j >= i:
+                continue
+            shape_sims[-1][j] = ShapeTanimotoDist(conf1,conf2)
+    shape_sims_bottom = np.vstack(shape_sims)
+    
+    filled_matrix = shape_sims_bottom + shape_sims_bottom.T - np.diag(np.diag(shape_sims_bottom))
+    np.fill_diagonal(filled_matrix,1)
 
-        if not os.path.exists(output):
-            with open(log) as fp:
-                txt = fp.read()
-            assert 'Reference shape must contain at least 3 spheres' in txt, txt
-            return 0.5*np.ones((len(ligands1), len(ligands2)))
+    return filled_matrix
 
-        sims = np.zeros((len(ligands1), len(ligands2)))
-        with StructureReader(output) as sts:
-            for k, st in enumerate(sts):
-                i = k % len(ligands1)
-                j = int(st.title.split('-conf-')[-1])
-                sims[i, j] = st.property['r_phase_Shape_Sim']
-    return sims
+def shape_mp(conformers1, conformers2, version=None, processes=1):
+    def compute_shape_mp(conformation,idx):
+        shape_sims = np.zeros(len(conformers2)
+        for j, conf2 in enumerate(conformers2): 
+            if j>= i: continue
+            shape_sims[j] = ShapeTanimotoDist(conformation,conf2)
+
+        return idx, shape_sims
+
+    unfinished = []
+    for i, conf1 in enumerate(conformers1):
+        unfinished += [(conf1,i,conformers2)]
+    results = mp(compute_shape_mp,unfinished,processes)
+    idx, shape_sims_lists = zip(*results)
+    shape_sims_bottom = np.zeros((len(conformers1),len(conformers2)))
+    shape_sims_bottom[idx] = shape_sims_lists
+    
+    filled_matrix = shape_sims_bottom + shape_sims_bottom.T - np.diag(np.diag(shape_sims_bottom))
+    np.fill_diagonal(filled_matrix,1)
+
+    return filled_matrix
+

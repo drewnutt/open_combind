@@ -25,18 +25,18 @@ class Features:
     Organize feature computation and loading.
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
-                 mcss_version='mcss16', max_poses=10000, pv_root=None,
-                 ifp_features=['hbond', 'saltbridge', 'contact']):
+                 mcss_custom='', max_poses=10000, pv_root=None,
+                 ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True):
         self.root = os.path.abspath(root)
         if pv_root is None:
             self.pv_root = self.root + '/docking'
 
         self.ifp_version = ifp_version
         self.shape_version = shape_version
-        self.mcss_version = mcss_version
-        self.mcss_file = '{}/features/{}.typ'.format(os.environ['COMBINDHOME'], mcss_version)
+        self.mcss_custom = mcss_custom
         self.max_poses = max_poses
         self.ifp_features = ifp_features
+        self.cnn_scores = cnn_scores
 
         self.raw = {}
 
@@ -83,12 +83,18 @@ class Features:
         """
         """
         data = {}
-        data['gscore'] = {}
+        if self.cnn_scores:
+            data['gscore'] = {}
+            data['gaff'] = {}
+        data['vaff'] = {}
         data['rmsd'] = {}
         for ligand in ligands:
             mask = self.raw['name1'] == ligand
             assert sum(mask)
-            data['gscore'][ligand] = self.raw['gscore1'][mask]
+            if self.cnn_scores:
+                data['gscore'][ligand] = self.raw['gscore1'][mask]
+                data['gaff'][ligand] = self.raw['gaff1'][mask]
+            data['vaff'][ligand] = self.raw['vaff1'][mask]
             data['rmsd'][ligand] = self.raw['rmsd1'][mask]
 
         for feature in features:
@@ -105,8 +111,9 @@ class Features:
         rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
         for pv in pvs:
             _rmsds = np.load(self.path('rmsd', pv=pv))
-            _gscores = np.load(self.path('gscore', pv=pv))
-            _gaffs = np.load(self.path('gaff', pv=pv))
+            if self.cnn_scores:
+                _gscores = np.load(self.path('gscore', pv=pv))
+                _gaffs = np.load(self.path('gaff', pv=pv))
             _vaffs = np.load(self.path('vaff', pv=pv))
             _names = np.load(self.path('name', pv=pv))
 
@@ -122,8 +129,9 @@ class Features:
                     and sum(_names[:i] == _names[i]) < self.max_poses):
                     keep += [i]
             rmsds += [_rmsds[keep]]
-            gscores += [_gscores[keep]]
-            gaffs += [_gaffs[keep]]
+            if self.cnn_scores:
+                gscores += [_gscores[keep]]
+                gaffs += [_gaffs[keep]]
             vaffs += [_vaffs[keep]]
             names += [_names[keep]]
             poses += [_poses[i] for i in keep]
@@ -131,9 +139,13 @@ class Features:
 
         rmsds = np.hstack(rmsds)
         names = np.hstack(names)
-        gaffs = np.hstack(gaffs)
-        gscores = np.hstack(gscores)
         vaffs = np.hstack(vaffs)
+        if self.cnn_scores:
+            gaffs = np.hstack(gaffs)
+            gscores = np.hstack(gscores)
+        else:
+            gaffs = None
+            gscores = None
         return rmsds, gscores, gaffs, vaffs, poses, names, ifps
 
     def compute_single_features(self, pvs, native_poses):
@@ -145,17 +157,18 @@ class Features:
 
         pvs = [os.path.abspath(pv) for pv in pvs]
 
-        print('Extracting GNINA affinities.')
-        for pv in pvs:
-            out = self.path('gaff', pv=pv)
-            if not os.path.exists(out):
-                self.compute_gaff(pv, out)
+        if self.cnn_scores:
+            print('Extracting GNINA affinities.')
+            for pv in pvs:
+                out = self.path('gaff', pv=pv)
+                if not os.path.exists(out):
+                    self.compute_gaff(pv, out)
 
-        print('Extracting GNINA pose score.')
-        for pv in pvs:
-            out = self.path('gscore', pv=pv)
-            if not os.path.exists(out):
-                self.compute_gscore(pv, out)
+            print('Extracting GNINA pose score.')
+            for pv in pvs:
+                out = self.path('gscore', pv=pv)
+                if not os.path.exists(out):
+                    self.compute_gscore(pv, out)
 
         print('Extracting Vina minimizedAffinity.')
         for pv in pvs:
@@ -177,6 +190,7 @@ class Features:
 
         print('Computing interaction fingerprints.')
         for pv in pvs:
+            print(pv)
             out = self.path('ifp', pv=pv)
             if not os.path.exists(out):
                 self.compute_ifp(pv, out)
@@ -296,18 +310,22 @@ class Features:
             tanimotos = ifp_tanimoto(ifps1, ifps2, feature)
         np.save(out, tanimotos)
 
-    def compute_shape(self, poses1, poses2, out):
-        from features.shape import shape
-        # More efficient to have longer pose list provided as second argument.
-        # This only matters for screening.
-        sims = shape(poses2, poses1, version=self.shape_version).T
+    def compute_shape(self, poses1, poses2, out, processes=1):
+        if processes != 1:
+            from features.shape import shape_mp
+            sims = shape_mp(poses2, poses1, version=self.shape_version,processes=processes).T
+        else
+            from features.shape import shape
+            # More efficient to have longer pose list provided as second argument.
+            # This only matters for screening.
+            sims = shape(poses2, poses1, version=self.shape_version).T
         np.save(out, sims)
 
     def compute_mcss(self, poses1, poses2, out, processes=1):
         if processes != 1:
             from features.mcss import mcss_mp
-            rmsds = mcss_mp(poses1, poses2, self.mcss_file, processes)
+            rmsds = mcss_mp(poses1, poses2, self.mcss_custom, processes)
         else:
             from features.mcss import mcss
-            rmsds = mcss(poses1, poses2, self.mcss_file)
+            rmsds = mcss(poses1, poses2, self.mcss_custom)
         np.save(out, rmsds)
