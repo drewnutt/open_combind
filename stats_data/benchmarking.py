@@ -105,14 +105,14 @@ def pose_prediction(prot_features, out, stats_root, alpha=-0.6,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--feat_root',help='directory to place features in')
-    parser.add_argument('--helper_ligands',nargs='*',help='helper ligand docked poses')
-    parser.add_argument('--query_ligand',help='query ligand docked poses')
-    parser.add_argument('--protein_name',help='name of protein class')
-    parser.add_argument('--selection_criterion',choices=['affinity','mcss'],help='how to select the helper ligands')
+    parser.add_argument('--feat_root', required=True, help='directory to place features in')
+    parser.add_argument('--helper_ligands',nargs='*', required=True, help='helper ligand docked poses')
+    parser.add_argument('--query_ligand', required=True,help='query ligand docked poses')
+    parser.add_argument('--protein_name',, required=True, help='name of protein class')
+    parser.add_argument('--selection_criterion',choices=['affinity','mcss'], default='affinity',help='how to select the helper ligands')
     parser.add_argument('--interactions',default='mcss,hbond,saltbridge,contact',help='interactions to use for featurization and pose prediction')
     parser.add_argument('--processes',type=int,default=1,help='# of processes to use')
-    parser.add_argument('--pose_csv',help='name of pose_csv to use')
+    parser.add_argument('--pose_csv',help='name of pose_csv to use, if not set then `<protein_name>_<query_ligand>_<selection_criterion>.csv`')
 
     args = parser.parse_args()
 
