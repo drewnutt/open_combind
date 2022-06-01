@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import logit
 
 class PosePrediction:
     """
@@ -38,7 +39,7 @@ class PosePrediction:
 
         * Scale docking scores by - self.alpha *
         """
-        single = [self.data['gscore'][ligand] for ligand in self.ligands]
+        single = [logit(self.data['gscore'][ligand]) for ligand in self.ligands]
         single = [self.pad(x, self.max_poses) for x in single]
         single = np.vstack(single)
         single *= -self.alpha
