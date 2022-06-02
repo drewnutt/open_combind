@@ -10,7 +10,7 @@ class PosePrediction:
     data ({}): Raw data.
     stats ({feature: {'native': score.DensityEstimate,
                       'reference': score.DensityEstimate}})
-    alpha (float): Factor to which to weight the glide scores.
+    alpha (float): Factor to which to weight the GNINA CNNscores.
 
     max_poses (int): largest number of poses for any ligand.
     single (np.array, # ligands)
@@ -40,7 +40,7 @@ class PosePrediction:
         * Scale docking scores by - self.alpha *
         """
         single = [logit(self.data['gscore'][ligand]) for ligand in self.ligands]
-        single = [self.pad(x, self.max_poses) for x in single]
+        single = [self.pad(x, self.max_poses,C=np.nan) for x in single]
         single = np.vstack(single)
         single *= -self.alpha
         return single
@@ -70,7 +70,7 @@ class PosePrediction:
                         continue
 
                     energy = np.log(stats['native'](raw)) - np.log(stats['reference'](raw))
-                    energy = self.pad(energy, self.max_poses, self.max_poses)
+                    energy = self.pad(energy, self.max_poses, self.max_poses,C=-np.inf)
                     pair[i, j] += energy
                     pair[j, i] += energy.T
         return pair
@@ -117,7 +117,7 @@ class PosePrediction:
             update = False
             for query in np.random.permutation(list(poses.keys())):
                 plp = self.partial_log_posterior(poses, query)
-                best_pose = np.argmax(plp)
+                best_pose = np.nanargmax(plp)
                 if best_pose != poses[query]:
                     update = True
                     poses[query] = best_pose
@@ -161,7 +161,7 @@ class PosePrediction:
                 lp += self.pair[lig1, lig2, pose1, pose2] / (len(poses)-1)
         return lp
 
-    def pad(self, x, shape1, shape2=0, C=float('inf')):
+    def pad(self, x, shape1, shape2=0, C=-np.inf):
         """
         Expand array to ("shape1",) if 1D or ("shape1", "shape2") if 2D
         and fill missing values with "C".
@@ -170,7 +170,7 @@ class PosePrediction:
             y = np.zeros(shape1)+C
             y[:x.shape[0]] = x[:shape1]
         elif len(x.shape) == 2:
-            y = np.zeros((shape1, shape2))
+            y = np.zeros((shape1, shape2))+C
             y[:x.shape[0], :x.shape[1]] = x[:shape1, :shape2]
         else:
             assert False
