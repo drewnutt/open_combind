@@ -25,7 +25,7 @@ class Features:
     Organize feature computation and loading.
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
-                 mcss_version='', max_poses=10000, pv_root=None,
+                 mcss_custom='', max_poses=10000, pv_root=None,
                  ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True):
         self.root = os.path.abspath(root)
         if pv_root is None:
@@ -33,7 +33,7 @@ class Features:
 
         self.ifp_version = ifp_version
         self.shape_version = shape_version
-        self.mcss_version = mcss_version
+        self.mcss_version = mcss_custom
         self.max_poses = max_poses
         self.ifp_features = ifp_features
         self.cnn_scores = cnn_scores
