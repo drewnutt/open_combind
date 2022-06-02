@@ -190,7 +190,7 @@ class Features:
 
         print('Computing interaction fingerprints.')
         for pv in pvs:
-            print(pv)
+            # print(pv)
             out = self.path('ifp', pv=pv)
             if not os.path.exists(out):
                 self.compute_ifp(pv, out)
@@ -281,7 +281,7 @@ class Features:
     def compute_rmsd(self, pv, native_poses, out):
         rmsds = []
         name = pv.split('/')[-1].split('-')[0]
-        print(name)
+        # print(name)
         if name in native_poses:
             native = native_poses[name]
             try:
@@ -291,7 +291,7 @@ class Features:
             except:
                 print(f'RMSD failed for {name}')
         else:
-            print(name)
+            # print(name)
             rmsds = [-1] * self.max_poses
 
         np.save(out, rmsds)
