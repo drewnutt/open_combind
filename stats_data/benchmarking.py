@@ -6,14 +6,11 @@ from glob import glob
 sys.path.append(os.path.expanduser('~anm329/git/combind'))
 
 # Defaults
-stats_root = os.environ['COMBINDHOME']+'/stats_data/default'
-helper_list_root = os.environ['COMBINDHOME']
 mcss_version = 'mcss16'
 shape_version = 'pharm_max'
 ifp_version = 'rd1'
-# available_to_benchmark = pd.read_csv("pdbs_for_benchmark.csv")
-# benchmarking_complexes = available_to_benchmark[available_to_benchmark['any_near_native'] & available_to_benchmark['mcss<0.5']]
-def get_unique_helper_ligs():
+
+def get_unique_helper_ligs(helper_list_root):
     helper_ligs_affinity = pd.read_csv(f'{helper_list_root}helper_best_affinity_diverse.csv')
     helper_ligs_mcss = pd.read_csv(f'{helper_list_root}helper_best_mcss.csv')
     combined_helper_ligs = pd.concat([helper_ligs_affinity,helper_ligs_mcss])
@@ -26,7 +23,7 @@ def get_unique_helper_ligs():
         dedupped_prot.to_csv(f"combind_paper_dataset/{prot_name}/helper_ligands_{prot_name}.csv",
                 sep=',',index=False, columns=['ID','SMILES'])
 
-def query_to_helpers(query_ligand, prot_name, selection_criterion="affinity"):
+def query_to_helpers(query_ligand, prot_name, helper_list_root, selection_criterion="affinity"):
     if selection_criterion == 'affinity':
         helper_ligs_list = pd.read_csv(f'{helper_list_root}/helper_best_affinity_diverse.csv')
     elif selection_criterion == 'mcss':
@@ -38,14 +35,15 @@ def query_to_helpers(query_ligand, prot_name, selection_criterion="affinity"):
 
     return helper_for_query['helper'].tolist()
 
-def run_featurization(root, helper_ligands, query_fname, protein_name, selection_criterion="affinity",processes=1):
+def run_featurization(root, helper_ligands, query_fname, protein_name, helper_list_root, native_loc='.', selection_criterion="affinity",processes=1):
     query_ligand = query_fname.split('/')[-1].split('-')[0].split('_')[0]
-    helpers_to_use = query_to_helpers(query_ligand, protein_name, selection_criterion)
-    helper_ligands = [ligand for ligand in helper_ligands if ligand.split('/')[-1].split('-')[0] in helpers_to_use]
+    helpers_to_use = query_to_helpers(query_ligand, protein_name, helper_list_root, selection_criterion)
+    helper_ligands = [ligand for ligand in helper_ligands if ligand.split('/')[-1].split('-')[0] in helpers_to_use] + [query_fname]
     # print(helper_ligands)
-    featurize(root, helper_ligands, ifp_version, mcss_version, shape_version, False, False, processes, 100, False)
+    return featurize(root, helper_ligands, native_loc, ifp_version, mcss_version, shape_version, False, False, processes, 100, False)
 
-def featurize(root, poseviewers, ifp_version, mcss_custom,
+
+def featurize(root, poseviewers, native_loc, ifp_version, mcss_custom,
               shape_version, no_mcss, use_shape, processes, max_poses, no_cnn):
     from features.features import Features
     if use_shape:
@@ -54,7 +52,7 @@ def featurize(root, poseviewers, ifp_version, mcss_custom,
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
                         mcss_custom=mcss_custom, max_poses=max_poses, cnn_scores=not no_cnn)
 
-    features.compute_single_features(poseviewers)
+    features.compute_single_features(poseviewers,native_poses=native_loc)
 
     features.compute_pair_features(poseviewers,
                                    mcss=not no_mcss, shape=use_shape, processes=processes)
@@ -62,11 +60,16 @@ def featurize(root, poseviewers, ifp_version, mcss_custom,
     return features
 
 def merge_correct_stats(prot_name,stats_root, interactions):
+    stats_root = stats_root + "/protein_statistics"
     merged_stats = stats_root + '/merged_combind_stats_excl_' + prot_name + '/{}_{}.txt'
     if len(glob(merged_stats.replace('{}','*'))) != len(interactions) * 2:
         from score.statistics import merge_stats
         all_prot_names = ['/'.join(directory.split('/')[-2:]).replace('/','') for directory in glob(f"{stats_root}/*/") if "stats" not in directory]
         correct_stats = [prot for prot in all_prot_names if prot != prot_name ]
+        correct_stats.sort()
+        print(correct_stats)
+        if not os.path.isdir(os.path.dirname(merged_stats)):
+            os.makedirs(os.path.dirname(merged_stats))
         merge_stats(correct_stats, stats_root, merged_stats, interactions)
 
     return '/'.join(merged_stats.split('/')[:-1])
@@ -108,8 +111,10 @@ if __name__ == "__main__":
     parser.add_argument('--feat_root', required=True, help='directory to place features in')
     parser.add_argument('--helper_ligands',nargs='*', required=True, help='helper ligand docked poses')
     parser.add_argument('--query_ligand', required=True,help='query ligand docked poses')
-    parser.add_argument('--protein_name',, required=True, help='name of protein class')
+    parser.add_argument('--protein_name', required=True, help='name of protein class')
+    parser.add_argument('--stats_root',required=True,help='Directory that contains helper lists and protein statistics are in `<stats_root>/protein_statistics`')
     parser.add_argument('--selection_criterion',choices=['affinity','mcss'], default='affinity',help='how to select the helper ligands')
+    parser.add_argument('--native', nargs='*', default=[],help='location of native poses')
     parser.add_argument('--interactions',default='mcss,hbond,saltbridge,contact',help='interactions to use for featurization and pose prediction')
     parser.add_argument('--processes',type=int,default=1,help='# of processes to use')
     parser.add_argument('--pose_csv',help='name of pose_csv to use, if not set then `<protein_name>_<query_ligand>_<selection_criterion>.csv`')
@@ -119,8 +124,10 @@ if __name__ == "__main__":
     interactions = args.interactions.split(',')
     if 'mcss' in interactions:
         no_mcss = False
-    prot_features = run_featurization(args.feat_root,args.helper_ligands,args.query_ligand,args.protein_name,selection_criterion=args.selection_criterion,processes=args.processes)
+    prot_features = run_featurization(args.feat_root,args.helper_ligands,args.query_ligand,args.protein_name,
+            args.stats_root,native_loc=args.native, selection_criterion=args.selection_criterion,processes=args.processes)
     if args.pose_csv is None:
-        args.pose_csv = f"{protein_name}_{query_ligand.split('/')[-1].split('-')[0].split('_')[0]}_{selection_criterion}.csv"
-    merged_stats_root = merge_correct_stats(args.protein_name,args.stats_root,args.features)
+        args.pose_csv = f"{args.protein_name}_{args.query_ligand.split('/')[-1].split('-')[0].split('_')[0]}_{args.selection_criterion}.csv"
+    merged_stats_root = merge_correct_stats(args.protein_name,args.stats_root,interactions)
+    prot_features.load_features()
     pose_prediction(prot_features,args.pose_csv,merged_stats_root,features=interactions)
