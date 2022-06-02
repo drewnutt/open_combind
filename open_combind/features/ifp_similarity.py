@@ -36,10 +36,7 @@ def ifp_tanimoto(ifps1, ifps2, feature):
     ifps2 = [ifp.set_index('protein_res') for ifp in ifps2]
 
     sims = np.zeros((len(ifps1), len(ifps2)))
-    print(len(ifps1))
     for i, ifp1 in enumerate(ifps1):
-        if i % 100 == 0:
-            print(i)
         for j, ifp2 in enumerate(ifps2):
             if j > i:
                 break
