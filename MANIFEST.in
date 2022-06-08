@@ -4,4 +4,4 @@ include CODE_OF_CONDUCT.md
 include versioneer.py
 
 graft open_combind
-global-exclude *.py[cod] __pycache__ *.so
+global-exclude *.py[cod] __pycache__ *.soinclude open_combind/_version.py
