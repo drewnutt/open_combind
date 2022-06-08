@@ -1,7 +1,7 @@
 # Open-ComBind
 [//]: # (Badges)
-[![GitHub Actions Build Status](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/open_combind/workflows/CI/badge.svg)](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/open_combind/actions?query=workflow%3ACI)
-[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/open_combind/branch/master/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/open_combind/branch/master)
+[![GitHub Actions Build Status](https://github.com/drewnutt/open_combind/workflows/CI/badge.svg)](https://github.com/drewnutt/open_combind/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/drewnutt/open_combind/branch/master/graph/badge.svg)](https://codecov.io/gh/drewnutt/open_combind/branch/master)
 
 Open-source docking pipeline leveraging pairwise statistics
 
