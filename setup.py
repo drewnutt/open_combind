@@ -29,7 +29,7 @@ setup(
     long_description_content_type="text/markdown",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    license='Not Open Source',
+    license='Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported',
 
     # Which Python importable modules should be included when your package is installed
     # Handled automatically by setuptools. Use 'exclude' to prevent some specific
@@ -45,7 +45,7 @@ setup(
     setup_requires=[] + pytest_runner,
 
     # Additional entries you may want simply uncomment the lines you want and fill in the data
-    # url='http://www.my_package.com',  # Website
+    url='https://github.com/drewnutt/open_combind',  # Website
     # install_requires=[],              # Required packages, pulls from pip if needed; do not use for Conda deployment
     # platforms=['Linux',
     #            'Mac OS-X',
