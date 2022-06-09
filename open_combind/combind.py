@@ -4,14 +4,15 @@ import pandas as pd
 import numpy as np
 import click
 import os
+import sys
 from glob import glob
 
-from utils import *
+from open_combind.utils import *
 
 ###############################################################################
 
 # Defaults
-stats_root = os.environ['COMBINDHOME']+'/stats_data/default'
+stats_root = 'stats_data/default'
 mcss_version = 'mcss16'
 shape_version = 'pharm_max'
 ifp_version = 'rd1'
@@ -61,10 +62,10 @@ def structprep(struct, templ_struct):
     Files ending with _lig contain only the small molecule ligand present in the
     structure, and files ending with _prot contain everything else.
     """
-    from dock.struct_align import struct_align
-    from dock.struct_sort import struct_sort
-    from dock.struct_process import struct_process
-    from dock.grid import make_grid
+    from open_combind.dock.struct_align import struct_align
+    from open_combind.dock.struct_sort import struct_sort
+    from open_combind.dock.struct_process import struct_process
+    from open_combind.dock.grid import make_grid
 
     assert os.path.exists('structures'), 'No structures directory.'
 
@@ -113,7 +114,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
 
     Multiprocessing is only supported for non-multiplexed mode.
     """
-    from dock.ligprep import ligprep, ligsplit
+    from open_combind.dock.ligprep import ligprep, ligsplit
     mkdir(root)
     if not sdffile:
         ligands = pd.read_csv(smiles, sep=delim)
@@ -154,7 +155,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
 @click.option('--screen', is_flag=True)
 @click.option('--slurm', is_flag=True)
 @click.option('--dock_file')
-def dock(template, root, ligands, screen, slurm, dock_file):
+def dock_ligands(template, root, ligands, screen, slurm, dock_file):
     """
     Dock "ligands" to "grid".
 
@@ -169,16 +170,17 @@ def dock(template, root, ligands, screen, slurm, dock_file):
     create a docking file. The default looks like:
      "-l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log} \n"
     """
-    from dock.dock import dock
+    from open_combind.dock.dock import dock
 
     if template is None:
         template = glob('structures/template/*.template')
         if template:
             template = template[0]
         else:
-            print('No templates in default location (structures/template)'
-                  ', please specify path.')
-            exit()
+            # print(''
+            #       '')
+            raise ValueError("No templates in default location (structures/template)",", please specify path.")
+            # sys.exit()
 
 
     ligands = [os.path.abspath(lig) for lig in ligands if 'nonames' not in lig]
@@ -215,7 +217,7 @@ def dock(template, root, ligands, screen, slurm, dock_file):
 @click.option('--processes', default=1)
 def featurize(root, poseviewers, native, ifp_version, mcss_version,
               shape_version, screen, no_mcss, use_shape, processes, max_poses, no_cnn):
-    from features.features import Features
+    from open_combind.features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
 
@@ -256,9 +258,9 @@ def pose_prediction(root, out, ligands, alpha, stats_root,
     """
     Run ComBind pose prediction.
     """
-    from score.pose_prediction import PosePrediction
-    from score.statistics import read_stats
-    from features.features import Features
+    from open_combind.score.pose_prediction import PosePrediction
+    from open_combind.score.statistics import read_stats
+    from open_combind.features.features import Features
 
     features = features.split(',')
 
@@ -296,8 +298,8 @@ def screen(score_fname, root, stats_root, alpha, features):
     """
     Run ComBind screening.
     """
-    from score.screen import screen, load_features_screen
-    from score.statistics import read_stats
+    from open_combind.score.screen import screen, load_features_screen
+    from open_combind.score.statistics import read_stats
 
     features = features.split(',')
     stats = read_stats(stats_root, features)
@@ -348,7 +350,7 @@ def apply_scores(pv, scores, out):
     """
     Add ComBind screening scores to a poseviewer.
     """
-    from score.screen import apply_scores
+    from open_combind.score.screen import apply_scores
     if out is None:
         out = pv.replace('_pv.maegz', '_combind_pv.maegz')
     apply_scores(pv, scores, out)
@@ -360,7 +362,8 @@ def scores_to_csv(pv, out):
     """
     Write docking and ComBind scores to text.
     """
-    from score.screen import scores_to_csv
+    from open_combind.score.screen import scores_to_csv
     scores_to_csv(pv, out)
 
-main()
+if __name__ == "__main__":
+    main()

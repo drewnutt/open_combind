@@ -5,7 +5,7 @@ import pandas as pd
 from glob import glob
 from plumbum.cmd import obrms
 from rdkit.Chem import AllChem as Chem
-from utils import basename, mp, mkdir, np_load
+from open_combind.utils import basename, mp, mkdir, np_load
 
 IFP = {'rd1':    {'version'           : 'rd1',
                    'level'             : 'residue',
