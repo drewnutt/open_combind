@@ -1,12 +1,18 @@
 name: docs
 channels:
+  - conda-forge
 dependencies:
     # Base depends
   - python
   - pip
+  - rdkit
+  - pandas
+  - numpy
 
 
 
     # Pip-only installs
-  #- pip:
-
+  - pip:
+    - ProDy>=2.0
+    - click
+    - plumbum
