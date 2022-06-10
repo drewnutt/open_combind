@@ -39,11 +39,16 @@ jobs:
         df -h
         ulimit -a
 
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+    - name: Setup conda
+      uses: s-weigand/setup-conda@v1
       with:
+        update-conda: true
         python-version: ${{ matrix.python-version }}
+        conda-channels: anaconda, conda-forge
+    # - name: Set up Python ${{ matrix.python-version }}
+    #   uses: actions/setup-python@v2
+    #   with:
+    #     python-version: ${{ matrix.python-version }}
 
     - name: Testing Dependencies
       shell: bash
@@ -51,7 +56,6 @@ jobs:
         python -m pip install -U pytest pytest-cov codecov
 
     - name: Install RDKit
-      uses: s-weigand/setup-conda@v1
       run: |
         conda install -c conda-forge rdkit 
 
