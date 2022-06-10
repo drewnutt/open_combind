@@ -51,13 +51,9 @@ jobs:
         python -m pip install -U pytest pytest-cov codecov
 
     - name: Install RDKit
-      shell: bash
+      uses: s-weigand/setup-conda@v1
       run: |
-        $CONDA/bin/conda install -c conda-forge rdkit 
-    - name: Add RDKit to PATH
-      shell: bash
-      run: |
-              export PATH=$CONDA:$PATH; echo $PATH; export PYTHONPATH=$CONDA:$PYTHONPATH;echo $PYTHONPATH
+        conda install -c conda-forge rdkit 
 
     - name: Install package
       shell: bash
