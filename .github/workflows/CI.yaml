@@ -20,17 +20,19 @@ on:
 
 jobs:
   test:
-    name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    name: Test on ${{ matrix.config.os }}, Python ${{ matrix.config.python-version }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        # os: [macOS-latest, ubuntu-latest, windows-latest]
-        python-version: [3.8]
-        cc: "gcc"
-        cxx: "g++"
-        cmake_flags: "-DPYTHON_BINDINGS=ON -DRUN_SWIG=ON"
+        config:
+        - {
+                os: ubuntu-latest,
+                # os: [macOS-latest, ubuntu-latest, windows-latest]
+                python-version: 3.8,
+                cc: "gcc", cxx: "g++",
+                cmake_flags: "-DPYTHON_BINDINGS=ON -DRUN_SWIG=ON"
         # python-version: [3.7, 3.8, 3.9]
+             }
 
     steps:
     - uses: actions/checkout@v1
@@ -66,7 +68,7 @@ jobs:
       uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.config.python-version }}
         conda-channels: anaconda, conda-forge
     # - name: Set up Python ${{ matrix.python-version }}
     #   uses: actions/setup-python@v2
@@ -97,4 +99,4 @@ jobs:
       with:
         file: ./coverage.xml
         flags: unittests
-        name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+        name: codecov-${{ matrix.config.os }}-py${{ matrix.config.python-version }}
