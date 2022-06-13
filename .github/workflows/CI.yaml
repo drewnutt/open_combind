@@ -49,20 +49,15 @@ jobs:
       run: |
         sudo apt -yq install ninja-build swig libeigen3-dev libboost-all-dev cmake
 
-    - name: Get OpenBabel Tarball
+    - name: Get OpenBabel (From Tarball)
       if: runner.os == 'Linux'
       shell: bash
       run: |
         wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 -C "${{ runner.workspace }}"
         mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
         cmake "${{ runner.workspace }}/openbabel-3.1.1" -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
-    - name: Build Openbabel
-      run: CC=${{matrix.config.cc}} CXX=${{matrix.config.cxx}} cmake --build .
-      shell: bash
-      working-directory: ${{ runner.workspace }}/build
-   
-    - name: back home
-      run: cd ${{ runner.workspace }}
+        make -j4
+        sudo make install
 
     - name: Setup conda
       uses: s-weigand/setup-conda@v1
