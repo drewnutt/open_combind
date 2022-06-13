@@ -47,15 +47,15 @@ jobs:
     - name: Install Dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
-        sudo apt -yq -o Debug::pkgProblemResolver=true -o Debug::Acquire::http=true install ninja-build swig libeigen3-dev libboost-all-dev cmake
+        sudo apt -yq install ninja-build swig libeigen3-dev libboost-all-dev cmake
 
     - name: Get OpenBabel Tarball
       if: runner.os == 'Linux'
       shell: bash
       run: |
         wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 
-        mkdir build && cd build
-        cmake ../openbabel-3.1.1 -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
+        mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
+        cmake "${{ runner.workspace }}/openbabel-3.1.1" -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
     - name: Build Openbabel
       run: CC=${{matrix.config.cc}} CXX=${{matrix.config.cxx}} cmake --build .
       shell: bash
