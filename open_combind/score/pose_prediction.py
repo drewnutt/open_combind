@@ -39,7 +39,7 @@ class PosePrediction:
 
         * Scale docking scores by - self.alpha *
         """
-        single = [logit(self.data['gscore'][ligand]) for ligand in self.ligands]
+        single = [self.data['gscore'][ligand] for ligand in self.ligands]
         single = [self.pad(x, self.max_poses,C=np.nan) for x in single]
         single = np.vstack(single)
         single *= -self.alpha

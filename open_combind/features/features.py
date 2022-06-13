@@ -6,6 +6,7 @@ from glob import glob
 from plumbum.cmd import obrms
 from rdkit.Chem import AllChem as Chem
 from open_combind.utils import basename, mp, mkdir, np_load
+from scipy.special import logit
 
 IFP = {'rd1':    {'version'           : 'rd1',
                    'level'             : 'residue',
@@ -264,7 +265,7 @@ class Features:
         gscores = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
         for st in sts:
-            gscores += [float(st.GetProp('CNNscore'))]
+            gscores += [logit(float(st.GetProp('CNNscore')))]
             if len(gscores) == self.max_poses:
                 break
         np.save(out, gscores)
