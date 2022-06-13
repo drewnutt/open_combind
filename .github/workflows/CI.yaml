@@ -55,9 +55,9 @@ jobs:
       run: |
         wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 -C "${{ runner.workspace }}"
         mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
-        cmake "${{ runner.workspace }}/openbabel-3.1.1" -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
-        make -j4
-        sudo make install
+        cwd && cmake "${{ runner.workspace }}/openbabel-3.1.1" -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
+        cd "${{ runner.workspace }}/build" && make -j4
+        cd "${{ runner.workspace }}/build" && sudo make install
 
     - name: Setup conda
       uses: s-weigand/setup-conda@v1
