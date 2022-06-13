@@ -53,7 +53,7 @@ jobs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 
+        wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 -C "${{ runner.workspace }}"
         mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
         cmake "${{ runner.workspace }}/openbabel-3.1.1" -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
     - name: Build Openbabel
