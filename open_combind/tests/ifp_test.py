@@ -1,5 +1,5 @@
 import pytest
-import ifp
+from open_combind.features import ifp
 import gzip
 from rdkit.Chem.rdmolfiles import MaeMolSupplier
 
@@ -25,7 +25,7 @@ settings = {'version'           : 'rd1',
 
 settings['nonpolar'] = {6:1.7, 9:1.47, 17:1.75, 35:1.85, 53:1.98}
 
-with gzip.open('test/3ZPR_lig-to-2VT4_pv.maegz') as fp:
+with gzip.open('3ZPR_lig-to-2VT4_pv.maegz') as fp:
     mols =  MaeMolSupplier(fp, removeHs=False)
     protein = ifp.Molecule(next(mols), True, settings)
     ligands = [ifp.Molecule(mol, False, settings) for mol in mols]

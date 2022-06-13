@@ -3,7 +3,7 @@ import os
 import sys
 import numpy as np
 
-from score.density_estimate import DensityEstimate
+from open_combind.score.density_estimate import DensityEstimate
 
 def test_average():
 	de1 = DensityEstimate(points = 3, domain = (0, 2))
