@@ -185,13 +185,11 @@ should be aggregrated. (Most query ligands have 20 associated helper ligands.)
 
 ## Installation
 
-Start by cloning this git repository.
-
-ComBind requires access to [Gnina](https://github.com/gnina/gnina), [ProDy](https://github.com/prody/ProDy),
-[OpenBabel](https://openbabel.org/wiki/Main_Page), and [RDKit](https://github.com/rdkit/rdkit).
-
-To setup the environment before each use, run
-`source setup.sh` to set combind specific environmental variables.
+    1. Install [OpenBabel](http://openbabel.org/wiki/Category:Installation)
+    2. Install [RDKit](https://github.com/rdkit/rdkit). This is most easily done by using anaconda (`conda install rdkit -c conda-forge`), but you can also install from source if you would like.
+    3. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
+    3. Clone this repository
+    4. `cd` into the cloned repository and run `pip install .`. This will install any remaining dependencies.
 
 ### Copyright
 
