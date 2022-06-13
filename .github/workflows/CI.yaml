@@ -30,7 +30,6 @@ jobs:
                 # os: [macOS-latest, ubuntu-latest, windows-latest]
                 python-version: 3.8,
                 cc: "gcc", cxx: "g++",
-                cmake_flags: "-DPYTHON_BINDINGS=ON -DRUN_SWIG=ON"
         # python-version: [3.7, 3.8, 3.9]
              }
 
@@ -55,7 +54,7 @@ jobs:
       run: |
         wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 -C "${{ runner.workspace }}"
         mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
-        cwd && cmake "${{ runner.workspace }}/openbabel-3.1.1" -GNinja -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}} ${{matrix.config.cmake_flags}}
+        pwd && cmake "${{ runner.workspace }}/openbabel-3.1.1"
         cd "${{ runner.workspace }}/build" && make -j4
         cd "${{ runner.workspace }}/build" && sudo make install
 
