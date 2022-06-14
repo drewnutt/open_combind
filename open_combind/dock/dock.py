@@ -9,10 +9,6 @@ def docking_failed(gnina_log):
         return False
     with open(gnina_log) as fp:
         logtxt = fp.read()
-    # phrases = ['** NO ACCEPTABLE LIGAND POSES WERE FOUND **',
-    #            'NO VALID POSES AFTER MINIMIZATION: SKIPPING.',
-    #            'No Ligand Poses were written to external file',
-    #            'GLIDE WARNING: Skipping refinement, etc. because rough-score step failed.']
     # Need to compile list of Gnina failure logs
         phrases = []
     return any(phrase in logtxt for phrase in phrases)
@@ -31,8 +27,8 @@ def check_dock_line(infile):
 
     return infile
 
-def dock(template, ligands, root, name, enhanced, infile=None, reference=None, slurm=False):
-    outfile = "{inlig}-docked.sdf.gz"
+def dock(template, ligands, root, name, enhanced, infile=None, reference=None, slurm=False, now=False):
+    outfile = "docked/{inlig}-docked.sdf.gz"
     if infile is None:
         infile = GNINA
     else:
@@ -44,6 +40,8 @@ def dock(template, ligands, root, name, enhanced, infile=None, reference=None, s
     recname = os.path.splitext(os.path.split(dock_template.split('-r')[-1].strip().split(' ')[0])[1])[0]
     # aboxname = os.path.splitext(os.path.split(dock_template.split('--autobox_ligand')[-1].strip().split(' ')[0])[1])[0]
     dock_line = dock_template + infile
+    if slurm:
+        dock_line = dock_line.replace('>', '--cpu 1 >')
 
     gnina_in = '{}_docking_file.txt'.format(recname)
     with open(gnina_in, 'w') as fp:
@@ -61,7 +59,9 @@ def dock(template, ligands, root, name, enhanced, infile=None, reference=None, s
                 os.system('mkdir {}'.format(_r))
             fp.write(dock_line.format(lig=lig,out=out,exh=exh,log=gnina_log))
 
-    if slurm:
+    if now:
+        run_gnina_docking(gnina_in)
+    elif slurm:
         receptor = dock_template.split('-r')[-1].strip().split(' ')[0]
         abox = dock_template.split('--autobox_ligand')[-1].strip().split(' ')[0]
         setup_slurm(gnina_in,ligands,receptor,abox)
@@ -82,28 +82,21 @@ def setup_slurm(gnina_in,ligands,receptor,abox):
     cwd = os.getcwd() + '/'
     os.system(f'sed -i s,{cwd},,g {gnina_in}')
 
+def run_gnina_docking(gnina_dock_file):
+    from tqdm import tqdm
+    import mmap
+    def get_num_lines(file_path):
+        fp = open(file_path, "r+")
+        buf = mmap.mmap(fp.fileno(), 0)
+        lines = 0
+        while buf.readline():
+            lines += 1
+        return lines
+    print("Running GNINA docking")
+    with open(gnina_dock_file) as gnina_cmds:
+        for gnina_cmd in tqdm(gnina_cmds,total=get_num_lines(gnina_dock_file)):
+            gnina_run, logfile = gnina_cmd.split('>')
+            logfile = logfile.strip()
+            with open(logfile, 'w') as log:
+                subprocess.run(gnina_run.strip().split(), check=True, stderr=subprocess.STDOUT, stdout=log)
 
-# def filter_native(native, pv, out, thresh):
-#     with StructureReader(native) as sts:
-#         native = list(sts)
-#         assert len(native) == 1, len(native)
-#         native = native[0]
-
-#     near_native = []
-#     with StructureReader(pv) as reader:
-#         receptor = next(reader)
-#         for st in reader:
-#             conf_rmsd = ConformerRmsd(native, st)
-#             if conf_rmsd.calculate() < thresh:
-#                 near_native += [st]
-
-#     print('Found {} near-native poses'.format(len(near_native)))
-#     if not near_native:
-#         print('Resorting to native pose.')
-#         native.property['r_i_docking_score'] = -10.0
-#         near_native = [native]
-
-#     with StructureWriter(out) as writer:
-#         writer.append(receptor)
-#         for st in near_native:
-#             writer.append(st)
