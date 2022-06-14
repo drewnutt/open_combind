@@ -5,7 +5,7 @@ from open_combind.dock.struct_process import struct_process
 from open_combind.dock.grid import make_grid
 
 def test_struct_process():
-    input_file=["structures/raw/1FKN.pdb"]
+    input_file=["open_combind/tests/structures/raw/1FKN.pdb"]
     struct_process(input_file)
 
 # def test_struct_align():
