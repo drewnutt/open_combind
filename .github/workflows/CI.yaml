@@ -54,7 +54,7 @@ jobs:
       run: |
         wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 -C "${{ runner.workspace }}"
         mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
-        pwd && cmake "${{ runner.workspace }}/openbabel-3.1.1"
+        cmake "${{ runner.workspace }}/openbabel-3.1.1"
         cd "${{ runner.workspace }}/build" && make -j4
         cd "${{ runner.workspace }}/build" && sudo make install
 
@@ -95,3 +95,6 @@ jobs:
         flags: unittests
         verbose: true
         name: codecov-${{ matrix.config.os }}-py${{ matrix.config.python-version }}
+
+    - name: Upload CodeCov
+      run: curl -Os https://uploader.codecov.io/latest/linux/codecov && chmod +x codecov && ./codecov
