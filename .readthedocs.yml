@@ -14,7 +14,7 @@ build:
   jobs:
     post_install:
       - wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 
-      - mkdir openbabel && tar xjf openbabel-3.1.1-source.tar.bz2 -C openbabel
+      - mkdir openbabel && tar xjvf openbabel-3.1.1-source.tar.bz2 -C openbabel
       - mkdir build
       - cd build && cmake ../openbabel
       - make -j4 && sudo make install
