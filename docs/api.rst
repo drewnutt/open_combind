@@ -9,4 +9,11 @@ API Documentation
    open_combind.dock_ligands
    open_combind.featurize
    open_combind.pose_prediction
-   open_combind.extract_top_poses
+    
+Main Combind Commands
+=================
+.. automodule:: open_combind
+   ::members::
+   :undoc-members:
+   :show-inheritance:
+
