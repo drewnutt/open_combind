@@ -6,15 +6,17 @@ API Documentation
     
 Main Combind Commands
 ---------------------
-.. automodule:: open_combind
-   :members:
-   :undoc-members:
+.. autofunction:: open_combind.structprep
 
-Docking Preparation Methods
----------------------------
-.. automodule:: open_combind.dock
-   :members:
-   :undoc-members:
+.. automethod:: open_combind.ligprep
+
+.. automethod:: open_combind.dock_ligands
+
+.. autofunction:: open_combind.featurize
+
+.. automethod:: open_combind.pose_prediction
+
+.. automethod:: open_combind.extract_top_poses
 
 Featurization
 -------------
@@ -28,11 +30,5 @@ Features
 Interaction Fingerprint (IFP)
 *****************************
 .. autoclass:: open_combind.features.ifp.Molecule
-   :members:
-   :undoc-members:
-
-Creating Distributions
-----------------------
-.. automodule:: open_combind.score
    :members:
    :undoc-members:
