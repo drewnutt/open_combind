@@ -72,7 +72,7 @@ def struct_process(structs,
                 other_lig = lig_info[2]
         else:
             lig_id = lig_info[0]
-            _ = get_ligands_frompdb(pdbfile,lig_code=lig_id,
+            _ = get_ligands_frompdb(_protein_in,lig_code=lig_id,
                     root=filtered_ligand,first_only=True)
         assert lig_id is not None
         print(f'processing {struct} with ligand {lig_id}')
