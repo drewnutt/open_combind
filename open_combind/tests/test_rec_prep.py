@@ -52,7 +52,7 @@ def test_struct_align():
             align_dir="open_combind/tests/structures/aligned")
 
     truth_lig="open_combind/tests/structures/aligned/{pdbid}_lig_truth.sdf"
-    truth_complex="open_combind/tests/structures/aligned/{pdbid}_complex_truth.pdb"
+    truth_complex="open_combind/tests/structures/aligned/{pdbid}/{pdbid}_complex_truth.pdb"
     for pdbid in input_structs:
         prot_truth = parsePDB(truth_complex.format(pdbid=pdbid))
         prot_test = parsePDB(aligned_prot.format(pdbid=pdbid))
