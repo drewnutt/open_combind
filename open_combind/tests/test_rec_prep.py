@@ -43,7 +43,7 @@ def test_struct_process():
 
 def test_struct_align():
     template = "1FKN"
-    input_structs=["3UDH"]
+    input_structs=["1FKN","3UDH"]
     filtered_protein="open_combind/tests/structures/processed/{pdbid}_complex.pdb"
     aligned_prot="open_combind/tests/structures/aligned/{pdbid}/{pdbid}_aligned.pdb"
     struct_align(template,input_structs, dist=15.0, retry=True,
