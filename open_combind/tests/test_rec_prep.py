@@ -10,12 +10,14 @@ from rdkit.Chem.rdMolAlign import CalcRMS
 def test_struct_process():
     input_file=["1FKN","3UDH"]
     filtered_protein="open_combind/tests/structures/processed/{pdbid}/{pdbid}_prot.pdb"
+    filtered_ligand="open_combind/tests/structures/processed/{pdbid}/{pdbid}_lig.sdf"
     filtered_complex="open_combind/tests/structures/processed/{pdbid}/{pdbid}_complex.pdb"
     struct_process(input_file,
             protein_in="open_combind/tests/structures/raw/{pdbid}.pdb",
             ligand_info="open_combind/tests/structures/raw/{pdbid}.info",
             filtered_protein=filtered_protein,
             filtered_complex=filtered_complex,
+            filtered_ligand=filtered_ligand,
             filtered_hetero="open_combind/tests/structures/processed/{pdbid}/{pdbid}_het.pdb",
             filtered_water="open_combind/tests/structures/processed/{pdbid}/{pdbid}_wat.pdb")
 
