@@ -26,7 +26,7 @@ def split_complex(st, pdb_id, structname,ligand_select='hetatm'):
 
     if not os.path.exists(prot_path):
         prot_st = st.select('protein')
-        if ligand_select is not "hetatm" or "hetero":
+        if ligand_select != "hetatm" or ligand_select != "hetero":
             prot_st = prot_st.select(f"not {ligand_select}")
         writePDB(prot_path,prot_st)
 
