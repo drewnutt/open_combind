@@ -1,11 +1,29 @@
 import os
 from prody import parsePDB, writePDB, matchChains, calcTransformation
+from rdkit.Chem import ForwardSDMolSupplier, SDWriter
+from rdkit.Chem.rdMolTransforms import TransformConformer
 
 def align_successful(out_dir, struct):
     if not os.path.exists('{0}/{1}/{1}_aligned.pdb'.format(out_dir, struct)):
         return False
     else:
         return True
+
+def align_separate_ligand(struct, trans_matrix,
+        downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
+        aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
+    ligand_path = downloaded_ligand.format(pdbid=struct)
+    if not os.path.isfile(ligand_path):
+        return False
+
+    lig_mol = next(ForwardSDMolSupplier(ligand_path))
+    TransformConformer(lig_mol.GetConformer(), trans_matrix)
+
+    writer = SDWriter(aligned_lig.format(pdbid=struct))
+    writer.write(lig_mol)
+    writer.close()
+    return True
+    
 
 def struct_align(template, structs, dist=15.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
@@ -25,6 +43,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
     else:
         selection_text = temp_liginfo[1]
     template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
+    transform_matrix = 0
     for struct in structs:
         query_path = filtered_protein.format(pdbid=struct)
         if align_successful(align_dir, struct):
@@ -58,10 +77,21 @@ def struct_align(template, structs, dist=15.0, retry=True,
         transform = calcTransformation(query_match,template_match)
         query_aligned = transform.apply(query)
 
+        transform_matrix = transform.getMatrix()
+
         writePDB(aligned_prot.format(pdbid=struct),query_aligned)
 
         if retry and not align_successful(align_dir, struct):
             print('Alignment failed. Trying again with a larger radius.')
-            struct_align(template, [struct], dist=25.0, retry=False,
+            transform_matrix = struct_align(template, [struct], dist=25.0, retry=False,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
+        
+        aligned_lig = align_separate_ligand(struct, transform_matrix)
+        if aligned_lig:
+            print("Successfully aligned separate ligand")
+        else:
+            print("No separate ligand found to align")
+
+    return transform_matrix
+

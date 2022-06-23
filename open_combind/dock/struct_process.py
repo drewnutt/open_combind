@@ -1,5 +1,7 @@
 import os
+import requests
 from prody import parsePDB, writePDB
+from rdkit.Chem import AllChem as Chem
 from subprocess import run
 import numpy as np
 
@@ -25,7 +27,7 @@ def load_complex(prot_in, lig_id, other_lig=None):
     else:
         important_ligand = prot_st.select(f'{lig_id}')
         if other_lig is not None:
-            prot_only = prot_only.select(f'not {other_lig}')
+            prot_only = prot_only.select(f'not {other_lig} and not {lig_id}')
         assert important_ligand is not None, f"nothing found with {lig_id} for {prot_in} to select as ligand"
     if len(np.unique(important_ligand.getAltlocs())) > 1:
         altlocs = np.unique(important_ligand.getAltlocs())
@@ -42,7 +44,7 @@ def struct_process(structs,
                    ligand_info='structures/raw/{pdbid}.info',
                    filtered_protein='structures/processed/{pdbid}/{pdbid}_prot.pdb',
                    filtered_complex='structures/processed/{pdbid}/{pdbid}_complex.pdb',
-                   filtered_ligand='structures/processed/{pdbid}/{pdbid}_lig.pdb',
+                   filtered_ligand='structures/processed/{pdbid}/{pdbid}_lig.sdf',
                    filtered_hetero='structures/processed/{pdbid}/{pdbid}_het.pdb',
                    filtered_water='structures/processed/{pdbid}/{pdbid}_wat.pdb'):
 
@@ -59,27 +61,25 @@ def struct_process(structs,
         if os.path.exists(_filtered_complex):
             continue
 
+        os.system('mkdir -p {}'.format(os.path.dirname(_workdir)))
+        os.system('rm -rf {}'.format(_workdir))
+        os.system('mkdir {}'.format(_workdir))
+
         other_lig = None
         lig_info = open(_ligand_info,'r').readlines()
         lig_info = [info_line.strip('\n') for info_line in lig_info]
-        nonstandard = False
         if len(lig_info[0]) not in [3,4]:
             lig_id = lig_info[1]
             print(f"Non-standard RCSB ligand name:{lig_info[0]}")
             print(f"Using {lig_id} as the selection criterion")
-            nonstandard = True
             if len(lig_info) > 2:
                 other_lig = lig_info[2]
         else:
             lig_id = lig_info[0]
             _ = get_ligands_frompdb(_protein_in,lig_code=lig_id,
-                    root=filtered_ligand,first_only=True)
+                    save_file=_filtered_ligand,first_only=True)
         assert lig_id is not None
         print(f'processing {struct} with ligand {lig_id}')
-
-        os.system('mkdir -p {}'.format(os.path.dirname(_workdir)))
-        os.system('rm -rf {}'.format(_workdir))
-        os.system('mkdir {}'.format(_workdir))
 
         compl, prot, waters, het, ligand = load_complex(_protein_in, lig_id, other_lig=other_lig)
         writePDB(_filtered_protein,prot)
@@ -87,11 +87,10 @@ def struct_process(structs,
             writePDB(_filtered_water,waters)
         if het is not None:
             writePDB(_filtered_hetero,het)
-        if nonstandard:
-            writePDB(_filtered_ligand,ligand)
+
         writePDB(_filtered_complex,compl)
 
-def get_ligands_frompdb(pdbfile,lig_code=None,save_file='.',first_only=False):
+def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
     lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
     _,header = parsePDB(pdbfile,header=True)
     assert (lig_code is None)^(lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
@@ -111,7 +110,9 @@ def get_ligands_frompdb(pdbfile,lig_code=None,save_file='.',first_only=False):
         mol=Chem.MolFromMolBlock(page)
         assert mol is not None
         Chem.SanitizeMol(mol)
-        writer = Chem.SDWriter(f"{root}/{pdbid}_{chem_name}_{seq_id}.sdf")
+        if save_file is None:
+            save_file = f"{root}/{pdbid}_{chem_name}_{seq_id}.sdf"
+        writer = Chem.SDWriter(save_file)
         writer.write(mol)
         writer.close()
         if first_only:
