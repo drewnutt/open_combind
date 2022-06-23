@@ -56,8 +56,8 @@ def test_struct_align():
         prot_test = parsePDB(aligned_prot.format(pdbid=pdbid))
         assert calcRMSD(prot_test,prot_truth) == 0
 
-    lig_test = next(ForwardSDMolSupplier("open_combind/tests/structures/aligned/{pdbid}/{pdbid}_lig.sdf".format(pdbid=input_structs[0]))
-    lig_truth = next(ForwardSDMolSupplier(truth_lig.format(pdbid=input_structs[0]))
+    lig_test = next(ForwardSDMolSupplier("open_combind/tests/structures/aligned/{pdbid}/{pdbid}_lig.sdf".format(pdbid=input_structs[0])))
+    lig_truth = next(ForwardSDMolSupplier(truth_lig.format(pdbid=input_structs[0])))
     assert CalcRMS(lig_test, lig_truth) == 0
      
     
@@ -70,12 +70,12 @@ def test_struct_sort():
     lig_truth = "open_combind/tests/structures/ligands/{sdfid}_lig_truth.sdf"
     lig_test = "open_combind/tests/structures/ligands/{sdfid}_lig.sdf"
     for pdbid in input_structs:
-        prot_tu = parsePDB(prot_truth.format(pdbid=pdbid)
-        prot_te = parsePDB(prot_test.format(pdbid=pdbid)
-        assert prot_truth.numAtoms('protein') == prot_test.numAtoms('protein')
-        assert prot_test.numAtoms('hetero') == 0
-        assert prot_test.numAtoms('water') == 0
-        assert calcRMSD(prot_test,prot_truth) == 0
+        prot_tu = parsePDB(prot_truth.format(pdbid=pdbid))
+        prot_te = parsePDB(prot_test.format(pdbid=pdbid))
+        assert prot_tu.numAtoms('protein') == prot_te.numAtoms('protein')
+        assert prot_te.numAtoms('hetero') == 0
+        assert prot_te.numAtoms('water') == 0
+        assert calcRMSD(prot_te,prot_tu) == 0
 
         lig_tu = next(ForwardSDMolSupplier(lig_truth.format(pdbid=pdbid)))
         lig_te = next(ForwardSDMolSupplier(lig_test.format(pdbid=pdbid)))
