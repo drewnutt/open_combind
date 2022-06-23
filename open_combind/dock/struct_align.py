@@ -87,7 +87,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
-        aligned_lig = align_separate_ligand(struct, transform_matrix)
+            aligned_lig = align_separate_ligand(struct, transform_matrix, aligned_lig=align_dir+"/{pdbid}/{pdbid}_lig.sdf")
         if aligned_lig:
             print("Successfully aligned separate ligand")
         else:
