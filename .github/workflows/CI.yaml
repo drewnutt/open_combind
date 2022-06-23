@@ -46,7 +46,7 @@ jobs:
     - name: Install Dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
-        sudo apt -yq install libeigen3-dev libboost-all-dev openbabel
+        sudo apt -yq install openbabel
 
     # - name: Get OpenBabel (From Tarball)
     #   if: runner.os == 'Linux'
