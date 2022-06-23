@@ -47,7 +47,7 @@ def test_struct_align():
     struct_align(template,input_structs, dist=15.0, retry=True,
             filtered_protein=filtered_protein,
             aligned_prot=aligned_prot,
-            aligned_dir="open_combind/tests/structures/aligned")
+            align_dir="open_combind/tests/structures/aligned")
 
     truth_lig="open_combind/tests/structures/aligned/{pdbid}_lig_truth.sdf"
     truth_complex="open_combind/tests/structures/aligned/{pdbid}_complex_truth.pdb"
