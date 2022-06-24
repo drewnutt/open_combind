@@ -7,12 +7,15 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
     mol = Chem.Mol(inmol)
     Chem.SanitizeMol(mol)
     mol = Chem.AddHs(mol)
-    if confgen == 'etkdg_v1':
-        cids = Chem.EmbedMultipleConfs(mol, num_confs, Chem.ETKDG())
-    elif confgen == 'etkdg_v2':
-        cids = Chem.EmbedMultipleConfs(mol, num_confs, Chem.ETKDGv2())
+    if num_confs > 0:
+        if confgen == 'etkdg_v1':
+            cids = Chem.EmbedMultipleConfs(mol, num_confs, Chem.ETKDG())
+        elif confgen == 'etkdg_v2':
+            cids = Chem.EmbedMultipleConfs(mol, num_confs, Chem.ETKDGv2())
+        else:
+            cids = Chem.EmbedMultipleConfs(mol, num_confs)
     else:
-        cids = Chem.EmbedMultipleConfs(mol, num_confs)
+        cids = [-1]
     cenergy = []
     for conf in cids:
         if ff == 'UFF':
@@ -28,24 +31,24 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
 
     assert mol.GetConformer(best_conf).Is3D(), f"can't make {mol.GetProp('_Name')} into 3d"
 
-    return mol, best_conf
+    return mol, best_conf, cenergy[best_conf]
 
 
 def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10,):
-    mol, best_conf = make3DConf(inmol, num_confs=num_confs,
+    mol, best_conf, _ = make3DConf(inmol, num_confs=num_confs,
                                 confgen=confgen, ff=ff)
 
     writer = Chem.SDWriter(out_fname)
     writer.write(mol, best_conf)
     writer.close()
 
-def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF'):
+def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=10):
     input_info = open(input_file).readlines()
     if len(input_info) == 1:
         mol = Chem.MolFromSmiles(input_info[0].strip())
         mol.SetProp('_Name', os.path.basename(input_file).replace('.smi', ''))
 
-        write3DConf(mol, output_file, confgen=confgen, ff=ff)
+        write3DConf(mol, output_file, confgen=confgen, ff=ff, num_confs=num_confs)
     else:
         writer = Chem.SDWriter(output_file)
         for line in input_info:
@@ -54,18 +57,18 @@ def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF'):
             mol = Chem.MolFromSmiles(smile)
             mol.SetProp('_Name', name)
 
-            mol, best_conf = make3DConf(mol, confgen=confgen, ff=ff)
+            mol, best_conf = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs)
        
             writer.write(mol, best_conf)
 
         writer.close()
 
-def ligprep(smiles):
+def ligprep(smiles,num_confs=10,confgen='etkdg_v2'):
     sdf_file = smiles.replace('.smi', '.sdf')
-    ligprocess(smiles, sdf_file)
+    ligprocess(smiles, sdf_file, num_confs=num_confs, confgen=confgen)
 
 def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
-        confgen='etkdg_v2', ff='UFF', processes=1):
+        confgen='etkdg_v2', ff='UFF', processes=1,num_confs=10):
     if os.path.splitext(big_sdf)[-1] == ".gz":
         big_sdf_data = gzip.open(big_sdf)
     else:
@@ -85,7 +88,7 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
             name = ligand.GetProp(name_prop)
         _sdf = f"{root}/{name}.sdf"
         if not os.path.exists(_sdf):
-            unfinished.append((ligand, _sdf, confgen, ff))
+            unfinished.append((ligand, _sdf, confgen, ff, num_confs))
 
     if not multiplex:
         from utils import mp
@@ -97,7 +100,7 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
             print(f"Creating {output_file} with {len(unfinished)} ligands")
             writer = Chem.SDWriter(output_file)
             for lig, _, confgen, ff in unfinished:
-                mol, best_conf = make3DConf(lig, confgen=confgen, ff=ff)
+                mol, best_conf = make3DConf(lig, confgen=confgen, ff=ff, num_confs=num_confs)
            
                 writer.write(mol, best_conf)
 

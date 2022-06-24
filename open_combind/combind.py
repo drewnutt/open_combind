@@ -97,7 +97,11 @@ def structprep(struct, templ_struct):
 @click.option('--ligand-smiles', default='SMILES')
 @click.option('--delim', default=',')
 @click.option('--processes', default=1)
-def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, processes, sdffile):
+@click.option('--num_confs', default=10)
+@click.option('--confgen', default='etkdg_v2')
+def ligprep(smiles, root, multiplex, ligand_names,
+        ligand_smiles, delim, processes, sdffile,
+        num_confs, confgen):
     """
     Prepare ligands for docking, from smiles or sdf.
 
@@ -130,7 +134,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
                 with open(_smiles, 'w') as fp:
                     for _, ligand in ligands.iterrows():
                         fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                ligprep(_smiles)
+                ligprep(_smiles,num_confs=num_confs,confgen=confgen)
         else:
             unfinished = []
             for _, ligand in ligands.iterrows():
@@ -143,10 +147,10 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
                     mkdir(_root)
                     with open(_smiles, 'w') as fp:
                         fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                    unfinished += [(_smiles,)]
+                    unfinished += [(_smiles,num_confs,confgen)]
             mp(ligprep, unfinished, processes)
     else:
-        ligsplit(smiles, root, multiplex=multiplex, processes=processes)
+        ligsplit(smiles, root, multiplex=multiplex, processes=processes, num_confs=num_confs, confgen=confgen)
 
 @main.command()
 @click.argument('ligands', nargs=-1)
@@ -154,8 +158,9 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
 @click.option('--template')
 @click.option('--screen', is_flag=True)
 @click.option('--slurm', is_flag=True)
+@click.option('--now', is_flag=True)
 @click.option('--dock_file')
-def dock_ligands(template, root, ligands, screen, slurm, dock_file):
+def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
     """
     Dock "ligands" to "grid".
 
@@ -198,7 +203,7 @@ def dock_ligands(template, root, ligands, screen, slurm, dock_file):
         _roots.append(_root)
         names.append(name)
     print(f"Writing docking file for {len(ligs)} ligands")
-    dock(template, ligands, _roots, names, not screen, slurm=slurm, infile=dock_file)
+    dock(template, ligands, _roots, names, not screen, slurm=slurm, now=now, infile=dock_file)
 
 ################################################################################
 
