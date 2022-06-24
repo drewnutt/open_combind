@@ -121,6 +121,7 @@ def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
         else:
             molecules.append(mol)
     return molecules
+
 def get_ligands(pdbfile):
     liginfo_path = pdbfile.replace('.pdb','.info')
     liginfo = open(liginfo_path,'r').readlines()

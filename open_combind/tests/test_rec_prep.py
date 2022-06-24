@@ -1,3 +1,4 @@
+import os
 from open_combind import structprep
 from open_combind.dock.struct_align import struct_align
 from open_combind.dock.struct_sort import struct_sort
@@ -42,17 +43,15 @@ def test_struct_process():
 
 
 def test_struct_align():
-    template = "1FKN"
     input_structs=["1FKN","3UDH"]
-    filtered_protein="open_combind/tests/structures/processed/{pdbid}_complex.pdb"
+    template = sorted(input_structs)[0]
+    filtered_protein="open_combind/tests/structures/processed/{pdbid}/{pdbid}_complex.pdb"
     aligned_prot="open_combind/tests/structures/aligned/{pdbid}/{pdbid}_aligned.pdb"
     struct_align(template,input_structs, dist=15.0, retry=True,
             filtered_protein=filtered_protein,
             aligned_prot=aligned_prot,
             align_dir="open_combind/tests/structures/aligned")
 
-    os.listdir("open_combind/tests/structures/aligned/")
-    os.listdir("open_combind/tests/structures/aligned/1FKN")
     truth_lig="open_combind/tests/structures/aligned/{pdbid}_lig_truth.sdf"
     truth_complex="open_combind/tests/structures/aligned/{pdbid}_complex_truth.pdb"
     for pdbid in input_structs:
@@ -60,19 +59,21 @@ def test_struct_align():
         prot_test = parsePDB(aligned_prot.format(pdbid=pdbid))
         assert calcRMSD(prot_test,prot_truth) == 0
 
-    lig_test = next(ForwardSDMolSupplier("open_combind/tests/structures/aligned/{pdbid}/{pdbid}_lig.sdf".format(pdbid=input_structs[0])))
-    lig_truth = next(ForwardSDMolSupplier(truth_lig.format(pdbid=input_structs[0])))
-    assert CalcRMS(lig_test, lig_truth) == 0
+    print(os.listdir("open_combind/tests/structures/aligned/3UDH/"))
+    for pdbid in input_structs[1:]:
+        lig_test = next(ForwardSDMolSupplier("open_combind/tests/structures/aligned/{pdbid}/{pdbid}_lig.sdf".format(pdbid=pdbid)))
+        lig_truth = next(ForwardSDMolSupplier(truth_lig.format(pdbid=pdbid)))
+        assert CalcRMS(lig_test, lig_truth) == 0
      
     
 def test_struct_sort():
     input_structs=["1FKN","3UDH"]
-    struct_sort(input_structs)
+    struct_sort(input_structs, opt_path = "open_combind/tests/structures/aligned/{pdbid}/{pdbid}_aligned.pdb")
 
     prot_truth = "open_combind/tests/structures/proteins/{pdbid}_prot_truth.pdb"
     prot_test = "open_combind/tests/structures/proteins/{pdbid}_prot.pdb"
-    lig_truth = "open_combind/tests/structures/ligands/{sdfid}_lig_truth.sdf"
-    lig_test = "open_combind/tests/structures/ligands/{sdfid}_lig.sdf"
+    lig_truth = "open_combind/tests/structures/ligands/{pdbid}_lig_truth.sdf"
+    lig_test = "open_combind/tests/structures/ligands/{pdbid}_lig.sdf"
     for pdbid in input_structs:
         prot_tu = parsePDB(prot_truth.format(pdbid=pdbid))
         prot_te = parsePDB(prot_test.format(pdbid=pdbid))

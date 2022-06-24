@@ -4,7 +4,7 @@ from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
 
 def align_successful(out_dir, struct):
-    if not os.path.exists('{0}/{1}/{1}_aligned.pdb'.format(out_dir, struct)):
+    if not os.path.isfile('{0}/{1}/{1}_aligned.pdb'.format(out_dir, struct)):
         return False
     else:
         return True
@@ -13,12 +13,14 @@ def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
     ligand_path = downloaded_ligand.format(pdbid=struct)
+    print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
 
     lig_mol = next(ForwardSDMolSupplier(ligand_path))
     TransformConformer(lig_mol.GetConformer(), trans_matrix)
 
+    print("writing lig")
     writer = SDWriter(aligned_lig.format(pdbid=struct))
     writer.write(lig_mol)
     writer.close()
@@ -31,7 +33,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
                  align_dir='structures/aligned'):
 
     template_path = filtered_protein.format(pdbid=template)
-    if not os.path.exists(template_path):
+    if not os.path.isfile(template_path):
         print('template not processed', template_path)
         return
 
@@ -51,7 +53,6 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
         print('align', struct, template)
 
-        os.system('mkdir -p {}'.format(align_dir))
         os.system('rm -rf {}/{}'.format(align_dir, struct))
         os.system('mkdir -p {}/{}'.format(align_dir, struct))
 
@@ -87,7 +88,9 @@ def struct_align(template, structs, dist=15.0, retry=True,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
-            aligned_lig = align_separate_ligand(struct, transform_matrix, aligned_lig=align_dir+"/{pdbid}/{pdbid}_lig.sdf")
+        aligned_lig = align_separate_ligand(struct, transform_matrix,
+                downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
+                aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf")
         if aligned_lig:
             print("Successfully aligned separate ligand")
         else:
