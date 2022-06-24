@@ -1,4 +1,4 @@
-REMARK Selection '(not chain D an...) and (protein)'
+REMARK Selection '(not chain C\n) and (protein)'
 ATOM      1  N   ARG A  43P     27.617  13.415  26.731  1.00 64.32           N  
 ATOM      2  CA  ARG A  43P     27.808  14.636  25.979  1.00 63.44           C  
 ATOM      3  C   ARG A  43P     28.735  14.379  24.753  1.00 63.38           C  
