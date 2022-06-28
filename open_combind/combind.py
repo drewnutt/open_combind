@@ -139,8 +139,8 @@ def ligprep(smiles, root, multiplex, ligand_names,
             unfinished = []
             for _, ligand in ligands.iterrows():
                 _name = ligand[ligand_names]
-                _root = f'{root}/{_name}'
-                _smiles = f'{_root}/{_name}.smi'
+                # _root = f'{root}/{_name}'
+                _smiles = f'{root}/{_name}.smi'
                 _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
                 if not os.path.exists(_sdf):

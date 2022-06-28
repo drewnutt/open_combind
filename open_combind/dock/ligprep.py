@@ -1,6 +1,5 @@
 import os
 import gzip
-# import subprocess
 from rdkit.Chem import AllChem as Chem
 
 def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
@@ -16,6 +15,7 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10,):
             cids = Chem.EmbedMultipleConfs(mol, num_confs)
     else:
         cids = [-1]
+    assert len(cids) > 0 
     cenergy = []
     for conf in cids:
         if ff == 'UFF':
