@@ -98,10 +98,11 @@ def structprep(struct, templ_struct):
 @click.option('--delim', default=',')
 @click.option('--processes', default=1)
 @click.option('--num_confs', default=10)
+@click.option('--max_iterations', default=200)
 @click.option('--confgen', default='etkdg_v2')
 def ligprep(smiles, root, multiplex, ligand_names,
         ligand_smiles, delim, processes, sdffile,
-        num_confs, confgen):
+        num_confs, confgen, max_iterations):
     """
     Prepare ligands for docking, from smiles or sdf.
 
@@ -125,16 +126,16 @@ def ligprep(smiles, root, multiplex, ligand_names,
         print('Prepping {} mols from {} in {}'.format(len(ligands), smiles, root))
         if multiplex:
             _name = os.path.splitext(os.path.basename(smiles))[0]
-            _root = f'{root}/{_name}'
-            _smiles = f'{_root}/{_name}.smi'
+            # _root = f'{root}/{_name}'
+            _smiles = f'{root}/{_name}.smi'
             _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
             if not os.path.exists(_sdf):
-                mkdir(_root)
+                # mkdir(_root)
                 with open(_smiles, 'w') as fp:
                     for _, ligand in ligands.iterrows():
                         fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                ligprep(_smiles,num_confs=num_confs,confgen=confgen)
+                ligprep(_smiles, num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
         else:
             unfinished = []
             for _, ligand in ligands.iterrows():
@@ -144,13 +145,14 @@ def ligprep(smiles, root, multiplex, ligand_names,
                 _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
                 if not os.path.exists(_sdf):
-                    mkdir(_root)
+                    # mkdir(_root)
                     with open(_smiles, 'w') as fp:
                         fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                    unfinished += [(_smiles,num_confs,confgen)]
+                    unfinished += [(_smiles, num_confs, confgen, max_iterations)]
             mp(ligprep, unfinished, processes)
     else:
-        ligsplit(smiles, root, multiplex=multiplex, processes=processes, num_confs=num_confs, confgen=confgen)
+        ligsplit(smiles, root, multiplex=multiplex, processes=processes,
+                num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
 
 @main.command()
 @click.argument('ligands', nargs=-1)
