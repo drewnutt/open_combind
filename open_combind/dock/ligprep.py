@@ -16,7 +16,7 @@ def construct_set_conformers(mol, num_confs, confgen):
         cids = Chem.EmbedMultipleConfs(mol, num_confs, ps )
     return cids
 
-def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=500):
+def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200):
     mol = Chem.Mol(inmol)
     Chem.SanitizeMol(mol)
     mol = Chem.AddHs(mol, addCoords=True)
@@ -43,7 +43,7 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=500):
     return mol, best_conf, cenergy[best_conf]
 
 
-def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=500):
+def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200):
     mol, best_conf, _ = make3DConf(inmol, num_confs=num_confs,
                                 confgen=confgen, ff=ff, maxIters=maxIters)
 
@@ -51,7 +51,7 @@ def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, ma
     writer.write(mol, best_conf)
     writer.close()
 
-def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=10,maxIters=500):
+def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=10,maxIters=200):
     input_info = open(input_file).readlines()
     if len(input_info) == 1:
         mol = Chem.MolFromSmiles(input_info[0].strip())
@@ -72,12 +72,12 @@ def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=
 
         writer.close()
 
-def ligprep(smiles,num_confs=10,confgen='etkdg_v2'):
+def ligprep(smiles,num_confs=10,confgen='etkdg_v2',maxIters=200):
     sdf_file = smiles.replace('.smi', '.sdf')
-    ligprocess(smiles, sdf_file, num_confs=num_confs, confgen=confgen)
+    ligprocess(smiles, sdf_file, num_confs=num_confs, confgen=confgen,maxIters=maxIters)
 
 def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
-        confgen='etkdg_v2', ff='UFF', processes=1,num_confs=10,maxIters=500):
+        confgen='etkdg_v2', ff='UFF', processes=1,num_confs=10,maxIters=200):
     if os.path.splitext(big_sdf)[-1] == ".gz":
         big_sdf_data = gzip.open(big_sdf)
     else:
