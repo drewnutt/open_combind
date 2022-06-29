@@ -19,12 +19,12 @@ def construct_set_conformers(mol, num_confs, confgen):
 def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=500):
     mol = Chem.Mol(inmol)
     Chem.SanitizeMol(mol)
-    mol = Chem.AddHs(mol)
+    mol = Chem.AddHs(mol, addCoords=True)
     if num_confs > 0:
         cids = construct_set_conformers(mol, num_confs, confgen)
     else:
         cids = [-1]
-    assert len(cids) > 0 
+    assert len(cids) > 0
     cenergy = []
     for conf in cids:
         if ff == 'UFF':
