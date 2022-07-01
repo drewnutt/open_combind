@@ -2,9 +2,9 @@
 
 import pandas as pd
 import numpy as np
-import click
 import os
 import sys
+import click
 from glob import glob
 
 from open_combind.utils import *
@@ -12,19 +12,14 @@ from open_combind.utils import *
 ###############################################################################
 
 # Defaults
-stats_root = 'stats_data/default'
-mcss_version = 'mcss16'
-shape_version = 'pharm_max'
-ifp_version = 'rd1'
+STATS_ROOT = 'stats_data/default'
+SHAPE_VERSION = 'pharm_max'
+IFP_VERSION = 'rd1'
 
-@click.group()
 def main():
     pass
 
-@main.command()
-@click.argument('struct', default='')
-@click.option('--templ-struct')
-def structprep(struct, templ_struct):
+def structprep(templ_struct, struct=''):
     """
     Prepare structures and make a docking template file.
 
@@ -88,21 +83,9 @@ def structprep(struct, templ_struct):
 
 # Not super sure what is absolutely necessary in this step, especially if starting from sdf
 # instead of starting from smiles
-@main.command()
-@click.argument('smiles')
-@click.option('--root', default='ligands')
-@click.option('--multiplex', is_flag=True)
-@click.option('--sdffile', is_flag=True)
-@click.option('--ligand-names', default='ID')
-@click.option('--ligand-smiles', default='SMILES')
-@click.option('--delim', default=',')
-@click.option('--processes', default=1)
-@click.option('--num_confs', default=10)
-@click.option('--max_iterations', default=200)
-@click.option('--confgen', default='etkdg_v2')
-def ligprep(smiles, root, multiplex, ligand_names,
-        ligand_smiles, delim, processes, sdffile,
-        num_confs, confgen, max_iterations):
+def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
+        ligand_smiles="SMILES", delim=",", sdffile=False,
+        num_confs=10, confgen='etkdg_v2', max_iterations=200, processes=1):
     """
     Prepare ligands for docking, from smiles or sdf.
 
@@ -154,15 +137,7 @@ def ligprep(smiles, root, multiplex, ligand_names,
         ligsplit(smiles, root, multiplex=multiplex, processes=processes,
                 num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
 
-@main.command()
-@click.argument('ligands', nargs=-1)
-@click.option('--root', default='docking')
-@click.option('--template')
-@click.option('--screen', is_flag=True)
-@click.option('--slurm', is_flag=True)
-@click.option('--now', is_flag=True)
-@click.option('--dock_file')
-def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
+def dock_ligands(template, ligands, dock_file, root='docking', screen=False, slurm=False, now=True):
     """
     Dock "ligands" to "grid".
 
@@ -209,21 +184,10 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 
 ################################################################################
 
-@main.command()
-@click.argument('root')
-@click.argument('poseviewers', nargs=-1)
-@click.option('--native', default='structures/ligands/*_lig.sdf')
-@click.option('--ifp-version', default=ifp_version)
-@click.option('--mcss-version', default=mcss_version)
-@click.option('--shape-version', default=shape_version)
-@click.option('--screen', is_flag=True)
-@click.option('--max-poses', default=100)
-@click.option('--no-mcss', is_flag=True)
-@click.option('--no-cnn', is_flag=True)
-@click.option('--use-shape', is_flag=True)
-@click.option('--processes', default=1)
-def featurize(root, poseviewers, native, ifp_version, mcss_version,
-              shape_version, screen, no_mcss, use_shape, processes, max_poses, no_cnn):
+def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
+            no_mcss=False, use_shape=False, max_poses=100, no_cnn=False,
+            screen=False, ifp_version=IFP_VERSION, shape_version=SHAPE_VERSION,
+            processes=1):
     from open_combind.features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
@@ -236,7 +200,7 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
     print(native_poses)
 
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
-                        mcss_version=mcss_version, max_poses=max_poses, cnn_scores=not no_cnn)
+                        max_poses=max_poses, cnn_scores=not no_cnn)
 
     features.compute_single_features(poseviewers, native_poses=native_poses)
 
@@ -251,17 +215,8 @@ def featurize(root, poseviewers, native, ifp_version, mcss_version,
 
 ################################################################################
 
-@main.command()
-@click.argument('root')
-@click.argument('out')
-@click.argument('ligands', nargs=-1)
-@click.option('--features', default='mcss,hbond,saltbridge,contact')
-@click.option('--alpha', default=1.0)
-@click.option('--stats-root', default=stats_root)
-@click.option('--restart', default=500)
-@click.option('--max-iterations', default=1000)
-def pose_prediction(root, out, ligands, alpha, stats_root,
-                    features, restart, max_iterations):
+def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge', 'contact'],
+                    alpha=1, stats_root=STATS_ROOT, restart=500, max_iterations=1000):
     """
     Run ComBind pose prediction.
     """
@@ -269,7 +224,6 @@ def pose_prediction(root, out, ligands, alpha, stats_root,
     from open_combind.score.statistics import read_stats
     from open_combind.features.features import Features
 
-    features = features.split(',')
 
     protein = Features(root)
     protein.load_features()

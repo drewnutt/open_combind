@@ -1,0 +1,246 @@
+#!/bin/env python3
+
+import pandas as pd
+import numpy as np
+import click
+import os
+import sys
+from glob import glob
+
+from open_combind.utils import *
+import open_combind as oc
+###############################################################################
+
+# Defaults
+STATS_ROOT = 'stats_data/default'
+SHAPE_VERSION = 'pharm_max'
+IFP_VERSION = 'rd1'
+
+@click.group()
+def main():
+    pass
+
+@main.command()
+@click.argument('struct', default='')
+@click.option('--templ-struct')
+def structprep(struct, templ_struct):
+    """
+    Prepare structures and make a docking template file.
+
+    "struct" specifies the name of the structure for which to make a docking
+    template file. (Not the full path, generally just the PDB code.) Defaults to the
+    structure with alphabetically lowest name.
+
+    The following directory structure is required:
+
+    \b
+    structures/
+        raw/
+            structure_name.pdb
+            structure_name.info (first line is Resname of ligand)
+            ...
+        processed/
+            structure_name/structure_name_prot.pdb
+            ...
+        aligned/
+            structure_name/structure_name_aligned.pdb
+            ...
+        proteins/
+            structure_name_prot.pdb
+            ...
+        ligands/
+            structure_name_lig.pdb
+            ...
+        template/
+            structure_name/structure_name
+            ...
+
+    The process can be started from any step, e.g. if you have processed
+    versions of your structures, you can place these in the processed directory.
+
+    Files ending with _lig contain only the small molecule ligand present in the
+    structure, and files ending with _prot contain everything else.
+    """
+    oc.structprep(templ_struct,struct=struct)
+
+# Not super sure what is absolutely necessary in this step, especially if starting from sdf
+# instead of starting from smiles
+@main.command()
+@click.argument('smiles')
+@click.option('--root', default='ligands')
+@click.option('--multiplex', is_flag=True)
+@click.option('--sdffile', is_flag=True)
+@click.option('--ligand-names', default='ID')
+@click.option('--ligand-smiles', default='SMILES')
+@click.option('--delim', default=',')
+@click.option('--processes', default=1)
+@click.option('--num_confs', default=10)
+@click.option('--max_iterations', default=200)
+@click.option('--confgen', default='etkdg_v2')
+def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, processes, sdffile, num_confs, confgen, max_iterations):
+    """
+    Prepare ligands for docking, from smiles or sdf.
+
+    Specifically, this will utilize RDKit to generate a 3D conformer for each of the ligands 
+
+    "smiles" should be a `delim` delimited file with columns "ligand-names"
+    and "ligand-smiles". Alternatively, "smiles" can be a SDF file with multiple
+    ligands as different entries, but you must specify "--sdffile".
+    
+    "root" specifies where the processed ligands will be written.
+
+    By default, an individual file will be made for each ligand. If multiplex is
+    set, then only one file, containing all the ligands, will be produced.
+
+    Multiprocessing is only supported for non-multiplexed mode.
+    """
+    oc.ligprep(smiles, root=root, multiplex=multiplex, ligand_names=ligand_names,
+            ligand_smiles=ligand_smiles, delim=delim, sdffile=sdffile,
+            num_confs=num_confs, confgen=confgen, max_iterations=max_iterations, processes=processes)
+
+@main.command()
+@click.argument('ligands', nargs=-1)
+@click.option('--root', default='docking')
+@click.option('--template')
+@click.option('--screen', is_flag=True)
+@click.option('--slurm', is_flag=True)
+@click.option('--now', is_flag=True)
+@click.option('--dock_file')
+def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
+    """
+    Dock "ligands" to "grid".
+
+    "root" specifies where the docking results will be written.
+
+    Setting "screen" limits the thoroughness of the pose sampling. Recommended
+    for screening, but not pose prediction.
+
+    "ligands" are paths to prepared ligand files. Multiple can be specified.
+
+    "dock_file" is a format string that will be used with all of the ligands to 
+    create a docking file. The default looks like:
+     "-l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log} \n"
+    """
+    oc.dock_ligands(template, ligands, dock_file, root=root, screen=screen, slurm=slurm, now=now)
+
+################################################################################
+
+@main.command()
+@click.argument('root')
+@click.argument('poseviewers', nargs=-1)
+@click.option('--native', default='structures/ligands/*_lig.sdf')
+@click.option('--ifp-version', default=IFP_VERSION)
+@click.option('--shape-version', default=SHAPE_VERSION)
+@click.option('--screen', is_flag=True)
+@click.option('--max-poses', default=100)
+@click.option('--no-mcss', is_flag=True)
+@click.option('--no-cnn', is_flag=True)
+@click.option('--use-shape', is_flag=True)
+@click.option('--processes', default=1)
+def featurize(root, poseviewers, native, ifp_version,
+        mcss_version, shape_version, screen, no_mcss,
+        use_shape, processes, max_poses, no_cnn):
+
+    oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
+                max_poses=max_poses, no_cnn=no_cnn, screen=screen, ifp_version=ifp_version,
+                shape_version=shape_version, processes=processes)
+################################################################################
+
+@main.command()
+@click.argument('root')
+@click.argument('out')
+@click.argument('ligands', nargs=-1)
+@click.option('--features', default='mcss,hbond,saltbridge,contact')
+@click.option('--alpha', default=1.0)
+@click.option('--stats-root', default=STATS_ROOT)
+@click.option('--restart', default=500)
+@click.option('--max-iterations', default=1000)
+def pose_prediction(root, out, ligands,
+                    alpha, stats_root, features, restart,
+                    max_iterations):
+    """
+    Run ComBind pose prediction.
+    """
+    features = features.split(',')
+
+    oc.pose_prediction(root, out, ligands, features=features,
+            alpha=alpha, stats_root=stats_root, restart=restart, max_iterations=max_iterations)
+
+# @main.command()
+# @click.argument('score-fname')
+# @click.argument('root')
+# @click.option('--stats-root', default=stats_root)
+# @click.option('--alpha', default=1.0)
+# @click.option('--features', default='shape,hbond,saltbridge,contact')
+# def screen(score_fname, root, stats_root, alpha, features):
+#     """
+#     Run ComBind screening.
+#     """
+#     from open_combind.score.screen import screen, load_features_screen
+#     from open_combind.score.statistics import read_stats
+
+#     features = features.split(',')
+#     stats = read_stats(stats_root, features)
+#     single, raw = load_features_screen(features, root)
+
+#     combind_energy = screen(single, raw, stats, alpha)
+#     np.save(score_fname, combind_energy)
+
+################################################################################
+
+# @main.command()
+# @click.argument('scores')
+# @click.argument('original_pvs', nargs=-1)
+# def extract_top_poses(scores, original_pvs):
+#     """
+#     Write top-scoring poses to a single file.
+#     """
+#     out = scores.replace('.csv', '.sdf.gz')
+#     scores = pd.read_csv(scores).set_index('ID')
+
+#     writer = Chem.SDWriter(out)
+
+#     counts = {}
+#     written = []
+#     for pv in original_pvs:
+#         sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+#         for st in sts:
+#             name = st.GetProp("_Name")
+#             if name not in counts:
+#                 counts[name] = 0
+#             else:
+#                 # counts is zero indexed.
+#                 counts[name] += 1
+
+#             if name in scores.index and scores.loc[name, 'POSE'] == counts[name]:
+#                 writer.append(st)
+#                 written += [name]
+
+#     assert len(written) == len(scores), written
+#     for name in scores.index:
+#         assert name in written
+
+# @main.command()
+# @click.argument('pv')
+# @click.argument('scores')
+# @click.argument('out', default=None)
+# def apply_scores(pv, scores, out):
+#     """
+#     Add ComBind screening scores to a poseviewer.
+#     """
+#     from open_combind.score.screen import apply_scores
+#     if out is None:
+#         out = pv.replace('_pv.maegz', '_combind_pv.maegz')
+#     apply_scores(pv, scores, out)
+
+@main.command()
+@click.argument('pv')
+@click.argument('out', default=None)
+def scores_to_csv(pv, out):
+    """
+    Write docking and ComBind scores to text.
+    """
+    oc.scores_to_csv(pv, out)
+
+if __name__ == "__main__":
+    main()
