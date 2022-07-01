@@ -16,11 +16,24 @@ STATS_ROOT = 'stats_data/default'
 SHAPE_VERSION = 'pharm_max'
 IFP_VERSION = 'rd1'
 
-@click.group()
-def main():
-    pass
 
-@main.command()
+class RunGroup(click.Group):
+    def get_command(self, ctx, cmd_name):
+        # TODO: check if cmd_name is a file in the current dir and not require `run`?
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+        return None
+
+@click.command(cls=RunGroup, invoke_without_command=True)
+@click.version_option(version=oc.__version__)
+@click.pass_context
+def cli(ctx):
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@cli.command()
 @click.argument('struct', default='')
 @click.option('--templ-struct')
 def structprep(struct, templ_struct):
@@ -61,11 +74,10 @@ def structprep(struct, templ_struct):
     Files ending with _lig contain only the small molecule ligand present in the
     structure, and files ending with _prot contain everything else.
     """
-    oc.structprep(templ_struct,struct=struct)
+    oc.structprep(templ_struct, struct=struct)
 
-# Not super sure what is absolutely necessary in this step, especially if starting from sdf
-# instead of starting from smiles
-@main.command()
+
+@cli.command()
 @click.argument('smiles')
 @click.option('--root', default='ligands')
 @click.option('--multiplex', is_flag=True)
@@ -77,7 +89,8 @@ def structprep(struct, templ_struct):
 @click.option('--num_confs', default=10)
 @click.option('--max_iterations', default=200)
 @click.option('--confgen', default='etkdg_v2')
-def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, processes, sdffile, num_confs, confgen, max_iterations):
+def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles,
+            delim, processes, sdffile, num_confs, confgen, max_iterations):
     """
     Prepare ligands for docking, from smiles or sdf.
 
@@ -86,7 +99,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
     "smiles" should be a `delim` delimited file with columns "ligand-names"
     and "ligand-smiles". Alternatively, "smiles" can be a SDF file with multiple
     ligands as different entries, but you must specify "--sdffile".
-    
+
     "root" specifies where the processed ligands will be written.
 
     By default, an individual file will be made for each ligand. If multiplex is
@@ -98,7 +111,8 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles, delim, process
             ligand_smiles=ligand_smiles, delim=delim, sdffile=sdffile,
             num_confs=num_confs, confgen=confgen, max_iterations=max_iterations, processes=processes)
 
-@main.command()
+
+@cli.command()
 @click.argument('ligands', nargs=-1)
 @click.option('--root', default='docking')
 @click.option('--template')
@@ -125,7 +139,8 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 
 ################################################################################
 
-@main.command()
+
+@cli.command()
 @click.argument('root')
 @click.argument('poseviewers', nargs=-1)
 @click.option('--native', default='structures/ligands/*_lig.sdf')
@@ -138,15 +153,16 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 @click.option('--use-shape', is_flag=True)
 @click.option('--processes', default=1)
 def featurize(root, poseviewers, native, ifp_version,
-        mcss_version, shape_version, screen, no_mcss,
-        use_shape, processes, max_poses, no_cnn):
+            shape_version, screen, no_mcss,
+            use_shape, processes, max_poses, no_cnn):
 
     oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
                 max_poses=max_poses, no_cnn=no_cnn, screen=screen, ifp_version=ifp_version,
                 shape_version=shape_version, processes=processes)
 ################################################################################
 
-@main.command()
+
+@cli.command()
 @click.argument('root')
 @click.argument('out')
 @click.argument('ligands', nargs=-1)
@@ -233,7 +249,7 @@ def pose_prediction(root, out, ligands,
 #         out = pv.replace('_pv.maegz', '_combind_pv.maegz')
 #     apply_scores(pv, scores, out)
 
-@main.command()
+@cli.command()
 @click.argument('pv')
 @click.argument('out', default=None)
 def scores_to_csv(pv, out):
@@ -241,6 +257,3 @@ def scores_to_csv(pv, out):
     Write docking and ComBind scores to text.
     """
     oc.scores_to_csv(pv, out)
-
-if __name__ == "__main__":
-    main()
