@@ -257,3 +257,31 @@ def scores_to_csv(pv, out):
     Write docking and ComBind scores to text.
     """
     oc.scores_to_csv(pv, out)
+
+@cli.command()
+@click.argument('smiles')
+@click.option('--ligand-names', default='ID')
+@click.option('--ligand-smiles', default='SMILES')
+@click.option('--features', default='mcss,hbond,saltbridge,contact', help='which features to use for pose prediction')
+@click.option('--processes', default=-1, help='number of processes to use, -1 means use all available processes')
+def prep_dock_and_predict(smiles,features,ligand_names,ligand_smiles,processes):
+    """
+    Run the whole Open-Combind pipeline, from structure preparation all the way to pose prediction
+
+    Raw complexes are assumed to be in 'structures/raw/*.pdb' with associated info files in 'structures/raw/*.info'
+
+    SMILES is a comma delimited file containing the name and smiles strings of all of your docking ligands
+    """
+    oc.structprep(None)
+    oc.ligprep(smiles, root='ligands', multiplex=True, ligand_names=ligand_names,
+            ligand_smiles=ligand_smiles, delim=',', sdffile=False,
+            num_confs=10, confgen='etkdg_v2', max_iterations=500, processes=processes)
+    oc.dock_ligands(None, glob('ligands/*.sdf'), None, root='docked', screen=False, slurm=False, now=True)
+    no_mcss = not ('mcss' in features)
+    use_shape = 'shape' in features
+    oc.featurize('features', glob('docked/*.sdf.gz'), native='structures/ligands/*_lig.sdf', no_mcss=no_mcss, use_shape=use_shape,
+                max_poses=100, no_cnn=False, screen=False, ifp_version=IFP_VERSION,
+                shape_version=SHAPE_VERSION, processes=processes)
+    features = features.split(',')
+    oc.pose_prediction('features', 'poses.csv', None, features=features)
+
