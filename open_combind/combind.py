@@ -249,12 +249,6 @@ def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge',
                                         best_poses[ligand],
                                         crmsd, grmsd, brmsd]))+ '\n')
 
-@main.command()
-@click.argument('score-fname')
-@click.argument('root')
-@click.option('--stats-root', default=stats_root)
-@click.option('--alpha', default=1.0)
-@click.option('--features', default='shape,hbond,saltbridge,contact')
 def screen(score_fname, root, stats_root, alpha, features):
     """
     Run ComBind screening.
@@ -271,9 +265,6 @@ def screen(score_fname, root, stats_root, alpha, features):
 
 ################################################################################
 
-@main.command()
-@click.argument('scores')
-@click.argument('original_pvs', nargs=-1)
 def extract_top_poses(scores, original_pvs):
     """
     Write top-scoring poses to a single file.
@@ -303,10 +294,6 @@ def extract_top_poses(scores, original_pvs):
     for name in scores.index:
         assert name in written
 
-@main.command()
-@click.argument('pv')
-@click.argument('scores')
-@click.argument('out', default=None)
 def apply_scores(pv, scores, out):
     """
     Add ComBind screening scores to a poseviewer.
@@ -316,9 +303,6 @@ def apply_scores(pv, scores, out):
         out = pv.replace('_pv.maegz', '_combind_pv.maegz')
     apply_scores(pv, scores, out)
 
-@main.command()
-@click.argument('pv')
-@click.argument('out', default=None)
 def scores_to_csv(pv, out):
     """
     Write docking and ComBind scores to text.
