@@ -2,7 +2,7 @@ import os
 import tempfile
 import numpy as np
 from rdkit.Chem import ShapeTanimotoDist
-from utils import mp
+from open_combind.utils import mp
 
 # CMD = '$SCHRODINGER/shape_screen -shape {poses1} -screen {poses2} {typing} {norm} -distinct -inplace -NOJOBID'
 

@@ -100,7 +100,7 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
             unfinished.append((ligand, _sdf, confgen, ff, num_confs, maxIters))
 
     if not multiplex:
-        from utils import mp
+        from open_combind.utils import mp
         print(f"Creating {len(unfinished)} ligands in {root}")
         mp(write3DConf, unfinished, processes)
     else:

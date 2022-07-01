@@ -5,7 +5,7 @@ import os
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 # from plumbum.cmd import obrms
-from utils import mp
+from open_combind.utils import mp
 
 # To compute the substructure similarity for a pair of candidate poses, the maximum common
 # substructure of the two ligands is identified using Canvas (Schrodinger LLC) and then mapped

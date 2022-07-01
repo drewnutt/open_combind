@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from utils import np_load
+from open_combind.utils import np_load
 from schrodinger.structure import StructureReader, StructureWriter
 
 def load_features_screen(features, root):
