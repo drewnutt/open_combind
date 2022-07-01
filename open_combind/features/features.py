@@ -26,7 +26,7 @@ class Features:
     Organize feature computation and loading.
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
-                 mcss_custom='', max_poses=10000, pv_root=None,
+                 max_poses=10000, pv_root=None,
                  ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True):
         self.root = os.path.abspath(root)
         if pv_root is None:
@@ -34,7 +34,6 @@ class Features:
 
         self.ifp_version = ifp_version
         self.shape_version = shape_version
-        self.mcss_version = mcss_custom
         self.max_poses = max_poses
         self.ifp_features = ifp_features
         self.cnn_scores = cnn_scores
@@ -325,8 +324,8 @@ class Features:
     def compute_mcss(self, poses1, poses2, out, processes=1):
         if processes != 1:
             from open_combind.features.mcss import mcss_mp
-            rmsds = mcss_mp(poses1, poses2, self.mcss_version, processes)
+            rmsds = mcss_mp(poses1, poses2, processes)
         else:
             from open_combind.features.mcss import mcss
-            rmsds = mcss(poses1, poses2, self.mcss_version)
+            rmsds = mcss(poses1, poses2)
         np.save(out, rmsds)
