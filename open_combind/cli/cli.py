@@ -274,7 +274,7 @@ def prep_dock_and_predict(smiles,features,ligand_names,ligand_smiles,processes):
     """
     from rdkit.Chem import ForwardSDMolSupplier
     oc.structprep(None)
-    oc.ligprep(smiles, root='ligands', multiplex=True, ligand_names=ligand_names,
+    oc.ligprep(smiles, root='ligands', multiplex=False, ligand_names=ligand_names,
             ligand_smiles=ligand_smiles, delim=',', sdffile=False,
             num_confs=10, confgen='etkdg_v2', max_iterations=500, processes=processes)
     for lig_file in sorted(glob('structures/ligands/*.sdf'))[1:]:
