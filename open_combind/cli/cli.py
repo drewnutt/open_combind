@@ -272,10 +272,15 @@ def prep_dock_and_predict(smiles,features,ligand_names,ligand_smiles,processes):
 
     SMILES is a comma delimited file containing the name and smiles strings of all of your docking ligands
     """
+    from rdkit.Chem import ForwardSDMolSupplier
     oc.structprep(None)
     oc.ligprep(smiles, root='ligands', multiplex=True, ligand_names=ligand_names,
             ligand_smiles=ligand_smiles, delim=',', sdffile=False,
             num_confs=10, confgen='etkdg_v2', max_iterations=500, processes=processes)
+    for lig_file in sorted(glob('structures/ligands/*.sdf'))[1:]:
+        in_lig = next(ForwardSDMolSupplier(lig_file))
+        out_ligname = f"ligands/{lig_file.split('/')[-1]}"
+        oc.dock.ligprep.write3DConf(in_lig, out_ligname, num_confs=100)
     oc.dock_ligands(None, glob('ligands/*.sdf'), None, root='docked', screen=False, slurm=False, now=True)
     no_mcss = not ('mcss' in features)
     use_shape = 'shape' in features
