@@ -66,7 +66,7 @@ def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=
             mol = Chem.MolFromSmiles(smile)
             mol.SetProp('_Name', name)
 
-            mol, best_conf = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
+            mol, best_conf, _ = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
        
             writer.write(mol, best_conf)
 
