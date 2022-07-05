@@ -1,35 +1,47 @@
 import os
+import shutil
 from prody import parsePDB, writePDB
 from plumbum.cmd import obabel
 
-def split_complex(st, pdb_id, structname,ligand_select='hetatm'):
-    os.system('mkdir -p structures/proteins structures/ligands')
-    lig_path = 'structures/ligands/{}_lig.sdf'.format(pdb_id)
-    prot_path = 'structures/proteins/{}_prot.pdb'.format(pdb_id)
-    lig_pdb_path = 'structures/ligands/{}_lig.pdb'.format(pdb_id)
+def split_complex(complex_loc, pdb_id, structname,ligand_select='hetatm',
+        structures_loc = "structures/"):
+    st = parsePDB(complex_loc)
+    lig_path = '{structures_loc}ligands/{pdb_id}_lig.sdf'.format(structures_loc=structures_loc, pdb_id=pdb_id)
+    aligned_lig_path = '{structures_loc}aligned/{pdb_id}/{pdb_id}_lig.sdf'.format(structures_loc=structures_loc, pdb_id=pdb_id)
+    prot_path = '{structures_loc}proteins/{pdb_id}_prot.pdb'.format(structures_loc=structures_loc, pdb_id=pdb_id)
+    lig_pdb_path = '{structures_loc}ligands/{pdb_id}_lig.pdb'.format(structures_loc=structures_loc, pdb_id=pdb_id)
 
     if not os.path.exists(lig_path):
+        if not os.path.exists(aligned_lig_path):
+            print(f"No separate aligned ligand found for {structname}")
+            lig_st = st.select(f'{ligand_select}') 
+            assert lig_st is not None, f"no ligand found in {structname} using {ligand_select}"
+            writePDB(lig_pdb_path,lig_st)
 
-        lig_st = st.select(f'{ligand_select}') # 'hetero' == 'not (protein or nucleic)' so breaks if ATP or similar ligand
-        # therefore switched to 'hetatm'
-        assert lig_st is not None, f"no ligand found in {structname} using {ligand_select}"
-        writePDB(lig_pdb_path,lig_st)
-        obabel[lig_pdb_path, '-O', lig_path]()
-        os.remove(lig_pdb_path)
+            obabel[lig_pdb_path, '-O', lig_path]()
+            os.remove(lig_pdb_path)
+        else:
+            shutil.copy(aligned_lig_path,lig_path)
 
     if not os.path.exists(prot_path):
         prot_st = st.select('protein')
+        if ligand_select != "hetatm" or ligand_select != "hetero":
+            prot_st = prot_st.select(f"not {ligand_select}")
         writePDB(prot_path,prot_st)
 
-def struct_sort(structs):
+def struct_sort(structs, opt_path='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'):
+    structures_loc = opt_path.replace("aligned/{pdbid}/{pdbid}_aligned.pdb","")
+    os.system(f'mkdir -p {structures_loc+"proteins"} {structures_loc+"ligands"}')
     for struct in structs:
-        opt_complex = 'structures/aligned/{}/{}_aligned.pdb'.format(struct, struct)
+        opt_complex = opt_path.format(pdbid=struct)
 
         if os.path.exists(opt_complex):
-            ligand_select = 'hetatm'
+            ligand_select = 'hetatm' # 'hetero' == 'not (protein or nucleic)' so breaks if ATP or similar ligand
+            # therefore switched to 'hetatm'
             liginfo_path = opt_complex.replace(f'aligned/{struct}','raw').replace('_aligned.pdb','.info')
             liginfo = open(liginfo_path,'r').readlines()
             if len(liginfo[0].strip('\n')) > 4:
                 ligand_select = liginfo[1]
-            comp_st = parsePDB(opt_complex)
-            split_complex(comp_st, struct, opt_complex, ligand_select=ligand_select)
+            split_complex(opt_complex, struct, opt_complex,
+                    ligand_select=ligand_select,
+                    structures_loc = structures_loc)
