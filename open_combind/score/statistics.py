@@ -1,6 +1,6 @@
 import numpy as np
-from score.density_estimate import DensityEstimate
-from features.features import Features
+from open_combind.score.density_estimate import DensityEstimate
+from open_combind.features.features import Features
 from glob import glob
 import os
 import pandas as pd

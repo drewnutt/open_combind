@@ -5,7 +5,7 @@ import os
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 # from plumbum.cmd import obrms
-from utils import mp
+from open_combind.utils import mp
 
 # To compute the substructure similarity for a pair of candidate poses, the maximum common
 # substructure of the two ligands is identified using Canvas (Schrodinger LLC) and then mapped
@@ -15,7 +15,7 @@ from utils import mp
 # considered for pairs of ligands with a maximum common substructure of less than half the size
 # of the smaller ligand. Hydrogen atoms were not included in the substructure nor when
 # determining the total number of atoms in each ligand.
-def mcss(sts1, sts2, mcss_types_file):
+def mcss(sts1, sts2):
     """
     Computes rmsd between mcss for atoms in two poseviewer files.
 
@@ -53,15 +53,11 @@ def mcss(sts1, sts2, mcss_types_file):
     rmsds_bottom = np.vstack(rmsds)
     if len(bad_apples):
         xind, yind= np.array(bad_apples).T
-        # bad_apples_arr = np.array(bad_apples).T
-        # np.save('bad_apples.npy',bad_apples_arr)
-        # xind, yind = (bad_apples_arr[:2,:]).astype(np.int64)
-        # filled_matrix[(xind,yind)] = -1 #float('inf')
         rmsds_bottom[(xind,yind)] = -1 #float('inf')
     filled_matrix = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
-    return np.where(filled_matrix<0,np.inf,filled_matrix)
+    return np.where(filled_matrix<0, np.inf, filled_matrix)
 
-def mcss_mp(sts1, sts2, mcss_types_file,processes=1):
+def mcss_mp(sts1, sts2, processes=1):
     """
     Computes rmsd between mcss for atoms in two poseviewer files.
 

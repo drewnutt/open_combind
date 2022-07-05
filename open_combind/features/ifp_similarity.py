@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from utils import mp
+from open_combind.utils import mp
 
 def merge_hbonds(ifp):
     """

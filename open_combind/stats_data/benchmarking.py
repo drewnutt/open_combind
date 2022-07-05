@@ -45,7 +45,7 @@ def run_featurization(root, helper_ligands, query_fname, protein_name, helper_li
 
 def featurize(root, poseviewers, native_loc, ifp_version, mcss_custom,
               shape_version, no_mcss, use_shape, processes, max_poses, no_cnn):
-    from features.features import Features
+    from open_combind.features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
 
@@ -63,7 +63,7 @@ def merge_correct_stats(prot_name,stats_root, interactions):
     stats_root = stats_root + "/protein_statistics"
     merged_stats = stats_root + '/merged_combind_stats_excl_' + prot_name + '/{}_{}.txt'
     if len(glob(merged_stats.replace('{}','*'))) != len(interactions) * 2:
-        from score.statistics import merge_stats
+        from open_combind.score.statistics import merge_stats
         all_prot_names = ['/'.join(directory.split('/')[-2:]).replace('/','') for directory in glob(f"{stats_root}/*/") if "stats" not in directory]
         correct_stats = [prot for prot in all_prot_names if prot != prot_name ]
         correct_stats.sort()
@@ -79,9 +79,9 @@ def pose_prediction(prot_features, out, stats_root, alpha=-0.6,
     """
     Run ComBind pose prediction.
     """
-    from score.pose_prediction import PosePrediction
-    from score.statistics import read_stats
-    from features.features import Features
+    from open_combind.score.pose_prediction import PosePrediction
+    from open_combind.score.statistics import read_stats
+    from open_combind.features.features import Features
 
     if isinstance(features,str):
         features = features.split(',')
