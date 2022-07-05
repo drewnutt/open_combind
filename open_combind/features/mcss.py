@@ -39,7 +39,7 @@ def mcss(sts1, sts2):
             if (sma1, sma2) in memo:
                 mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
             else:
-                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, mcss_types_file)
+                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2)
                 memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
                 memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
@@ -80,7 +80,7 @@ def mcss_mp(sts1, sts2, processes=1):
             if (sma1, sma2) in memo:
                 mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
             else:
-                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, mcss_types_file)
+                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2)
                 memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
                 memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
@@ -153,7 +153,7 @@ def get_info_from_results(mcss_res):
     mcss_mol = Chem.MolFromSmarts(mcss)
     return mcss, num_atoms, mcss_mol
 
-def compute_mcss(st1, st2, mcss_types_file):
+def compute_mcss(st1, st2):
     """
     Compute smarts patterns for mcss(s) between two structures.
     """
