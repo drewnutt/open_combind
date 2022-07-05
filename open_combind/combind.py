@@ -269,6 +269,9 @@ def extract_top_poses(scores, original_pvs):
     """
     Write top-scoring poses to a single file.
     """
+    from rdkit import Chem
+    import gzip
+
     out = scores.replace('.csv', '.sdf.gz')
     scores = pd.read_csv(scores).set_index('ID')
 
