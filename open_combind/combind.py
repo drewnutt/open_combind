@@ -5,6 +5,7 @@ import numpy as np
 import os
 import sys
 import click
+import importlib.resources
 from glob import glob
 
 from open_combind.utils import *
@@ -216,7 +217,7 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
 ################################################################################
 
 def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge', 'contact'],
-                    alpha=1, stats_root=STATS_ROOT, restart=500, max_iterations=1000):
+                    alpha=1, stats_root=None, restart=500, max_iterations=1000):
     """
     Run ComBind pose prediction.
     """
@@ -233,6 +234,8 @@ def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge',
     ligands = sorted(ligands)
 
     data = protein.get_view(ligands, features)
+    if stats_root is None:
+        importlib.resources.path(__name__,"statistics_data")
     stats = read_stats(stats_root, features)
     
     ps = PosePrediction(ligands, features, data, stats, alpha)
