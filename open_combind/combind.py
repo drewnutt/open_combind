@@ -224,6 +224,7 @@ def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge',
     from open_combind.score.pose_prediction import PosePrediction
     from open_combind.score.statistics import read_stats
     from open_combind.features.features import Features
+    import pkg_resources
 
 
     protein = Features(root)
@@ -235,7 +236,7 @@ def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge',
 
     data = protein.get_view(ligands, features)
     if stats_root is None:
-        importlib.resources.path(__name__,"statistics_data")
+        stats_root = pkg_resources.resource_filename(__name__, "stats_data/default/")
     stats = read_stats(stats_root, features)
     
     ps = PosePrediction(ligands, features, data, stats, alpha)
@@ -250,7 +251,7 @@ def pose_prediction(root, out, ligands, features=['mcss', 'hbond', 'saltbridge',
             brmsd = min(rmsds)
             fp.write(','.join(map(str, [ligand.replace('_pv', ''),
                                         best_poses[ligand],
-                                        crmsd, grmsd, brmsd]))+ '\n')
+                                        crmsd, grmsd, brmsd])) + '\n')
 
 def screen(score_fname, root, stats_root, alpha, features):
     """
