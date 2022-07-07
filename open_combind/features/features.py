@@ -39,7 +39,7 @@ class Features:
 
         self.raw = {}
 
-    def get_molecules_from_files(self,pvs):
+    def get_molecules_from_files(self,pvs,native=False):
         molbundle_dict = dict()
         for pv in pvs:
             # mol_bundle = Chem.FixedMolSizeMolBundle()
@@ -52,7 +52,7 @@ class Features:
                 mol_bundle.append(mol)
                 if (idx + 1) == self.max_poses:
                     break
-            if len(mol_bundle) != self.max_poses:
+            if (native is False) and (len(mol_bundle) != self.max_poses):
                 print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
             molbundle_dict[pv] = mol_bundle
         return molbundle_dict
@@ -174,8 +174,8 @@ class Features:
 
         pvs = [os.path.abspath(pv) for pv in pvs]
         molbundles = self.get_molecules_from_files(pvs)
-        native_sts = self.get_molecules_from_files(list(native_poses.values()))
-        native_poses = {name: native_sts[pv] for name, pv in native_poses.items()}
+        native_sts = self.get_molecules_from_files(list(native_poses.values()), native=True)
+        native_poses = {name: native_sts[pv][0] for name, pv in native_poses.items()}
 
         if self.cnn_scores:
             print('Extracting GNINA affinities.')
@@ -301,7 +301,7 @@ class Features:
 
         np.save(out, rmsds)
 
-    def compute_ifp(self, bundles, out):
+    def compute_ifp(self, pv, out):
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
