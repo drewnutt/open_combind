@@ -39,6 +39,24 @@ class Features:
 
         self.raw = {}
 
+    def get_molecules_from_files(self,pvs):
+        molbundle_dict = dict()
+        for pv in pvs:
+            # mol_bundle = Chem.FixedMolSizeMolBundle()
+            mol_bundle = []
+            pv_open = pv
+            if pv.endswith('.gz'):
+                pv_open = gzip.open(pv)
+            mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
+            for idx, mol in enumerate(mol_suppl):
+                mol_bundle.append(mol)
+                if (idx + 1) == self.max_poses:
+                    break
+            if len(mol_bundle) != self.max_poses:
+                print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
+            molbundle_dict[pv] = mol_bundle
+        return molbundle_dict
+
     def path(self, name, base=False, pv=None, pv2=None):
         if base:
             return '{}/{}'.format(self.root, name)
@@ -71,19 +89,6 @@ class Features:
             return f'{self.root}/mcss.npy'
         else:
             return f'{self.root}/{name}.npy'
-
-    def get_molecules_from_files(pvs):
-        molbundle_dict = dict()
-        for pv in pvs:
-            # mol_bundle = Chem.FixedMolSizeMolBundle()
-            mol_bundle = []
-            if pv.endswith('.gz'):
-                pv = gzip.open(pv)
-            mol_suppl = Chem.ForwardSDMolSupplier(pv)
-            for mol in mol_suppl:
-                mol_bundle.append(mol)
-            molbundle_dict[pv] = mol_bundle
-        return molbundle_dict
 
     def load_features(self):
         paths = glob(f'{self.root}/*.npy')
@@ -204,11 +209,11 @@ class Features:
                 self.compute_rmsd(bundle, native_poses, out)
 
         print('Computing interaction fingerprints.')
-        for pv, bundle in molbundles.items():
+        for pv in molbundles.keys():
             # print(pv)
             out = self.path('ifp', pv=pv)
             if not os.path.exists(out):
-                self.compute_ifp(bundle, out)
+                self.compute_ifp(pv, out)
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         mkdir(self.root)
@@ -261,32 +266,24 @@ class Features:
         name = docked_fname.replace('-docked_name','')
         for idx, st in enumerate(bundle):
             names += [name]
-            if (idx + 1) == self.max_poses:
-                break
         np.save(out, names)
 
     def compute_gaff(self, bundle, out):
         gaffs = []
         for idx, st in enumerate(bundle):
             gaffs += [float(st.GetProp('CNNaffinity'))]
-            if (idx + 1) == self.max_poses:
-                break
         np.save(out, gaffs)
 
     def compute_gscore(self, bundle, out):
         gscores = []
         for idx, st in enumerate(bundle):
             gscores += [logit(float(st.GetProp('CNNscore')))]
-            if (idx + 1) == self.max_poses:
-                break
         np.save(out, gscores)
 
     def compute_vaff(self, bundle, out):
         vaffs = []
         for idx, st in enumerate(bundle):
             vaffs += [float(st.GetProp('minimizedAffinity'))]
-            if (idx + 1) == self.max_poses:
-                break
         np.save(out, vaffs)
 
     def compute_rmsd(self, bundle, native_poses, out):
@@ -298,15 +295,13 @@ class Features:
             for idx, st in enumerate(bundle):
                 rmsd = Chem.CalcRMS(native, st)
                 rmsds += [rmsd]
-                if (idx + 1) == self.max_poses:
-                    break
         else:
             # print(name)
-            rmsds = [-1] * self.max_poses
+            rmsds = [-1] * len(bundle)
 
         np.save(out, rmsds)
 
-    def compute_ifp(self, pv, out):
+    def compute_ifp(self, bundles, out):
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
