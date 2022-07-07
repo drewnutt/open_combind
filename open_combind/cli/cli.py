@@ -273,6 +273,8 @@ def prep_dock_and_predict(smiles,features,ligand_names,ligand_smiles,processes):
     SMILES is a comma delimited file containing the name and smiles strings of all of your docking ligands
     """
     from rdkit.Chem import ForwardSDMolSupplier
+    from prody import confProDy
+    confProDy(verbosity="critical")
     oc.structprep(None)
     oc.ligprep(smiles, root='ligands', multiplex=False, ligand_names=ligand_names,
             ligand_smiles=ligand_smiles, delim=',', sdffile=False,
@@ -284,9 +286,8 @@ def prep_dock_and_predict(smiles,features,ligand_names,ligand_smiles,processes):
     oc.dock_ligands(None, glob('ligands/*.sdf'), None, root='docked', screen=False, slurm=False, now=True)
     no_mcss = not ('mcss' in features)
     use_shape = 'shape' in features
-    oc.featurize('features', glob('docked/*.sdf.gz'), native='structures/ligands/*_lig.sdf', no_mcss=no_mcss, use_shape=use_shape,
-                max_poses=100, no_cnn=False, screen=False, ifp_version=IFP_VERSION,
-                shape_version=SHAPE_VERSION, processes=processes)
+    oc.featurize('features', glob('docked/*.sdf.gz'), no_mcss=no_mcss, use_shape=use_shape,
+                max_poses=100)
     features = features.split(',')
     oc.pose_prediction('features', 'poses.csv', None, features=features)
 
