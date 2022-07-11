@@ -14,6 +14,8 @@ This fork will focus on the use of [GNINA](https://github.com/gnina/gnina) as th
 docking software rather than Glide. Mostly because Glide is proprietary, but also because
 GNINA is a deep-learning based docking pipeline.
 
+Example usage of Open-ComBind can be seen in this [Colab Notebook](https://colab.research.google.com/drive/1YhLydzEOW3g38SubIw1JOxOEivU7U1kg?usp=sharing)
+
 ### ComBind
 
 ComBind integrates data-driven modeling and physics-based docking for
@@ -187,8 +189,7 @@ should be aggregrated. (Most query ligands have 20 associated helper ligands.)
 ## Installation
 
     1. Install [OpenBabel](http://openbabel.org/wiki/Category:Installation)
-    2. Install [RDKit](https://github.com/rdkit/rdkit). This is most easily done by using anaconda (`conda install rdkit -c conda-forge`), but you can also install from source if you would like.
-    3. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
+    2. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
     3. Clone this repository
     4. `cd` into the cloned repository and run `pip install .`. This will install any remaining dependencies.
 
