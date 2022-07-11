@@ -2,8 +2,8 @@ import os
 import requests
 from prody import parsePDB, writePDB
 from rdkit.Chem import AllChem as Chem
-from subprocess import run
 import numpy as np
+from bs4 import BeautifulSoup
 
 def load_complex(prot_in, lig_id, other_lig=None):
 
@@ -92,10 +92,11 @@ def struct_process(structs,
 
 def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
     lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
-    _,header = parsePDB(pdbfile,header=True)
-    assert (lig_code is None)^(lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
-    ligands_in_order = get_ligand_order(pdbfile)
-    last_prot_chain = header['polymers'][-1].chid
+    _, header = parsePDB(pdbfile, header=True)
+    assert (lig_code is None) ^ (lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
+    # ligands_in_order = get_ligand_order(pdbfile)
+    # print(ligands_in_order)
+    # last_prot_chain = header['polymers'][-1].chid
     chemicals = header['chemicals']
     pdbid = header['identifier']
     molecules = []
@@ -104,14 +105,18 @@ def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
             continue
         seq_id = chemical.resnum
         chem_name = chemical.resname
-        add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
-        chain_id = chr(ord(last_prot_chain) + add_to_pchain)
-        page=requests.get(lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)).text
-        mol=Chem.MolFromMolBlock(page)
+        # add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
+        # chain_id = chr(ord(last_prot_chain) + add_to_pchain)
+        # print(f"Page:{lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)}")
+
+        # Maybe RCSB will get a better API for this, but for now we just have to comb the webpage
+        chain_id = scrape_rcsb_webpage(pdbid, chem_name)[0]
+        page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id, chain_id=chain_id, chem_name=chem_name)).text
+        mol = Chem.MolFromMolBlock(page)
         assert mol is not None
         Chem.SanitizeMol(mol)
         if save_file is None:
-            save_file = f"{root}/{pdbid}_{chem_name}_{seq_id}.sdf"
+            save_file = f"{pdbid}_{chem_name}_{seq_id}.sdf"
         writer = Chem.SDWriter(save_file)
         writer.write(mol)
         writer.close()
@@ -130,6 +135,7 @@ def get_ligands(pdbfile):
         return get_ligands_frompdb(pdbfile,lig_code=ligand_name,first_only=True)
     else:
         return "ligand is protein"
+
 def get_ligand_order(pdbfile):
     ligand_ordering = []
     with open(pdbfile) as read_file:
@@ -137,7 +143,26 @@ def get_ligand_order(pdbfile):
             if line.startswith('HET '):
                 chemname = line[7:10].strip()
                 resnum = int(line[13:17])
-                ligand_ordering.append((chemname,resnum))
+                chain = line[10:13].strip()
+                ligand_ordering.append((chemname,resnum,chain))
             elif line.startswith('ATOM '):
                 break
-    return ligand_ordering
+    ordered_ligands = sorted(ligand_ordering, key=lambda x: (x[1], x[2]))
+    return [(name, number) for (name, number, _) in ordered_ligands]
+
+def scrape_rcsb_webpage(pdb_id,lig_id,filetype="sdf"):
+    rec_page_url = "https://www.rcsb.org/structure/{receptor}"
+    receptor_page = requests.get(rec_page_url.format(receptor=pdb_id))
+    soup = BeautifulSoup(receptor_page.text, 'html.parser')
+    ligand_row = soup.find_all('tr', id=f'ligand_row_{lig_id}')[0]
+    chain_ids = ligand_row.find_all('td')[1].text.split()
+    non_auth_ids = [cid for cid in chain_ids if ('[auth' not in cid) and (']' not in cid)]
+
+    # list_elems = ligand_row.find_all('td')[0].find_all('li')
+    # url = None
+    # for elems in list_elems:
+    #     url = elems.a.get('href')
+    #     if f"encoding={filetype}" in url:
+    #         break
+    # return url, sorted(non_auth_ids)
+    return sorted(non_auth_ids)
