@@ -26,7 +26,7 @@ class Features:
     Organize feature computation and loading.
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
-                 mcss_custom='', max_poses=10000, pv_root=None,
+                 max_poses=10000, pv_root=None,
                  ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True):
         self.root = os.path.abspath(root)
         if pv_root is None:
@@ -34,7 +34,6 @@ class Features:
 
         self.ifp_version = ifp_version
         self.shape_version = shape_version
-        self.mcss_version = mcss_custom
         self.max_poses = max_poses
         self.ifp_features = ifp_features
         self.cnn_scores = cnn_scores
@@ -298,25 +297,25 @@ class Features:
         np.save(out, rmsds)
 
     def compute_ifp(self, pv, out):
-        from features.ifp import ifp
+        from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
 
     def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
         if processes != 1:
-            from features.ifp_similarity import ifp_tanimoto_mp
+            from open_combind.features.ifp_similarity import ifp_tanimoto_mp
             tanimotos = ifp_tanimoto_mp(ifps1, ifps2, feature, processes)
         else:
-            from features.ifp_similarity import ifp_tanimoto
+            from open_combind.features.ifp_similarity import ifp_tanimoto
             tanimotos = ifp_tanimoto(ifps1, ifps2, feature)
         np.save(out, tanimotos)
 
     def compute_shape(self, poses1, poses2, out, processes=1):
         if processes != 1:
-            from features.shape import shape_mp
+            from open_combind.features.shape import shape_mp
             sims = shape_mp(poses2, poses1, version=self.shape_version,processes=processes).T
         else:
-            from features.shape import shape
+            from open_combind.features.shape import shape
             # More efficient to have longer pose list provided as second argument.
             # This only matters for screening.
             sims = shape(poses2, poses1, version=self.shape_version).T
@@ -324,9 +323,9 @@ class Features:
 
     def compute_mcss(self, poses1, poses2, out, processes=1):
         if processes != 1:
-            from features.mcss import mcss_mp
-            rmsds = mcss_mp(poses1, poses2, self.mcss_version, processes)
+            from open_combind.features.mcss import mcss_mp
+            rmsds = mcss_mp(poses1, poses2, processes)
         else:
-            from features.mcss import mcss
-            rmsds = mcss(poses1, poses2, self.mcss_version)
+            from open_combind.features.mcss import mcss
+            rmsds = mcss(poses1, poses2)
         np.save(out, rmsds)

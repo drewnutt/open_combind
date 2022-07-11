@@ -66,7 +66,7 @@ def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=
             mol = Chem.MolFromSmiles(smile)
             mol.SetProp('_Name', name)
 
-            mol, best_conf = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
+            mol, best_conf, _ = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
        
             writer.write(mol, best_conf)
 
@@ -100,7 +100,7 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
             unfinished.append((ligand, _sdf, confgen, ff, num_confs, maxIters))
 
     if not multiplex:
-        from utils import mp
+        from open_combind.utils import mp
         print(f"Creating {len(unfinished)} ligands in {root}")
         mp(write3DConf, unfinished, processes)
     else:

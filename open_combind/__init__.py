@@ -5,10 +5,10 @@
 # Add imports here
 from .combind import structprep, ligprep, dock_ligands, featurize, pose_prediction, scores_to_csv
 from .features.features import Features
-from .dock.struct_process import struct_process
-from .dock.struct_align import struct_align
-from .dock.struct_sort import struct_sort
-from .score import *
+# from .dock.struct_process import struct_process
+# from .dock.struct_align import struct_align
+# from .dock.struct_sort import struct_sort
+# from .score import *
 
 # Handle versioneer
 from ._version import get_versions

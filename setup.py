@@ -48,6 +48,12 @@ setup(
     url='https://github.com/drewnutt/open_combind',  # Website
     install_requires=["pandas","numpy","click","plumbum",
                         "ProDy>=2.0","rdkit-pypi"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
+    
+    entry_points={
+        "console_scripts": [
+            "open_combind=open_combind.cli.cli:cli",
+        ]
+    },
     # platforms=['Linux',
     #            'Mac OS-X',
     #            'Unix',
