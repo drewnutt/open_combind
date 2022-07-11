@@ -2,6 +2,7 @@
 [//]: # (Badges)
 [![GitHub Actions Build Status](https://github.com/drewnutt/open_combind/workflows/CI/badge.svg)](https://github.com/drewnutt/open_combind/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/drewnutt/open_combind/branch/main/graph/badge.svg)](https://codecov.io/gh/drewnutt/open_combind/branch/main)
+[![docs](https://readthedocs.org/projects/open-combind/badge/?version=latest)](https://open-combind.readthedocs.io/en/latest/?badge=latest)
 
 Open-source docking pipeline leveraging pairwise statistics
 
