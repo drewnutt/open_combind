@@ -1,7 +1,13 @@
 Getting Started
 ===============
 
-1. Install `OpenBabel <http://openbabel.org/wiki/Category:Installation>`_
-3. Install `GNINA <https://github.com/gnina/gnina>`_. It's best to install GNINA from source, but you can use the `pre-compiled binary <https://github.com/gnina/gnina/releases/>`_ for docking if you do not care to have GPU acceleration.
-3. Clone this repository
-4. `cd` into the cloned repository and run `pip install .`. This will install all remaining dependencies.
+1. Download the PDB files you would like to dock to into ``structures/raw``
+
+2. Create the necessary ``.info`` files in ``structures/raw`` to describe the ligands in the downloaded PDB files
+
+3. Create a smiles CSV, ``ligands.csv``, of any additional ligands that do not have a known docked structure. This should be of the form::
+
+        ID,SMILES
+        <ligand_name>,<smiles_string>
+
+4. Run ``open_combind prep-dock-and-predict ligands.csv`` to run the whole docking procedure.

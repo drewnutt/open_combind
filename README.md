@@ -2,6 +2,7 @@
 [//]: # (Badges)
 [![GitHub Actions Build Status](https://github.com/drewnutt/open_combind/workflows/CI/badge.svg)](https://github.com/drewnutt/open_combind/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/drewnutt/open_combind/branch/main/graph/badge.svg)](https://codecov.io/gh/drewnutt/open_combind/branch/main)
+[![docs](https://readthedocs.org/projects/open-combind/badge/?version=latest)](https://open-combind.readthedocs.io/en/latest/?badge=latest)
 
 Open-source docking pipeline leveraging pairwise statistics
 
@@ -12,6 +13,8 @@ as the original ComBind and it will be completely free to use.
 This fork will focus on the use of [GNINA](https://github.com/gnina/gnina) as the
 docking software rather than Glide. Mostly because Glide is proprietary, but also because
 GNINA is a deep-learning based docking pipeline.
+
+Example usage of Open-ComBind can be seen in this [Colab Notebook](https://colab.research.google.com/drive/1YhLydzEOW3g38SubIw1JOxOEivU7U1kg?usp=sharing)
 
 ### ComBind
 
@@ -186,8 +189,7 @@ should be aggregrated. (Most query ligands have 20 associated helper ligands.)
 ## Installation
 
     1. Install [OpenBabel](http://openbabel.org/wiki/Category:Installation)
-    2. Install [RDKit](https://github.com/rdkit/rdkit). This is most easily done by using anaconda (`conda install rdkit -c conda-forge`), but you can also install from source if you would like.
-    3. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
+    2. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
     3. Clone this repository
     4. `cd` into the cloned repository and run `pip install .`. This will install any remaining dependencies.
 
