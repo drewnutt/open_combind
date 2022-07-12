@@ -2,7 +2,7 @@ import os
 import subprocess
 from glob import glob
 
-GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log} \n'
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log} \n'  #: default options for GNINA
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
@@ -27,7 +27,35 @@ def check_dock_line(infile):
 
     return infile
 
-def dock(template, ligands, root, name, enhanced, infile=None, reference=None, slurm=False, now=False):
+def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=False):
+    """
+    Generate GNINA docking file that utilizes the receptor and autobox as defined in `template` to dock against each of the ligands in `ligands` using the format string `infile`
+
+    Parameters
+    ----------
+    template : str
+        String from ``.template` file containing the gnina docking command in the format::
+
+            gnina -r <path_to_receptor> --autobox_ligand <path_to_autobox>
+    ligands : iterable of str
+        Path to each ligand that should be docked
+    root : str
+        Root of paths to ligands
+    name : iterable of str
+        Name of the output poses for each ligand docked. Should be the same size as `root`
+    enhanced : bool, default=True
+        Use enhanced sampling (use exhaustiveness==16)
+    infile : str
+        Input format string of the form::
+
+             -l {lig} -o {out} <OTHER_GNINA_KWARGS> > {log}
+    slurm : bool, default=False
+        After generating docking file, create a tarball of the necessary files and update the paths to relative to the
+        tarball
+    now : bool, default=False
+        After generating docking string, run docking immediately
+
+    """
     outfile = "docked/{inlig}-docked.sdf.gz"
     if infile is None:
         infile = GNINA
@@ -68,6 +96,20 @@ def dock(template, ligands, root, name, enhanced, infile=None, reference=None, s
 
 
 def setup_slurm(gnina_in,ligands,receptor,abox):
+    """
+     Creates a tarball of the `receptor`, `abox` and all of the `ligands`. Then runs ``sed`` on `gnina_in` to remove the path to the current working directory.
+
+     Parameters
+     ----------
+     gnina_in : str
+        Path to the GNINA docking commands file relative to the current working directory
+     ligands : list of str
+       Paths of the ligands 
+     receptor : str
+        Path to the receptor file
+     abox : str
+        Path to the autobox_ligands
+     """
     import tarfile
 
     native_ligs = glob('structures/ligands/*.sdf')
@@ -83,6 +125,16 @@ def setup_slurm(gnina_in,ligands,receptor,abox):
     os.system(f'sed -i s,{cwd},,g {gnina_in}')
 
 def run_gnina_docking(gnina_dock_file):
+    """
+    Iterates over the lines in `gnina_dock_file` and runs each line in serial.
+
+    Generates a tqdm progress bar to show what percent of the lines have been run
+    
+    Parameters
+    ----------
+    gnina_dock_file : str
+        Path to GNINA docking commands file
+    """
     from tqdm import tqdm
     import mmap
     def get_num_lines(file_path):

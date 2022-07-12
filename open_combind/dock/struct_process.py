@@ -6,20 +6,32 @@ import numpy as np
 from bs4 import BeautifulSoup
 
 def load_complex(prot_in, lig_id, other_lig=None):
+    """
+    Loads the protein and separates it into separate ``ProDy.AtomGroups`` for the protein-ligand complex only, protein only, waters, heteroatoms, and ligand only.
+
+    Parameters
+    ----------
+    prot_in : str
+        Path to PDB file containing protein and ligand
+    lig_id : str
+        Three letter residue name or ProDy selection string to identify the ligand
+    other_lig : str, default=None
+        ProDy selection string that identifies any ligands other the one in the desired pocket
+    """
 
     prot_st = parsePDB(prot_in, altloc='all')
     chains = np.unique(prot_st.getChids())
     fchain = chains[0]
 
-    #filter protein to remove waters and other non-protein things
+    # filter protein to remove waters and other non-protein things
     prot_only = prot_st.select('protein')
     if len(np.unique(prot_only.getAltlocs())) > 1:
         altlocs = np.unique(prot_only.getAltlocs())
-        altlocs = [ alt if alt != ' ' else '_' for alt in altlocs]
+        altlocs = [alt if alt != ' ' else '_' for alt in altlocs]
         prot_only = prot_only.select(f'altloc {altlocs[0]} or altloc {altlocs[1]}')
     waters = prot_st.select('water')
     heteros = prot_st.select('hetero and not water')
-    if len(lig_id) in [3,4]:
+    if len(lig_id) == 3:
         important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
         if important_ligand is None:
             important_ligand = prot_st.select(f'resname {lig_id}')
@@ -31,7 +43,7 @@ def load_complex(prot_in, lig_id, other_lig=None):
         assert important_ligand is not None, f"nothing found with {lig_id} for {prot_in} to select as ligand"
     if len(np.unique(important_ligand.getAltlocs())) > 1:
         altlocs = np.unique(important_ligand.getAltlocs())
-        altlocs = [ alt if alt != ' ' else '_' for alt in altlocs]
+        altlocs = [alt if alt != ' ' else '_' for alt in altlocs]
         important_ligand = important_ligand.select(f'altloc {altlocs[0]}')
         important_ligand.setAltlocs(' ')
     important_ligand = important_ligand.select('not water')
