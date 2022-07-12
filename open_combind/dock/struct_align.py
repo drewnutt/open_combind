@@ -13,7 +13,6 @@ def align_successful(out_dir, struct):
 def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
-    ligand_path = downloaded_ligand.format(pdbid=struct)
     """
     Transform the the ligand using the provided transformation matrix
 
@@ -25,7 +24,7 @@ def align_separate_ligand(struct, trans_matrix,
         Transformation matrix describing the transformation of the ligand
 	downloaded_ligand : str, default="structures/processed/{pdbid}/{pdbid}_lig.sdf"
 		Format string for the path to the ligand SDF file given the PDB ID as `pdbid`
-    align_lig: str, default="structures/aligned/{pdbid}/{pdbid}_lig.sdf"
+    aligned_lig: str, default="structures/aligned/{pdbid}/{pdbid}_lig.sdf"
         Format string for the path to the transformed ligand SDF file for output
 
     Returns
@@ -33,6 +32,7 @@ def align_separate_ligand(struct, trans_matrix,
     bool
         If the ligand file existed and the transformation was performed
     """
+    ligand_path = downloaded_ligand.format(pdbid=struct)
     print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
@@ -53,10 +53,11 @@ def struct_align(template, structs, dist=15.0, retry=True,
                  aligned_prot='{pdbid}_aligned.pdb',
                  align_dir='structures/aligned'):
     """
+    .. include ::<isotech.txt>
+     
     Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
     
-    
-    Aligned files are put in :file:`{align_dir}/{<PDB ID>}/`
+    Aligned files are put in `` `align_dir`/<PDB ID>/``
 
     If a separate ligand exists for a given PDB ID, then it will be transformed with the same matrix as used for the protein alignment.
 
@@ -92,7 +93,6 @@ def struct_align(template, structs, dist=15.0, retry=True,
     if not os.path.isfile(template_path):
         print('template not processed', template_path)
         return
-    # .. |angst| replace:: \u212B
 
     template_st = parsePDB(template_path)
     template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
@@ -164,6 +164,24 @@ def struct_align(template, structs, dist=15.0, retry=True,
     return transform_matrix
 
 def get_selection_texts(liginfo_path, prot):
+    """
+    Get the selection text for the ligand and the chain of the ligand
+
+    Parameters
+    ----------
+    liginfo_path : str
+        Path to the ligand info file
+    prot : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Protein structure
+
+    Returns
+    -------
+    selection_text : str
+        Selection text for the ligand
+    lig_chain : str
+        Chain of the ligand
+    """
+
     liginfo = open(liginfo_path, 'r').readlines()
     if len(liginfo[0].strip('\n')) < 4:
         selection_text = 'hetatm'
