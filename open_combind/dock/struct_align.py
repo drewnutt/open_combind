@@ -14,7 +14,26 @@ def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
     ligand_path = downloaded_ligand.format(pdbid=struct)
-    # print(ligand_path)
+    """
+    Transform the the ligand using the provided transformation matrix
+
+    Parameters
+    ----------
+    struct : str
+		PDB ID of the original complex
+    trans_matrix : ``ndarray``
+        Transformation matrix describing the transformation of the ligand
+	downloaded_ligand : str, default="structures/processed/{pdbid}/{pdbid}_lig.sdf"
+		Format string for the path to the ligand SDF file given the PDB ID as `pdbid`
+    align_lig: str, default="structures/aligned/{pdbid}/{pdbid}_lig.sdf"
+        Format string for the path to the transformed ligand SDF file for output
+
+    Returns
+    -------
+    bool
+        If the ligand file existed and the transformation was performed
+    """
+    print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
 
@@ -31,11 +50,14 @@ def align_separate_ligand(struct, trans_matrix,
 def struct_align(template, structs, dist=15.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
                  ligand_info='structures/raw/{pdbid}.info',
-                 aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
+                 aligned_prot='{pdbid}_aligned.pdb',
                  align_dir='structures/aligned'):
     """
     .. include ::<isotech.txt>
+     
     Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
+    
+    Aligned files are put in `` `align_dir`/<PDB ID>/``
 
     If a separate ligand exists for a given PDB ID, then it will be transformed with the same matrix as used for the protein alignment.
 
@@ -53,8 +75,8 @@ def struct_align(template, structs, dist=15.0, retry=True,
         Format string for the path to the protein-ligand complexes given the PDB ID as `pdbid`
     ligand_info : str, default='structures/raw/{pdbid}.info'
         Format string for the path to the ligand `.info` files given the PDB ID as `pdbid`
-    aligned_prot : str, default='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'
-        Format string for the path to the output, aligned protein-ligand complex given the PDB ID as `pdbid`
+    aligned_prot : str, default='{pdbid}_aligned.pdb'
+        Format string for the new filename of the aligned protein-ligand complex given the PDB ID as `pdbid`
     align_dir : str, default='structures/aligned'
         Path to the aligned protein directory, all parent directories will be created if they do not exist
 
@@ -129,9 +151,8 @@ def struct_align(template, structs, dist=15.0, retry=True,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
-        aligned_lig = align_separate_ligand(struct, transform_matrix,
-                downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
-                aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf")
+        aligned_lig = align_separate_ligand(filtered_protein.replace("_complex.pdb", "_lig.sdf").format(pdbid=struct),
+                transform_matrix, (align_dir+"/{pdbid}/{pdbid}_lig.sdf").format(pdbid=struct))
         if aligned_lig:
             print("Successfully aligned separate ligand")
         else:
