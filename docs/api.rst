@@ -19,6 +19,24 @@ Main Combind Commands
 ..
 .. automethod:: open_combind.extract_top_poses
 
+Docking Preparation
+-------------------
+.. automodule:: open_combind.dock.struct_process
+   :members: struct_process, load_complex, get_ligands_frompdb
+ 
+.. automodule:: open_combind.dock.struct_align
+   :members: struct_align, align_separate_ligand
+ 
+.. automodule:: open_combind.dock.struct_sort
+   :members:
+ 
+.. automodule:: open_combind.dock.ligprep
+   :members:
+ 
+.. automodule:: open_combind.dock.dock
+   :members:
+
+
 Featurization
 -------------
 

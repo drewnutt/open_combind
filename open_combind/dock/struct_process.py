@@ -68,7 +68,7 @@ def struct_process(structs,
     * Water only
     Additionally, a ligand SDF is pulled from the PDB, if possible.
 
-    Paraameters
+    Parameters
     -----------
     structs : iterable of str
         PDB IDs of the raw PDB files that need to be processed
