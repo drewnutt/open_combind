@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from prody import parsePDB, writePDB
 from rdkit.Chem import AllChem as Chem
@@ -164,16 +165,18 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file=None, first_only=False
             continue
         seq_id = chemical.resnum
         chem_name = chemical.resname
+        auth_chain_id = chemical.chain
         # add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
         # chain_id = chr(ord(last_prot_chain) + add_to_pchain)
         # print(f"Page:{lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)}")
 
         # Maybe RCSB will get a better API for this, but for now we just have to comb the webpage
-        chain_id = scrape_rcsb_webpage(pdbid, chem_name)[0]
+        chain_id = scrape_rcsb_webpage(pdbid, chem_name)[auth_chain_id]
         page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id, chain_id=chain_id, chem_name=chem_name)).text
+        if not page.startswith(chem_name):
+            raise FileNotFoundError(f"Unable to retrieve instance coordinates for {chem_name} in entry {pdbid}")
         mol = Chem.MolFromMolBlock(page)
         assert mol is not None
-        Chem.SanitizeMol(mol)
         if save_file is None:
             save_file = f"{pdbid}_{chem_name}_{seq_id}.sdf"
         writer = Chem.SDWriter(save_file)
@@ -207,15 +210,27 @@ def get_ligand_order(pdbfile):
             elif line.startswith('ATOM '):
                 break
     ordered_ligands = sorted(ligand_ordering, key=lambda x: (x[1], x[2]))
-    return [(name, number) for (name, number, _) in ordered_ligands]
+    return ordered_ligands
 
 def scrape_rcsb_webpage(pdb_id,lig_id,filetype="sdf"):
     rec_page_url = "https://www.rcsb.org/structure/{receptor}"
     receptor_page = requests.get(rec_page_url.format(receptor=pdb_id))
     soup = BeautifulSoup(receptor_page.text, 'html.parser')
     ligand_row = soup.find_all('tr', id=f'ligand_row_{lig_id}')[0]
-    chain_ids = ligand_row.find_all('td')[1].text.split()
-    non_auth_ids = [cid for cid in chain_ids if ('[auth' not in cid) and (']' not in cid)]
+    chain_ids = ligand_row.find_all('td')[1].text.replace(' Less','').split(',')
+    auth_id_lookup = dict()
+    for line in chain_ids:
+        line = line.strip()
+        chain = line.split()[0]
+        auth_chain = re.findall('\[auth ([A-Z])\]',line)
+        if len(auth_chain) == 1:
+            auth_chain = auth_chain[0]
+        elif len(auth_chain) > 1:
+            print(f"more than one auth chain for {line}")
+        else:
+            auth_chain = chain
+        auth_id_lookup[auth_chain] = chain
+    # non_auth_ids = [cid for cid in chain_ids if len(cid) ]
 
     # list_elems = ligand_row.find_all('td')[0].find_all('li')
     # url = None
@@ -224,4 +239,4 @@ def scrape_rcsb_webpage(pdb_id,lig_id,filetype="sdf"):
     #     if f"encoding={filetype}" in url:
     #         break
     # return url, sorted(non_auth_ids)
-    return sorted(non_auth_ids)
+    return auth_id_lookup
