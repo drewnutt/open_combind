@@ -59,6 +59,34 @@ def struct_process(structs,
                    filtered_ligand='structures/processed/{pdbid}/{pdbid}_lig.sdf',
                    filtered_hetero='structures/processed/{pdbid}/{pdbid}_het.pdb',
                    filtered_water='structures/processed/{pdbid}/{pdbid}_wat.pdb'):
+    """
+    Filters a list of raw PDB file into its main separate components.
+    Creates a pdb file for the following:
+    * Protein and ligand atoms only (only one ligand molecule)
+    * Protein only atoms
+    * Heteroatoms and not water
+    * Water only
+    Additionally, a ligand SDF is pulled from the PDB, if possible.
+
+    Paraameters
+    -----------
+    structs : iterable of str
+        PDB IDs of the raw PDB files that need to be processed
+    protein_in : str, default='structures/raw/{pdbid}.pdb'
+        Format string of the path to the protein, given the PDBID as `pdbid`
+    ligand_info : str, default='structures/raw/{pdbid}.info'
+        Format string of the path to the ``.info`` file, given the PDBID as `pdbid`
+    filtered_protein : str, default='structures/processed/{pdbid}/{pdbid}_prot.pdb'
+        Format string of the path to the processed protein only PDB file, given the PDBID as `pdbid`
+    filtered_complex : str, default='structures/processed/{pdbid}/{pdbid}_complex.pdb'
+        Format string of the path to the processed protein-ligand only only PDB file, given the PDBID as `pdbid`
+    filtered_ligand : str, default='structures/processed/{pdbid}/{pdbid}_lig.sdf'
+        Format string of the path to the processed ligand only only SDF file, given the PDBID as `pdbid`
+    filtered_hetero : str, default='structures/processed/{pdbid}/{pdbid}_het.pdb'
+        Format string of the path to the processed heteroatom only (no waters) PDB file, given the PDBID as `pdbid`
+    filtered_water : str, default='structures/processed/{pdbid}/{pdbid}_wat.pdb')
+        Format string of the path to the processed water only PDB file, given the PDBID as `pdbid`
+    """
 
     for struct in structs:
         _protein_in = protein_in.format(pdbid=struct)
@@ -102,7 +130,26 @@ def struct_process(structs,
 
         writePDB(_filtered_complex,compl)
 
-def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
+def get_ligands_frompdb(pdbfile, lig_code=None, save_file=None, first_only=False):
+    """
+    Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
+
+    Parameters
+    ----------
+    pdbfile : str
+        Path to PDB file or PDB header file to pull information about the contained small molecules
+    lig_code : str, default=None
+        Three letter chemical component identifier (CCI) used by the RCSB for your ligand of interest
+    save_file : str, default=None
+        Path to output SDF file for your ligand of interest. Defaults to "<PDB ID>_<CCI>_<Sequence Number>.sdf" for each ligand in the PDB File.
+    first_only : bool, default=False
+        Only make SDF file of the first HET chemical found in the PDB file. If `lig_code` is provided, only generates an SDF for that.
+
+    Returns
+    -------
+    list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
+        Ligands downloaded directly from the RCSB webpage
+    """
     lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
     _, header = parsePDB(pdbfile, header=True)
     assert (lig_code is None) ^ (lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"

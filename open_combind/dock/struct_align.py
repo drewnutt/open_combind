@@ -29,8 +29,39 @@ def align_separate_ligand(struct, trans_matrix,
 
 def struct_align(template, structs, dist=15.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
+                 ligand_info='structures/raw/{pdbid}.info',
                  aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
                  align_dir='structures/aligned'):
+    """
+    .. include ::<isotech.txt>
+    Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
+
+    If a separate ligand exists for a given PDB ID, then it will be transformed with the same matrix as used for the protein alignment.
+
+    Parameters
+    ----------
+    template : str
+        PDB ID of the protein-ligand complex to align all of the other complexes to
+    structs : iterable of str
+        PDB IDs of the protein-ligand complexes to align to `template`
+    dist : float,default=15.0
+        Distance, in |angst|, from the ligand for which to select the alignment atoms of the protein
+    retry : bool,default=True
+        If alignment is unsuccessful, try again with a `dist` of 25 |angst|
+    filtered_protein : str,default='structures/processed/{pdbid}/{pdbid}_complex.pdb'
+        Format string for the path to the protein-ligand complexes given the PDB ID as `pdbid`
+    ligand_info : str, default='structures/raw/{pdbid}.info'
+        Format string for the path to the ligand `.info` files given the PDB ID as `pdbid`
+    aligned_prot : str, default='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'
+        Format string for the path to the output, aligned protein-ligand complex given the PDB ID as `pdbid`
+    align_dir : str, default='structures/aligned'
+        Path to the aligned protein directory, all parent directories will be created if they do not exist
+
+    Returns
+    -------
+    ` ``ProDy.Transformation`` <http://prody.csb.pitt.edu/manual/reference/measure/transform.html#module-prody.measure.transform>`_
+        Transformation object of the last alignment performed
+    """
 
     template_path = filtered_protein.format(pdbid=template)
     if not os.path.isfile(template_path):
