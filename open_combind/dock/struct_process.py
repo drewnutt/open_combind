@@ -6,6 +6,10 @@ from rdkit.Chem import AllChem as Chem
 import numpy as np
 from bs4 import BeautifulSoup
 
+class RDKitParseException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
 def load_complex(prot_in, lig_id, other_lig=None):
     """
     Loads the protein and separates it into separate ``ProDy.AtomGroups`` for the protein-ligand complex only, protein only, waters, heteroatoms, and ligand only.
@@ -117,8 +121,14 @@ def struct_process(structs,
                 other_lig = lig_info[2]
         else:
             lig_id = lig_info[0]
-            _ = get_ligands_frompdb(_protein_in,lig_code=lig_id,
-                    save_file=_filtered_ligand,first_only=True)
+            try:
+                _ = get_ligands_frompdb(_protein_in,lig_code=lig_id,
+                        save_file=_filtered_ligand,first_only=True)
+            except FileNotFoundError as fnfe:
+                if "Unable to retrieve instance coordinates" in str(fnfe):
+                    print(str(fnfe))
+            except RDKitParseException as rdkpe:
+                print(str(rdkpe))
         assert lig_id is not None
         print(f'processing {struct} with ligand {lig_id}')
 
@@ -131,8 +141,6 @@ def struct_process(structs,
 
         writePDB(_filtered_complex,compl)
 
-        if save_file is None:
-            save_file = f
 def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{seq_id}.sdf", first_only=False):
     """
     Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
@@ -184,9 +192,9 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{
             raise FileNotFoundError(f"Unable to retrieve instance coordinates for {chem_name} in entry {pdbid}")
         mol = Chem.MolFromMolBlock(page)
         if mol is None:
-            raise Exception(f"RDKit cannot parse the molecule, {chem_name}, downloaded from the PDB for entry {pdbid}")
+            raise RDKitParseException(f"RDKit cannot parse the molecule, {chem_name}, downloaded from the PDB for entry {pdbid}")
 
-        save_lig_path = save_file.format(pdbid=pdbid,chem_name=chem_name,seq_id=seq_id)
+        save_lig_path = save_file.format(pdbid=pdbid, chem_name=chem_name, seq_id=seq_id)
         writer = Chem.SDWriter(save_lig_path)
         writer.write(mol)
         writer.close()
