@@ -1,7 +1,7 @@
 import os
 import re
 import requests
-from prody import parsePDB, writePDB
+from prody import parsePDB, parsePDBHeader, writePDB
 from rdkit.Chem import AllChem as Chem
 import numpy as np
 from bs4 import BeautifulSoup
@@ -131,7 +131,9 @@ def struct_process(structs,
 
         writePDB(_filtered_complex,compl)
 
-def get_ligands_frompdb(pdbfile, lig_code=None, save_file=None, first_only=False):
+        if save_file is None:
+            save_file = f
+def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{seq_id}.sdf", first_only=False):
     """
     Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
 
@@ -141,7 +143,7 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file=None, first_only=False
         Path to PDB file or PDB header file to pull information about the contained small molecules
     lig_code : str, default=None
         Three letter chemical component identifier (CCI) used by the RCSB for your ligand of interest
-    save_file : str, default=None
+    save_file : str, default="{pdbid}_{chem_name}_{seq_id}.sdf"
         Path to output SDF file for your ligand of interest. Defaults to "<PDB ID>_<CCI>_<Sequence Number>.sdf" for each ligand in the PDB File.
     first_only : bool, default=False
         Only make SDF file of the first HET chemical found in the PDB file. If `lig_code` is provided, only generates an SDF for that.
@@ -152,34 +154,40 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file=None, first_only=False
         Ligands downloaded directly from the RCSB webpage
     """
     lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
-    _, header = parsePDB(pdbfile, header=True)
+    header = parsePDBHeader(pdbfile)
     assert (lig_code is None) ^ (lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
     # ligands_in_order = get_ligand_order(pdbfile)
     # print(ligands_in_order)
     # last_prot_chain = header['polymers'][-1].chid
     chemicals = header['chemicals']
     pdbid = header['identifier']
+    all_ligand_info = scrape_rcsb_webpage(pdbid)
     molecules = []
     for idx, chemical in enumerate(chemicals):
-        if (lig_code is not None) and (chemical.resname != lig_code):
+        chem_name = chemical.resname
+        if (lig_code is not None) and (chem_name != lig_code):
             continue
         seq_id = chemical.resnum
-        chem_name = chemical.resname
         auth_chain_id = chemical.chain
+        current_ligand = all_ligand_info[chem_name]
+        for chain_id, info in current_ligand.items():
+            if auth_chain_id == info['auth_chain']:
+                assert f"auth_seq_id={seq_id}" in info['url']
+                break
         # add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
         # chain_id = chr(ord(last_prot_chain) + add_to_pchain)
         # print(f"Page:{lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)}")
 
         # Maybe RCSB will get a better API for this, but for now we just have to comb the webpage
-        chain_id = scrape_rcsb_webpage(pdbid, chem_name)[auth_chain_id]
         page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id, chain_id=chain_id, chem_name=chem_name)).text
         if not page.startswith(chem_name):
             raise FileNotFoundError(f"Unable to retrieve instance coordinates for {chem_name} in entry {pdbid}")
         mol = Chem.MolFromMolBlock(page)
-        assert mol is not None
-        if save_file is None:
-            save_file = f"{pdbid}_{chem_name}_{seq_id}.sdf"
-        writer = Chem.SDWriter(save_file)
+        if mol is None:
+            raise Exception(f"RDKit cannot parse the molecule, {chem_name}, downloaded from the PDB for entry {pdbid}")
+
+        save_lig_path = save_file.format(pdbid=pdbid,chem_name=chem_name,seq_id=seq_id)
+        writer = Chem.SDWriter(save_lig_path)
         writer.write(mol)
         writer.close()
         if first_only:
@@ -212,31 +220,44 @@ def get_ligand_order(pdbfile):
     ordered_ligands = sorted(ligand_ordering, key=lambda x: (x[1], x[2]))
     return ordered_ligands
 
-def scrape_rcsb_webpage(pdb_id,lig_id,filetype="sdf"):
+def scrape_rcsb_webpage(pdb_id):
     rec_page_url = "https://www.rcsb.org/structure/{receptor}"
     receptor_page = requests.get(rec_page_url.format(receptor=pdb_id))
     soup = BeautifulSoup(receptor_page.text, 'html.parser')
-    ligand_row = soup.find_all('tr', id=f'ligand_row_{lig_id}')[0]
-    chain_ids = ligand_row.find_all('td')[1].text.replace(' Less','').split(',')
-    auth_id_lookup = dict()
-    for line in chain_ids:
-        line = line.strip()
-        chain = line.split()[0]
-        auth_chain = re.findall('\[auth ([A-Z])\]',line)
-        if len(auth_chain) == 1:
-            auth_chain = auth_chain[0]
-        elif len(auth_chain) > 1:
-            print(f"more than one auth chain for {line}")
-        else:
-            auth_chain = chain
-        auth_id_lookup[auth_chain] = chain
-    # non_auth_ids = [cid for cid in chain_ids if len(cid) ]
+    ligand_rows = soup.find_all('tr', id=re.compile('ligand_row_\w{1,3}'))
+    ligand_chain_info = dict()
+    for lig_row in ligand_rows:
+        lig_cols = lig_row.find_all('td')
+        lig_name = lig_cols[0].a.text
+        chain_info = dict()
+        for link_tag in lig_cols[0].find_all('ul', class_='dropdown-menu')[0].find_all('a'):
+            url = link_tag.get('href')
+            if 'encoding=sdf' not in url:
+                continue
+            text = link_tag.text.split(',')[-1]
+            chain = text.split()[1] # first word is always "chain"
+            auth_chain = re.findall('\[auth ([A-Z])\]', text)
+            if len(auth_chain) == 1:
+                auth_chain = auth_chain[0]
+            elif len(auth_chain) > 1:
+                raise IndexError(f"more than one auth chain for {text} in {pdb_id}")
+            else:
+                auth_chain = chain
+            chain_info[chain] = {"auth_chain": auth_chain, "url": url}
 
-    # list_elems = ligand_row.find_all('td')[0].find_all('li')
-    # url = None
-    # for elems in list_elems:
-    #     url = elems.a.get('href')
-    #     if f"encoding={filetype}" in url:
-    #         break
-    # return url, sorted(non_auth_ids)
-    return auth_id_lookup
+        # chain_ids = lig_cols[1].text.replace(' Less', '').split(',')
+        # auth_id_lookup = dict()
+        # for line in chain_ids:
+        #     line = line.strip()
+        #     chain = line.split()[0]
+        #     auth_chain = re.findall('\[auth ([A-Z])\]',line)
+        #     if len(auth_chain) == 1:
+        #         auth_chain = auth_chain[0]
+        #     elif len(auth_chain) > 1:
+        #         raise IndexError(f"more than one auth chain for {line} in {pdb_id}")
+        #     else:
+        #         auth_chain = chain
+        #     auth_id_lookup[chain] = {"chains": auth_chain, "links": lig_urls}
+        ligand_chain_info[lig_name] = chain_info
+
+    return ligand_chain_info
