@@ -13,21 +13,21 @@ def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
     ligand_path = downloaded_ligand.format(pdbid=struct)
-    print(ligand_path)
+    # print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
 
     lig_mol = next(ForwardSDMolSupplier(ligand_path))
     TransformConformer(lig_mol.GetConformer(), trans_matrix)
 
-    print("writing lig")
+    # print("writing lig")
     writer = SDWriter(aligned_lig.format(pdbid=struct))
     writer.write(lig_mol)
     writer.close()
     return True
     
 
-def struct_align(template, structs, dist=15.0, retry=True,
+def struct_align(template, structs, dist=12.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
                  ligand_info='structures/raw/{pdbid}.info',
                  aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
@@ -103,9 +103,12 @@ def struct_align(template, structs, dist=15.0, retry=True,
             selection_text = q_liginfo[1]
         query_to_align = query.select(f'calpha within {dist} of {selection_text}')
         try:
-            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=True,seqid=10,overlap=10)[0]
-        except IndexError:
-            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=False,seqid=10,overlap=10)[0]
+            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=True,seqid=1,overlap=1)[0]
+        except IndexError as ie:
+            print(str(ie))
+            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=False,seqid=1,overlap=1)[0]
+        if len(query_match) < 0.5 * min(len(query_to_align),len(template_to_align)):
+            print(f"WARNING: Check the quality of the alignment of {struct}")
         transform = calcTransformation(query_match,template_match)
         query_aligned = transform.apply(query)
 
@@ -115,7 +118,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
         if retry and not align_successful(align_dir, struct):
             print('Alignment failed. Trying again with a larger radius.')
-            transform_matrix = struct_align(template, [struct], dist=25.0, retry=False,
+            transform_matrix = struct_align(template, [struct], dist=15.0, retry=False,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
