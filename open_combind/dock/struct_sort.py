@@ -84,6 +84,20 @@ def struct_sort(structs, opt_path='structures/aligned/{pdbid}/{pdbid}_aligned.pd
                     structures_loc = structures_loc)
 
 def protonate_protein(path_to_protein, pH=7.0):
+    """
+    Protonates the protein at the given pH using PDBFixer.
+
+    Protein is loaded from `path_to_protein` and then protonated at `pH` using PDBFixer. The protonated protein is then
+    written back to `path_to_protein`.
+
+    Parameters
+    ----------
+    path_to_protein : str
+        Path to the protein PDB file
+    pH : float, default=7.0
+        pH at which to protonate the protein
+    """
+
     print(path_to_protein)
     pdb = PDBFixer(filename=path_to_protein)
     # pdb.findMissingResidues()
