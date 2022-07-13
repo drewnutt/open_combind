@@ -21,18 +21,29 @@ Main Combind Commands
 
 Docking Preparation
 -------------------
+
+struct_process
+*********************
 .. automodule:: open_combind.dock.struct_process
    :members: struct_process, load_complex, get_ligands_frompdb
  
+struct_align
+*******************************
 .. automodule:: open_combind.dock.struct_align
    :members: struct_align, align_separate_ligand
  
+struct_sort
+**********************
 .. automodule:: open_combind.dock.struct_sort
    :members:
  
+ligprep
+*******
 .. automodule:: open_combind.dock.ligprep
    :members:
  
+dock
+****
 .. automodule:: open_combind.dock.dock
    :members:
 
