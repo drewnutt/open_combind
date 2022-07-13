@@ -6,9 +6,11 @@ from rdkit.Chem import AllChem as Chem
 import numpy as np
 from bs4 import BeautifulSoup
 
+
 class RDKitParseException(Exception):
     def __init__(self, message):
         super().__init__(message)
+
 
 def load_complex(prot_in, lig_id, other_lig=None):
     """
@@ -54,7 +56,8 @@ def load_complex(prot_in, lig_id, other_lig=None):
     important_ligand = important_ligand.select('not water')
     compl = prot_only + important_ligand
 
-    return compl, prot_only, waters, heteros, important_ligand
+    return compl, prot_only, waters, heteros, important_ligand, fchain
+
 
 def struct_process(structs,
                    protein_in='structures/raw/{pdbid}.pdb',
@@ -113,7 +116,7 @@ def struct_process(structs,
         other_lig = None
         lig_info = open(_ligand_info,'r').readlines()
         lig_info = [info_line.strip('\n') for info_line in lig_info]
-        if len(lig_info[0]) not in [3,4]:
+        if len(lig_info[0]) > 3:
             lig_id = lig_info[1]
             print(f"Non-standard RCSB ligand name:{lig_info[0]}")
             print(f"Using {lig_id} as the selection criterion")
@@ -132,7 +135,7 @@ def struct_process(structs,
         assert lig_id is not None
         print(f'processing {struct} with ligand {lig_id}')
 
-        compl, prot, waters, het, ligand = load_complex(_protein_in, lig_id, other_lig=other_lig)
+        compl, prot, waters, het, ligand, lig_chain = load_complex(_protein_in, lig_id, other_lig=other_lig)
         writePDB(_filtered_protein,prot)
         if waters is not None:
             writePDB(_filtered_water,waters)
@@ -141,7 +144,7 @@ def struct_process(structs,
 
         writePDB(_filtered_complex,compl)
 
-def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{seq_id}.sdf", first_only=False):
+def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
     """
     Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
 
@@ -194,7 +197,8 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{
         if mol is None:
             raise RDKitParseException(f"RDKit cannot parse the molecule, {chem_name}, downloaded from the PDB for entry {pdbid}")
 
-        save_lig_path = save_file.format(pdbid=pdbid, chem_name=chem_name, seq_id=seq_id)
+        save_lig_path = save_file.format(pdbid=pdbid, chem_name=chem_name, seq_id=seq_id,chain_id=chain_id)
+        # print(save_lig_path)
         writer = Chem.SDWriter(save_lig_path)
         writer.write(mol)
         writer.close()
