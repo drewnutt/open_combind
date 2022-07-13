@@ -4,7 +4,19 @@ from prody import parsePDB, writePDB
 from plumbum.cmd import obabel
 
 def split_complex(complex_loc, pdb_id, structname,ligand_select='hetatm',
-        structures_loc = "structures/"):
+        structures_loc="structures/"):
+    """
+    Splits the complex
+
+    Parameters
+    ----------
+    complex_loc : str
+    pdb_id : str
+    structname : str
+    ligand_select : str, default='hetatm'
+    structures_loc : str, default="structures/"
+
+    """
     st = parsePDB(complex_loc)
     lig_path = '{structures_loc}ligands/{pdb_id}_lig.sdf'.format(structures_loc=structures_loc, pdb_id=pdb_id)
     aligned_lig_path = '{structures_loc}aligned/{pdb_id}/{pdb_id}_lig.sdf'.format(structures_loc=structures_loc, pdb_id=pdb_id)

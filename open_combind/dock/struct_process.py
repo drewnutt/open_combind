@@ -2,24 +2,36 @@ import os
 import requests
 from prody import parsePDB, writePDB
 from rdkit.Chem import AllChem as Chem
-from subprocess import run
 import numpy as np
+from bs4 import BeautifulSoup
 
 def load_complex(prot_in, lig_id, other_lig=None):
+    """
+    Loads the protein and separates it into separate ``ProDy.AtomGroups`` for the protein-ligand complex only, protein only, waters, heteroatoms, and ligand only.
+
+    Parameters
+    ----------
+    prot_in : str
+        Path to PDB file containing protein and ligand
+    lig_id : str
+        Three letter residue name or ProDy selection string to identify the ligand
+    other_lig : str, default=None
+        ProDy selection string that identifies any ligands other the one in the desired pocket
+    """
 
     prot_st = parsePDB(prot_in, altloc='all')
     chains = np.unique(prot_st.getChids())
     fchain = chains[0]
 
-    #filter protein to remove waters and other non-protein things
+    # filter protein to remove waters and other non-protein things
     prot_only = prot_st.select('protein')
     if len(np.unique(prot_only.getAltlocs())) > 1:
         altlocs = np.unique(prot_only.getAltlocs())
-        altlocs = [ alt if alt != ' ' else '_' for alt in altlocs]
+        altlocs = [alt if alt != ' ' else '_' for alt in altlocs]
         prot_only = prot_only.select(f'altloc {altlocs[0]} or altloc {altlocs[1]}')
     waters = prot_st.select('water')
     heteros = prot_st.select('hetero and not water')
-    if len(lig_id) in [3,4]:
+    if len(lig_id) == 3:
         important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
         if important_ligand is None:
             important_ligand = prot_st.select(f'resname {lig_id}')
@@ -31,7 +43,7 @@ def load_complex(prot_in, lig_id, other_lig=None):
         assert important_ligand is not None, f"nothing found with {lig_id} for {prot_in} to select as ligand"
     if len(np.unique(important_ligand.getAltlocs())) > 1:
         altlocs = np.unique(important_ligand.getAltlocs())
-        altlocs = [ alt if alt != ' ' else '_' for alt in altlocs]
+        altlocs = [alt if alt != ' ' else '_' for alt in altlocs]
         important_ligand = important_ligand.select(f'altloc {altlocs[0]}')
         important_ligand.setAltlocs(' ')
     important_ligand = important_ligand.select('not water')
@@ -47,6 +59,34 @@ def struct_process(structs,
                    filtered_ligand='structures/processed/{pdbid}/{pdbid}_lig.sdf',
                    filtered_hetero='structures/processed/{pdbid}/{pdbid}_het.pdb',
                    filtered_water='structures/processed/{pdbid}/{pdbid}_wat.pdb'):
+    """
+    Filters a list of raw PDB file into its main separate components.
+    Creates a pdb file for the following:
+    * Protein and ligand atoms only (only one ligand molecule)
+    * Protein only atoms
+    * Heteroatoms and not water
+    * Water only
+    Additionally, a ligand SDF is pulled from the PDB, if possible.
+
+    Parameters
+    -----------
+    structs : iterable of str
+        PDB IDs of the raw PDB files that need to be processed
+    protein_in : str, default='structures/raw/{pdbid}.pdb'
+        Format string of the path to the protein, given the PDBID as `pdbid`
+    ligand_info : str, default='structures/raw/{pdbid}.info'
+        Format string of the path to the ``.info`` file, given the PDBID as `pdbid`
+    filtered_protein : str, default='structures/processed/{pdbid}/{pdbid}_prot.pdb'
+        Format string of the path to the processed protein only PDB file, given the PDBID as `pdbid`
+    filtered_complex : str, default='structures/processed/{pdbid}/{pdbid}_complex.pdb'
+        Format string of the path to the processed protein-ligand only only PDB file, given the PDBID as `pdbid`
+    filtered_ligand : str, default='structures/processed/{pdbid}/{pdbid}_lig.sdf'
+        Format string of the path to the processed ligand only only SDF file, given the PDBID as `pdbid`
+    filtered_hetero : str, default='structures/processed/{pdbid}/{pdbid}_het.pdb'
+        Format string of the path to the processed heteroatom only (no waters) PDB file, given the PDBID as `pdbid`
+    filtered_water : str, default='structures/processed/{pdbid}/{pdbid}_wat.pdb')
+        Format string of the path to the processed water only PDB file, given the PDBID as `pdbid`
+    """
 
     for struct in structs:
         _protein_in = protein_in.format(pdbid=struct)
@@ -90,12 +130,32 @@ def struct_process(structs,
 
         writePDB(_filtered_complex,compl)
 
-def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
+def get_ligands_frompdb(pdbfile, lig_code=None, save_file=None, first_only=False):
+    """
+    Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
+
+    Parameters
+    ----------
+    pdbfile : str
+        Path to PDB file or PDB header file to pull information about the contained small molecules
+    lig_code : str, default=None
+        Three letter chemical component identifier (CCI) used by the RCSB for your ligand of interest
+    save_file : str, default=None
+        Path to output SDF file for your ligand of interest. Defaults to "<PDB ID>_<CCI>_<Sequence Number>.sdf" for each ligand in the PDB File.
+    first_only : bool, default=False
+        Only make SDF file of the first HET chemical found in the PDB file. If `lig_code` is provided, only generates an SDF for that.
+
+    Returns
+    -------
+    list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
+        Ligands downloaded directly from the RCSB webpage
+    """
     lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
-    _,header = parsePDB(pdbfile,header=True)
-    assert (lig_code is None)^(lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
-    ligands_in_order = get_ligand_order(pdbfile)
-    last_prot_chain = header['polymers'][-1].chid
+    _, header = parsePDB(pdbfile, header=True)
+    assert (lig_code is None) ^ (lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
+    # ligands_in_order = get_ligand_order(pdbfile)
+    # print(ligands_in_order)
+    # last_prot_chain = header['polymers'][-1].chid
     chemicals = header['chemicals']
     pdbid = header['identifier']
     molecules = []
@@ -104,14 +164,18 @@ def get_ligands_frompdb(pdbfile,lig_code=None,save_file=None,first_only=False):
             continue
         seq_id = chemical.resnum
         chem_name = chemical.resname
-        add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
-        chain_id = chr(ord(last_prot_chain) + add_to_pchain)
-        page=requests.get(lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)).text
-        mol=Chem.MolFromMolBlock(page)
+        # add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
+        # chain_id = chr(ord(last_prot_chain) + add_to_pchain)
+        # print(f"Page:{lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)}")
+
+        # Maybe RCSB will get a better API for this, but for now we just have to comb the webpage
+        chain_id = scrape_rcsb_webpage(pdbid, chem_name)[0]
+        page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id, chain_id=chain_id, chem_name=chem_name)).text
+        mol = Chem.MolFromMolBlock(page)
         assert mol is not None
         Chem.SanitizeMol(mol)
         if save_file is None:
-            save_file = f"{root}/{pdbid}_{chem_name}_{seq_id}.sdf"
+            save_file = f"{pdbid}_{chem_name}_{seq_id}.sdf"
         writer = Chem.SDWriter(save_file)
         writer.write(mol)
         writer.close()
@@ -130,6 +194,7 @@ def get_ligands(pdbfile):
         return get_ligands_frompdb(pdbfile,lig_code=ligand_name,first_only=True)
     else:
         return "ligand is protein"
+
 def get_ligand_order(pdbfile):
     ligand_ordering = []
     with open(pdbfile) as read_file:
@@ -137,7 +202,26 @@ def get_ligand_order(pdbfile):
             if line.startswith('HET '):
                 chemname = line[7:10].strip()
                 resnum = int(line[13:17])
-                ligand_ordering.append((chemname,resnum))
+                chain = line[10:13].strip()
+                ligand_ordering.append((chemname,resnum,chain))
             elif line.startswith('ATOM '):
                 break
-    return ligand_ordering
+    ordered_ligands = sorted(ligand_ordering, key=lambda x: (x[1], x[2]))
+    return [(name, number) for (name, number, _) in ordered_ligands]
+
+def scrape_rcsb_webpage(pdb_id,lig_id,filetype="sdf"):
+    rec_page_url = "https://www.rcsb.org/structure/{receptor}"
+    receptor_page = requests.get(rec_page_url.format(receptor=pdb_id))
+    soup = BeautifulSoup(receptor_page.text, 'html.parser')
+    ligand_row = soup.find_all('tr', id=f'ligand_row_{lig_id}')[0]
+    chain_ids = ligand_row.find_all('td')[1].text.split()
+    non_auth_ids = [cid for cid in chain_ids if ('[auth' not in cid) and (']' not in cid)]
+
+    # list_elems = ligand_row.find_all('td')[0].find_all('li')
+    # url = None
+    # for elems in list_elems:
+    #     url = elems.a.get('href')
+    #     if f"encoding={filetype}" in url:
+    #         break
+    # return url, sorted(non_auth_ids)
+    return sorted(non_auth_ids)
