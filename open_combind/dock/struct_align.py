@@ -53,11 +53,10 @@ def struct_align(template, structs, dist=15.0, retry=True,
                  aligned_prot='{pdbid}_aligned.pdb',
                  align_dir='structures/aligned'):
     """
-    .. include ::<isotech.txt>
-     
     Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
     
-    Aligned files are put in `` `align_dir`/<PDB ID>/``
+    
+    Aligned files are put in :file:`{align_dir}/{<PDB ID>}/`
 
     If a separate ligand exists for a given PDB ID, then it will be transformed with the same matrix as used for the protein alignment.
 
@@ -93,6 +92,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
     if not os.path.isfile(template_path):
         print('template not processed', template_path)
         return
+    # .. |angst| replace:: \u212B
 
     template_st = parsePDB(template_path)
     template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
