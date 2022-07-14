@@ -69,13 +69,15 @@ def struct_align(template, structs, dist=12.0, retry=True,
         return
 
     template_st = parsePDB(template_path)
-    template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb','.info')
-    temp_liginfo = open(template_liginfo_path,'r').readlines()
+    template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
+    temp_liginfo = open(template_liginfo_path, 'r').readlines()
     if len(temp_liginfo[0].strip('\n')) < 4:
         selection_text = 'hetatm'
     else:
         selection_text = temp_liginfo[1]
     template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
+    templ_lig_chain = template_st.select(selection_text).getChids()[0]
+    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text})')
     transform_matrix = 0
     for struct in structs:
         query_path = filtered_protein.format(pdbid=struct)
@@ -95,26 +97,35 @@ def struct_align(template, structs, dist=12.0, retry=True,
         os.system('cp {} {}/{}'.format(query_path, _workdir, _query_fname))
 
         query = parsePDB(f'{_workdir}/{_query_fname}')
-        query_liginfo_path = query_path.replace(f'processed/{struct}','raw').replace('_complex.pdb','.info')
-        q_liginfo = open(query_liginfo_path,'r').readlines()
+        query_liginfo_path = query_path.replace(f'processed/{struct}', 'raw').replace('_complex.pdb', '.info')
+        q_liginfo = open(query_liginfo_path, 'r').readlines()
         if len(q_liginfo[0].strip('\n')) < 4:
             selection_text = 'hetatm'
         else:
             selection_text = q_liginfo[1]
         query_to_align = query.select(f'calpha within {dist} of {selection_text}')
         try:
-            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=True,seqid=1,overlap=1)[0]
+            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
+                                                            seqid=1, overlap=1)[0]
         except IndexError as ie:
             print(str(ie))
-            query_match, template_match, _ ,_ = matchChains(query_to_align,template_to_align,pwalign=False,seqid=1,overlap=1)[0]
-        if len(query_match) < 0.5 * min(len(query_to_align),len(template_to_align)):
-            print(f"WARNING: Check the quality of the alignment of {struct}")
-        transform = calcTransformation(query_match,template_match)
+            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=False,
+                                                            seqid=1, overlap=1)[0]
+        if len(query_match) < 0.5 * min(len(query_to_align), len(template_to_align)):
+            # print(len(query_match))
+            print(f"WARNING: Bad quality chain alignment of {struct}, "
+                    "trying with only protein atoms on ligand chain")
+            query_lig_chain = query.select(selection_text).getChids()[0]
+            query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text})')
+            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
+                                                            seqid=1, overlap=1)[0]
+            # print(len(query_match))
+        transform = calcTransformation(query_match, template_match)
         query_aligned = transform.apply(query)
 
         transform_matrix = transform.getMatrix()
 
-        writePDB(aligned_prot.format(pdbid=struct),query_aligned)
+        writePDB(aligned_prot.format(pdbid=struct), query_aligned)
 
         if retry and not align_successful(align_dir, struct):
             print('Alignment failed. Trying again with a larger radius.')
