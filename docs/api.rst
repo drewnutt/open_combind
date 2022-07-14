@@ -17,7 +17,7 @@ Main Combind Commands
 .. autofunction:: open_combind.pose_prediction
 
 ..
-.. automethod:: open_combind.extract_top_poses
+    .. automethod:: open_combind.extract_top_poses
 
 Docking Preparation
 -------------------

@@ -62,10 +62,12 @@ def struct_process(structs,
     """
     Filters a list of raw PDB file into its main separate components.
     Creates a pdb file for the following:
-    * Protein and ligand atoms only (only one ligand molecule)
-    * Protein only atoms
-    * Heteroatoms and not water
-    * Water only
+
+        * Protein and ligand atoms only (only one ligand molecule)
+        * Protein only atoms
+        * Heteroatoms and not water
+        * Water only
+
     Additionally, a ligand SDF is pulled from the PDB, if possible.
 
     Parameters

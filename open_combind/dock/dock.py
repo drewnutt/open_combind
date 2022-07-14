@@ -34,7 +34,7 @@ def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=
     Parameters
     ----------
     template : str
-        String from ``.template` file containing the gnina docking command in the format::
+        String from ``.template`` file containing the gnina docking command in the format::
 
             gnina -r <path_to_receptor> --autobox_ligand <path_to_autobox>
     ligands : iterable of str
@@ -97,7 +97,7 @@ def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=
 
 def setup_slurm(gnina_in,ligands,receptor,abox):
     """
-     Creates a tarball of the `receptor`, `abox` and all of the `ligands`. Then runs ``sed`` on `gnina_in` to remove the path to the current working directory.
+     Creates a tarball of the `receptor`, `abox` and all of the `ligands`. Then runs :command:`sed` on `gnina_in` to remove the path to the current working directory.
 
      Parameters
      ----------
