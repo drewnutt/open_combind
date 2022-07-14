@@ -40,7 +40,9 @@ def load_complex(prot_in, lig_id, other_lig=None):
     heteros = prot_st.select('hetero and not water')
     if len(lig_id) == 3:
         important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
+        lig_chain = fchain
         if important_ligand is None:
+            lig_chain = None
             important_ligand = prot_st.select(f'resname {lig_id}')
         assert important_ligand is not None, f"no ligand found with resname {lig_id} for {prot_in}"
     else:
@@ -54,9 +56,8 @@ def load_complex(prot_in, lig_id, other_lig=None):
         important_ligand = important_ligand.select(f'altloc {altlocs[0]}')
         important_ligand.setAltlocs(' ')
     important_ligand = important_ligand.select('not water')
-    compl = prot_only + important_ligand
 
-    return compl, prot_only, waters, heteros, important_ligand, fchain
+    return prot_only, waters, heteros, important_ligand, lig_chain
 
 
 def struct_process(structs,
@@ -124,27 +125,29 @@ def struct_process(structs,
                 other_lig = lig_info[2]
         else:
             lig_id = lig_info[0]
+        assert lig_id is not None
+        print(f'processing {struct} with ligand {lig_id}')
+
+        prot, waters, het, ligand, lig_chain = load_complex(_protein_in, lig_id, other_lig=other_lig)
+        compl = prot + ligand
+        if len(lig_id) < 4:
             try:
-                _ = get_ligands_frompdb(_protein_in,lig_code=lig_id,
-                        save_file=_filtered_ligand,first_only=True)
+                _ = get_ligands_frompdb(_protein_in, lig_code=lig_id, specific_chain=lig_chain,
+                                        save_file=_filtered_ligand, first_only=True)
             except FileNotFoundError as fnfe:
                 if "Unable to retrieve instance coordinates" in str(fnfe):
                     print(str(fnfe))
             except RDKitParseException as rdkpe:
                 print(str(rdkpe))
-        assert lig_id is not None
-        print(f'processing {struct} with ligand {lig_id}')
-
-        compl, prot, waters, het, ligand, lig_chain = load_complex(_protein_in, lig_id, other_lig=other_lig)
-        writePDB(_filtered_protein,prot)
+        writePDB(_filtered_protein, prot)
         if waters is not None:
-            writePDB(_filtered_water,waters)
+            writePDB(_filtered_water, waters)
         if het is not None:
-            writePDB(_filtered_hetero,het)
+            writePDB(_filtered_hetero, het)
 
-        writePDB(_filtered_complex,compl)
+        writePDB(_filtered_complex, compl)
 
-def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
+def get_ligands_frompdb(pdbfile, lig_code=None, specific_chain=None, save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
     """
     Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
 
@@ -154,6 +157,8 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{
         Path to PDB file or PDB header file to pull information about the contained small molecules
     lig_code : str, default=None
         Three letter chemical component identifier (CCI) used by the RCSB for your ligand of interest
+    specific_chain : str, default=None
+        If specified, will only retrieve the ligand(s) with the author chain ID 
     save_file : str, default="{pdbid}_{chem_name}_{seq_id}.sdf"
         Path to output SDF file for your ligand of interest. Defaults to "<PDB ID>_<CCI>_<Sequence Number>.sdf" for each ligand in the PDB File.
     first_only : bool, default=False
@@ -178,8 +183,11 @@ def get_ligands_frompdb(pdbfile, lig_code=None, save_file="{pdbid}_{chem_name}_{
         chem_name = chemical.resname
         if (lig_code is not None) and (chem_name != lig_code):
             continue
-        seq_id = chemical.resnum
+
         auth_chain_id = chemical.chain
+        if (specific_chain is not None) and (auth_chain_id != specific_chain):
+            continue
+        seq_id = chemical.resnum
         current_ligand = all_ligand_info[chem_name]
         for chain_id, info in current_ligand.items():
             if auth_chain_id == info['auth_chain']:
