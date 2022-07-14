@@ -200,16 +200,13 @@ def dock_ligands(ligands, template=None, dock_file="", root='docking', screen=Fa
 
     mkdir(root)
     ligs = []
-    _roots = []
     names = []
     for ligand in ligands:
         name = '{}-to-{}'.format(basename(ligand), basename(template))
-        _root = '{}/{}'.format(root, name)
         ligs.append(ligand)
-        _roots.append(_root)
         names.append(name)
     print(f"Writing docking file for {len(ligs)} ligands")
-    dock(template, ligands, _roots, names, not screen, slurm=slurm, now=now, infile=dock_file)
+    dock(template, ligands, root, names, not screen, slurm=slurm, now=now, infile=dock_file)
 
 ################################################################################
 
