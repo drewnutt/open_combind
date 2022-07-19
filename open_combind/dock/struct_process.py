@@ -21,6 +21,7 @@ def load_complex(prot_in, lig_id, other_lig=None):
         ProDy selection string that identifies any ligands other the one in the desired pocket
     """
 
+    lig_chain = None
     prot_st = parsePDB(prot_in, altloc='all')
     chains = np.unique(prot_st.getChids())
     fchain = chains[0]
@@ -33,7 +34,6 @@ def load_complex(prot_in, lig_id, other_lig=None):
         prot_only = prot_only.select(f'altloc {altlocs[0]} or altloc {altlocs[1]}')
     waters = prot_st.select('water')
     heteros = prot_st.select('hetero and not water')
-    lig_chain = None
     if len(lig_id) < 4:
         important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
         lig_chain = fchain
