@@ -10,6 +10,7 @@ Welcome to open_combind's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   installation
    getting_started
    api
 
