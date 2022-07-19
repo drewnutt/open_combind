@@ -1,15 +1,10 @@
 import os
 import re
 import requests
-from prody import parsePDB, parsePDBHeader, writePDB
+from prody import parsePDB, writePDB
 from rdkit.Chem import AllChem as Chem
 import numpy as np
-from bs4 import BeautifulSoup
-
-
-class RDKitParseException(Exception):
-    def __init__(self, message):
-        super().__init__(message)
+from open_combind.dock.ligand_handling import get_ligands_from_RCSB, ligand_selection_to_mol, get_ligand_from_SMILES, RDKitParseException
 
 
 def load_complex(prot_in, lig_id, other_lig=None):
@@ -38,7 +33,8 @@ def load_complex(prot_in, lig_id, other_lig=None):
         prot_only = prot_only.select(f'altloc {altlocs[0]} or altloc {altlocs[1]}')
     waters = prot_st.select('water')
     heteros = prot_st.select('hetero and not water')
-    if len(lig_id) == 3:
+    lig_chain = None
+    if len(lig_id) < 4:
         important_ligand = prot_st.select(f'resname {lig_id} and chain {fchain}')
         lig_chain = fchain
         if important_ligand is None:
@@ -46,10 +42,13 @@ def load_complex(prot_in, lig_id, other_lig=None):
             important_ligand = prot_st.select(f'resname {lig_id}')
         assert important_ligand is not None, f"no ligand found with resname {lig_id} for {prot_in}"
     else:
-        important_ligand = prot_st.select(f'{lig_id}')
+        important_ligand = prot_st.select(f'{lig_id} and not {lig_id}')
         if other_lig is not None:
             prot_only = prot_only.select(f'not {other_lig} and not {lig_id}')
         assert important_ligand is not None, f"nothing found with {lig_id} for {prot_in} to select as ligand"
+        chains = np.unique(important_ligand.getChids())
+        if len(chains) == 1:
+            lig_chain = chains[0]
     if len(np.unique(important_ligand.getAltlocs())) > 1:
         altlocs = np.unique(important_ligand.getAltlocs())
         altlocs = [alt if alt != ' ' else '_' for alt in altlocs]
@@ -130,15 +129,7 @@ def struct_process(structs,
 
         prot, waters, het, ligand, lig_chain = load_complex(_protein_in, lig_id, other_lig=other_lig)
         compl = prot + ligand
-        if len(lig_id) < 4:
-            try:
-                _ = get_ligands_frompdb(_protein_in, lig_code=lig_id, specific_chain=lig_chain,
-                                        save_file=_filtered_ligand, first_only=True)
-            except FileNotFoundError as fnfe:
-                if "Unable to retrieve instance coordinates" in str(fnfe):
-                    print(str(fnfe))
-            except RDKitParseException as rdkpe:
-                print(str(rdkpe))
+        create_correct_ligand_sdf(struct, lig_info[0], ligand, _filtered_ligand, ligand_chain=lig_chain)
         writePDB(_filtered_protein, prot)
         if waters is not None:
             writePDB(_filtered_water, waters)
@@ -147,137 +138,45 @@ def struct_process(structs,
 
         writePDB(_filtered_complex, compl)
 
-def get_ligands_frompdb(pdbfile, lig_code=None, specific_chain=None, save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
+def create_correct_ligand_sdf(pdb_id, lig_id, ligand, save_file, ligand_chain=None):
     """
-    Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
+    Create a SDF file containing only the ligand specified by `lig_id` with the correct coordinates and bond orders as specified in `pdb_id`
 
     Parameters
     ----------
-    pdbfile : str
-        Path to PDB file or PDB header file to pull information about the contained small molecules
-    lig_code : str, default=None
-        Three letter chemical component identifier (CCI) used by the RCSB for your ligand of interest
-    specific_chain : str, default=None
-        If specified, will only retrieve the ligand(s) with the author chain ID 
-    save_file : str, default="{pdbid}_{chem_name}_{seq_id}.sdf"
-        Path to output SDF file for your ligand of interest. Defaults to "<PDB ID>_<CCI>_<Sequence Number>.sdf" for each ligand in the PDB File.
-    first_only : bool, default=False
-        Only make SDF file of the first HET chemical found in the PDB file. If `lig_code` is provided, only generates an SDF for that.
-
-    Returns
-    -------
-    list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        Ligands downloaded directly from the RCSB webpage
+    pdb_id : str
+        PDB ID of the protein-ligand complex that the ligand is coming from
+    lig_id : str
+        Chemical Component Identifier (CCI) of the ligand, according to RCSB
+    ligand : `ProDy.AtomGroups`
+        Ligand atom group extracted from the PDB File
+    save_file : str
+        Path to save SDF of ligand
+    ligand_chain : str
+        Specify which author chain ligand to save to SDF, if not specified then will download each chain of the ligand with `lig_id`
     """
-    lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
-    header = parsePDBHeader(pdbfile)
-    assert (lig_code is None) ^ (lig_code in header.keys()), f"{lig_code} not a valid ligand in {pdbfile}"
-    # ligands_in_order = get_ligand_order(pdbfile)
-    # print(ligands_in_order)
-    # last_prot_chain = header['polymers'][-1].chid
-    chemicals = header['chemicals']
-    pdbid = header['identifier']
-    all_ligand_info = scrape_rcsb_webpage(pdbid)
-    molecules = []
-    for idx, chemical in enumerate(chemicals):
-        chem_name = chemical.resname
-        if (lig_code is not None) and (chem_name != lig_code):
-            continue
 
-        auth_chain_id = chemical.chain
-        if (specific_chain is not None) and (auth_chain_id != specific_chain):
-            continue
-        seq_id = chemical.resnum
-        current_ligand = all_ligand_info[chem_name]
-        for chain_id, info in current_ligand.items():
-            if auth_chain_id == info['auth_chain']:
-                assert f"auth_seq_id={seq_id}" in info['url']
-                break
-        # add_to_pchain = ligands_in_order.index((chem_name,seq_id)) + 1
-        # chain_id = chr(ord(last_prot_chain) + add_to_pchain)
-        # print(f"Page:{lig_retrieve_format.format(pdbid=pdbid,seq_id=seq_id,chain_id=chain_id,chem_name=chem_name)}")
-
-        # Maybe RCSB will get a better API for this, but for now we just have to comb the webpage
-        page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id, chain_id=chain_id, chem_name=chem_name)).text
-        if not page.startswith(chem_name):
-            raise FileNotFoundError(f"Unable to retrieve instance coordinates for {chem_name} in entry {pdbid}")
-        mol = Chem.MolFromMolBlock(page)
-        if mol is None:
-            raise RDKitParseException(f"RDKit cannot parse the molecule, {chem_name}, downloaded from the PDB for entry {pdbid}")
-
-        save_lig_path = save_file.format(pdbid=pdbid, chem_name=chem_name, seq_id=seq_id,chain_id=chain_id)
-        # print(save_lig_path)
-        writer = Chem.SDWriter(save_lig_path)
-        writer.write(mol)
-        writer.close()
-        if first_only:
-            molecules = mol
-            break
-        else:
-            molecules.append(mol)
-    return molecules
-
-def get_ligands(pdbfile):
-    liginfo_path = pdbfile.replace('.pdb','.info')
-    liginfo = open(liginfo_path,'r').readlines()
-    ligand_name = liginfo[0].strip('\n')
-    if len(ligand_name) < 4:
-        return get_ligands_frompdb(pdbfile,lig_code=ligand_name,first_only=True)
-    else:
-        return "ligand is protein"
-
-def get_ligand_order(pdbfile):
-    ligand_ordering = []
-    with open(pdbfile) as read_file:
-        for line in read_file:
-            if line.startswith('HET '):
-                chemname = line[7:10].strip()
-                resnum = int(line[13:17])
-                chain = line[10:13].strip()
-                ligand_ordering.append((chemname,resnum,chain))
-            elif line.startswith('ATOM '):
-                break
-    ordered_ligands = sorted(ligand_ordering, key=lambda x: (x[1], x[2]))
-    return ordered_ligands
-
-def scrape_rcsb_webpage(pdb_id):
-    rec_page_url = "https://www.rcsb.org/structure/{receptor}"
-    receptor_page = requests.get(rec_page_url.format(receptor=pdb_id))
-    soup = BeautifulSoup(receptor_page.text, 'html.parser')
-    ligand_rows = soup.find_all('tr', id=re.compile('ligand_row_\w{1,3}'))
-    ligand_chain_info = dict()
-    for lig_row in ligand_rows:
-        lig_cols = lig_row.find_all('td')
-        lig_name = lig_cols[0].a.text
-        chain_info = dict()
-        for link_tag in lig_cols[0].find_all('ul', class_='dropdown-menu')[0].find_all('a'):
-            url = link_tag.get('href')
-            if 'encoding=sdf' not in url:
-                continue
-            text = link_tag.text.split(',')[-1]
-            chain = text.split()[1] # first word is always "chain"
-            auth_chain = re.findall('\[auth ([A-Z])\]', text)
-            if len(auth_chain) == 1:
-                auth_chain = auth_chain[0]
-            elif len(auth_chain) > 1:
-                raise IndexError(f"more than one auth chain for {text} in {pdb_id}")
+    mol = None
+    if len(lig_id) < 4:
+        try:
+            mol = get_ligands_from_RCSB(pdb_id, lig_code=lig_id, specific_chain=ligand_chain,
+                                    save_file=save_file, first_only=True)
+        except FileNotFoundError as fnfe:
+            if "Unable to retrieve instance coordinates" in str(fnfe):
+                print(str(fnfe))
             else:
-                auth_chain = chain
-            chain_info[chain] = {"auth_chain": auth_chain, "url": url}
-
-        # chain_ids = lig_cols[1].text.replace(' Less', '').split(',')
-        # auth_id_lookup = dict()
-        # for line in chain_ids:
-        #     line = line.strip()
-        #     chain = line.split()[0]
-        #     auth_chain = re.findall('\[auth ([A-Z])\]',line)
-        #     if len(auth_chain) == 1:
-        #         auth_chain = auth_chain[0]
-        #     elif len(auth_chain) > 1:
-        #         raise IndexError(f"more than one auth chain for {line} in {pdb_id}")
-        #     else:
-        #         auth_chain = chain
-        #     auth_id_lookup[chain] = {"chains": auth_chain, "links": lig_urls}
-        ligand_chain_info[lig_name] = chain_info
-
-    return ligand_chain_info
+                raise fnfe
+        except RDKitParseException as rdkpe:
+            print(str(rdkpe))
+    if mol is None:
+        print(f"WARNING: Unable to download ligand SDF directly from RCSB for {lig_id}, extracting from PDB and assigning bonds from RCSB SMILES entry")
+        try:
+            mol_from_smiles = get_ligand_from_SMILES(lig_id)
+            _ = ligand_selection_to_mol(ligand, mol_from_smiles, outfile=save_file)
+        except FileNotFoundError as fnfe:
+            if "Unable to retrieve instance coordinates" in str(fnfe):
+                print(str(fnfe))
+            else:
+                raise fnfe
+        except RDKitParseException as rdkpe:
+            print(str(rdkpe))
