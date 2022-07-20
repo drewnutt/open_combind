@@ -9,7 +9,9 @@ def align_successful(out_dir, struct):
     else:
         return True
 
-def align_separate_ligand(ligand_path, trans_matrix, transformed_lig_path):
+def align_separate_ligand(struct, trans_matrix,
+        downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
+        aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
     """
     Transform the the ligand using the provided transformation matrix
 
@@ -27,21 +29,23 @@ def align_separate_ligand(ligand_path, trans_matrix, transformed_lig_path):
     bool
         If the ligand file existed and the transformation was performed
     """
-    print(ligand_path)
+
+    ligand_path = downloaded_ligand.format(pdbid=struct)
+    # print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
 
     lig_mol = next(ForwardSDMolSupplier(ligand_path))
     TransformConformer(lig_mol.GetConformer(), trans_matrix)
 
-    print("writing lig")
-    writer = SDWriter(transformed_lig_path)
+    # print("writing lig")
+    writer = SDWriter(aligned_lig.format(pdbid=struct))
     writer.write(lig_mol)
     writer.close()
     return True
     
 
-def struct_align(template, structs, dist=15.0, retry=True,
+def struct_align(template, structs, dist=12.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
                  ligand_info='structures/raw/{pdbid}.info',
                  aligned_prot='{pdbid}_aligned.pdb',
@@ -97,6 +101,8 @@ def struct_align(template, structs, dist=15.0, retry=True,
     else:
         selection_text = temp_liginfo[1]
     template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
+    templ_lig_chain = template_st.select(selection_text).getChids()[0]
+    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text})')
     transform_matrix = 0
     for struct in structs:
         query_path = filtered_protein.format(pdbid=struct)
@@ -125,20 +131,32 @@ def struct_align(template, structs, dist=15.0, retry=True,
             selection_text = q_liginfo[1]
         query_to_align = query.select(f'calpha within {dist} of {selection_text}')
         try:
-            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True, seqid=10, overlap=10)[0]
-        except IndexError:
-            query_match, template_match, _, _ = matchChains(query_to_align,template_to_align,pwalign=False,seqid=10,overlap=10)[0]
-        transform = calcTransformation(query_match,template_match)
+            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
+                                                            seqid=1, overlap=1)[0]
+        except IndexError as ie:
+            print(str(ie))
+            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=False,
+                                                            seqid=1, overlap=1)[0]
+        if len(query_match) < 0.5 * min(len(query_to_align), len(template_to_align)):
+            # print(len(query_match))
+            print(f"WARNING: Bad quality chain alignment of {struct}, "
+                    "trying with only protein atoms on ligand chain")
+            query_lig_chain = query.select(selection_text).getChids()[0]
+            query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text})')
+            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
+                                                            seqid=1, overlap=1)[0]
+            # print(len(query_match))
+        transform = calcTransformation(query_match, template_match)
         query_aligned = transform.apply(query)
 
         transform_matrix = transform.getMatrix()
 
-        writePDB(align_dir+f"/{struct}/"+aligned_prot.format(pdbid=struct), query_aligned)
+        writePDB(aligned_prot.format(pdbid=struct), query_aligned)
 
         if retry and not align_successful(align_dir, struct):
             print('Alignment failed. Trying again with a larger radius.')
-            transform_matrix = struct_align(template, [struct], dist=25.0, retry=False,
-                     filtered_protein=filtered_protein, aligned_prot=aligned_prot,
+            transform_matrix = struct_align(template, [struct], dist=15.0, retry=False,
+                     filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
         aligned_lig = align_separate_ligand(filtered_protein.replace("_complex.pdb", "_lig.sdf").format(pdbid=struct),

@@ -15,8 +15,8 @@ def read_stats(stats_root, features):
             stats[interaction][dist] = DensityEstimate.read(fname)
     return stats
 
-def pair_features(protein, data_root, pairs_root, interactions=['hbond',  'saltbridge', 'contact', 'shape', 'mcss']):
-    features = Features(f'{data_root}/{protein}/features/', max_poses=100)
+def pair_features(protein, data_root, pairs_root, interactions=['hbond',  'saltbridge', 'contact', 'shape', 'mcss'], features_dir="features/"):
+    features = Features(f"{data_root}/{protein}/{features_dir}", max_poses=100)
     features.load_features()
     ligand_names = sorted(set(features.raw['name1']))
     features = features.get_view(ligand_names,interactions)
