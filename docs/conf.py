@@ -86,6 +86,13 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 pygments_style = 'default'
 
 
+# Connecting docs to other docs
+intersphinx_mapping = {
+    'prody': ('http://prody.csb.pitt.edu/', None),
+    'rdkit': ('http://rdkit.org/docs/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+}
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
