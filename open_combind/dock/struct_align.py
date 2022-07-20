@@ -21,7 +21,7 @@ def align_separate_ligand(struct, trans_matrix,
     ----------
     struct : str
 		PDB ID of the original complex
-    trans_matrix : ``ndarray``
+    trans_matrix : :class:`~numpy.ndarray`
         Transformation matrix describing the transformation of the ligand
 	downloaded_ligand : str, default="structures/processed/{pdbid}/{pdbid}_lig.sdf"
 		Format string for the path to the ligand SDF file given the PDB ID as `pdbid`
@@ -81,7 +81,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
     Returns
     -------
-    `ProDy.measure.Transformation`
+    :class:`~prody.measure.transform.Transformation`
         Transformation object of the last alignment performed
 
 
