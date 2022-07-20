@@ -19,7 +19,7 @@ def align_separate_ligand(struct, trans_matrix,
     ----------
     ligand_path : str
         Path to the ligand SDF file that needs to be transformed
-    trans_matrix : ``ndarray``
+    trans_matrix : :class:`~numpy.ndarray`
         Transformation matrix describing the transformation of the ligand
     transformed_lig_path : str
         Path to the transformed ligand SDF file for output
@@ -79,7 +79,7 @@ def struct_align(template, structs, dist=12.0, retry=True,
 
     Returns
     -------
-    `ProDy.measure.Transformation`
+    :class:`~prody.measure.transform.Transformation`
         Transformation object of the last alignment performed
 
 

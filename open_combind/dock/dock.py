@@ -106,7 +106,7 @@ def setup_slurm(gnina_in, ligands, receptor, abox):
      gnina_in : str
         Path to the GNINA docking commands file relative to the current working directory
      ligands : list of str
-       Paths of the ligands 
+       Paths of the ligands
      receptor : str
         Path to the receptor file
      abox : str
