@@ -8,14 +8,15 @@ Main Combind Commands
 ---------------------
 .. autofunction:: open_combind.structprep
 
-.. automethod:: open_combind.ligprep
+.. autofunction:: open_combind.ligprep
 
-.. automethod:: open_combind.dock_ligands
+.. autofunction:: open_combind.dock_ligands
 
 .. autofunction:: open_combind.featurize
 
-.. automethod:: open_combind.pose_prediction
+.. autofunction:: open_combind.pose_prediction
 
+..
 .. automethod:: open_combind.extract_top_poses
 
 Featurization

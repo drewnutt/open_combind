@@ -74,7 +74,7 @@ def structprep(struct, templ_struct):
     Files ending with _lig contain only the small molecule ligand present in the
     structure, and files ending with _prot contain everything else.
     """
-    oc.structprep(templ_struct, struct=struct)
+    oc.structprep(templ_struct=templ_struct, struct=struct)
 
 
 @cli.command()
@@ -135,7 +135,7 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
     create a docking file. The default looks like:
      "-l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log} \n"
     """
-    oc.dock_ligands(template, ligands, dock_file, root=root, screen=screen, slurm=slurm, now=now)
+    oc.dock_ligands(ligands, template=template, dock_file=dock_file, root=root, screen=screen, slurm=slurm, now=now)
 
 ################################################################################
 
@@ -164,7 +164,7 @@ def featurize(root, poseviewers, native, ifp_version,
 
 @cli.command()
 @click.argument('root')
-@click.argument('out')
+@click.argument('out', default="poses.csv")
 @click.argument('ligands', nargs=-1)
 @click.option('--features', default='mcss,hbond,saltbridge,contact')
 @click.option('--alpha', default=1.0)
@@ -179,7 +179,7 @@ def pose_prediction(root, out, ligands,
     """
     features = features.split(',')
 
-    oc.pose_prediction(root, out, ligands, features=features,
+    oc.pose_prediction(root, out=out, ligands=ligands, features=features,
             alpha=alpha, stats_root=stats_root, restart=restart, max_iterations=max_iterations)
 
 # @main.command()
