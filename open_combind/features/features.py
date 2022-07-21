@@ -24,6 +24,40 @@ IFP = {'rd1':    {'version'           : 'rd1',
 class Features:
     """
     Organize feature computation and loading.
+    
+    Parameters
+    ----------
+    root : str
+        Path to root directory of poses/features
+    ifp_version : str, default='rd1'
+        Version of the interaction fingerprint to use for featurization
+    shape_version : str, default='pharm_max'
+        Version of the shape algorithm to use for featurization (not implemented)
+    max_poses : str, default=10000  
+        Maximum number of poses per ligand used to compute features
+    pv_root
+        Root of the directory containing the poses, if not specified then set to ``{root}/docking``
+    ifp_features : :class:`list[str]<list>`, default=['hbond', 'saltbridge', 'contact']
+        Interaction fingerprint features to calculate
+    cnn_scores : bool, default=True
+        Keep track of CNN produced scores from GNINA (i.e. CNNscore and CNNaffinity)
+        
+    Attributes
+    ----------
+    root : str
+        Root directory where the features/poses should be looked for
+    ifp_version : str
+        Which version of the interaction fingerprint to use
+    shape_version : str
+        (not currently used) which version of the shape algorithm to use for featurization
+    max_poses : int
+        Maximum number of poses to handle for each ligand
+    ifp_features : :class:`list[str]<list>`
+        Which interaction features to track
+    cnn_scores : bool
+        Keep track of CNN produced scores from GNINA (i.e. CNNscore and CNNaffinity)
+    raw : dict
+        Contains the raw data of the computed (or loaded) features where the key is the feature name
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
                  max_poses=10000, pv_root=None,
@@ -81,6 +115,19 @@ class Features:
 
     def get_view(self, ligands, features):
         """
+        Load the pairwise features `features` for the ligands in `ligands`
+
+        Parameters
+        ----------
+        ligands : :class:`list[str]<list>`
+            Ligands features should be loaded
+        features : :class:`list[str]<list>`
+            Features that should be loaded
+
+        Returns
+        -------
+        dict
+            Pairwise `features` for all of the ligand poses of the ligands in `ligands`
         """
         data = {}
         if self.cnn_scores:
@@ -108,6 +155,25 @@ class Features:
         return data
 
     def load_single_features(self, pvs, ligands=None):
+        """
+        Load the single pose features (e.g. docking score, RMSD, IFP, etc.) of the poses
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            Poses that need features loaded
+        ligands : 
+
+        Returns
+        -------
+        rmsds : list
+        gscores : list
+        gaffs : list
+        vaffs : list
+        poses : list
+        names : list
+        ifps : list
+        """
         rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
         for pv in pvs:
             _rmsds = np.load(self.path('rmsd', pv=pv))
@@ -149,6 +215,16 @@ class Features:
         return rmsds, gscores, gaffs, vaffs, poses, names, ifps
 
     def compute_single_features(self, pvs, native_poses):
+        """
+        Compute all of the single pose features (e.g. GNINA scores, RMSD to native, etc.) for the provided poses
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            Path to poses to compute the single pose features
+        native_poses : :class:`list[str]<list>`
+            Path to pose of the native ligand structure, if they exist  
+        """
         # For single features, there is no need to keep sub-sets of ligands
         # separated,  so just merge them at the outset to simplify the rest of
         # the method.
@@ -196,6 +272,25 @@ class Features:
                 self.compute_ifp(pv, out)
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
+        """
+        Computes the pairwise features for the poses in `pvs` and `pvs2`. If `pvs2` is not specified,
+        then the pairwise features are computed between the poses in `pvs`
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            Path to poses
+        pvs2 : list[str]<list
+            Path to second set of poses to pair with `pvs` for pairwise features
+        ifp : bool, default=True
+            Compute the pairwise interaction fingerprint feature
+        shape : bool, default=True
+            Compute the pairwise shape feature
+        mcss : bool, default=True
+            Compute the pairwise maximum common substructure RMSD feature
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
         mkdir(self.root)
         rmsds1, gscores1, gaffs1, vaffs1, poses1, names1, ifps1 = self.load_single_features(pvs)
         out = self.path('rmsd1')
@@ -210,7 +305,7 @@ class Features:
         np.save(out, names1)
         if pvs2 is None:
             (rmsds2, gscores2, poses2, names2, ifps2
-                ) = rmsds1, gscores1, poses1, names1, ifps1
+            ) = rmsds1, gscores1, poses1, names1, ifps1
         else:
             rmsds2, gscores2, poses2, names2, ifps2 = self.load_single_features(pvs2)
             out = self.path('rmsd2')
@@ -241,6 +336,17 @@ class Features:
 
     # Methods to calculate features
     def compute_name(self, pv, out):
+        """
+        Get the name for all of the ligand poses and save as `.npy`
+
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        out : str
+            Path to `.npy` file to save all of the pose names
+        """
+
         names = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
         docked_fname = os.path.basename(pv).split('.')[0]
@@ -252,6 +358,17 @@ class Features:
         np.save(out, names)
 
     def compute_gaff(self, pv, out):
+        """
+        Retrieve the GNINA computed CNNaffinity for all of the poses
+        
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        out : str
+            Path to `.npy` file to save all of the pose CNNaffinities
+        """
+        
         gaffs = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
         for st in sts:
@@ -261,6 +378,17 @@ class Features:
         np.save(out, gaffs)
 
     def compute_gscore(self, pv, out):
+        """
+        Retrieve the GNINA computed CNNscore for all of the poses 
+        
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        out : str
+            Path to `.npy` file to save all of the pose CNNaffinities
+        """
+        
         gscores = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
         for st in sts:
@@ -270,6 +398,18 @@ class Features:
         np.save(out, gscores)
 
     def compute_vaff(self, pv, out):
+        """
+        Retrieve the Autodock Vina scores for all of the poses
+        
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        out : str
+            Path to `.npy` file to save all of the pose Vina scores
+        
+        """
+        
         vaffs = []
         sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
         for st in sts:
@@ -279,6 +419,19 @@ class Features:
         np.save(out, vaffs)
 
     def compute_rmsd(self, pv, native_poses, out):
+        """
+        Compute the root mean square deviation (RMSD) from the pose to its native pose, if available. 
+        
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        native_poses : :class:`list[str]<list>`
+            Path to the available native poses
+        out : str
+            Path to `.npy` file to save all of the pose RMSDs
+        """
+        
         rmsds = []
         name = pv.split('/')[-1].split('-')[0]
         # print(name)
