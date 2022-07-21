@@ -442,7 +442,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol` s to process
+            :class:`~rdkit.Chem.rdchem.Mol`s to process
         out : str
             Path to `.npy` file to save all of the pose Vina scores
         
@@ -461,7 +461,7 @@ class Features:
         ----------
         bundle : :class:`list[Mol]<list>`
             :class:`~rdkit.Chem.rdchem.Mol` s to process
-        native_poses : :class:`list[str]<list>`
+        native_poses : :class:`dict[str]<dict>`
             Dictionary with keys as ligand names and values as :class:`~rdkit.Chem.rdchem.Mol`s of the native ligand poses
         out : str
             Path to `.npy` file to save all of the pose RMSDs
