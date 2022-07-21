@@ -5,6 +5,7 @@ import numpy as np
 import os
 import sys
 import click
+import importlib.resources
 from glob import glob
 
 from open_combind.utils import *
@@ -296,6 +297,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
     from open_combind.score.pose_prediction import PosePrediction
     from open_combind.score.statistics import read_stats
     from open_combind.features.features import Features
+    import pkg_resources
 
 
     protein = Features(root)
@@ -306,6 +308,8 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
     ligands = sorted(ligands)
 
     data = protein.get_view(ligands, features)
+    if stats_root is None:
+        stats_root = pkg_resources.resource_filename(__name__, "stats_data/default/")
     stats = read_stats(stats_root, features)
     
     ps = PosePrediction(ligands, features, data, stats, alpha)
@@ -320,7 +324,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
             brmsd = min(rmsds)
             fp.write(','.join(map(str, [ligand.replace('_pv', ''),
                                         best_poses[ligand],
-                                        crmsd, grmsd, brmsd]))+ '\n')
+                                        crmsd, grmsd, brmsd])) + '\n')
 
 def screen(score_fname, root, stats_root, alpha, features):
     """

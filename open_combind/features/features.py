@@ -3,7 +3,6 @@ import gzip
 import numpy as np
 import pandas as pd
 from glob import glob
-from plumbum.cmd import obrms
 from rdkit.Chem import AllChem as Chem
 from open_combind.utils import basename, mp, mkdir, np_load
 from scipy.special import logit
@@ -39,6 +38,24 @@ class Features:
         self.cnn_scores = cnn_scores
 
         self.raw = {}
+
+    def get_molecules_from_files(self,pvs,native=False):
+        molbundle_dict = dict()
+        for pv in pvs:
+            # mol_bundle = Chem.FixedMolSizeMolBundle()
+            mol_bundle = []
+            pv_open = pv
+            if pv.endswith('.gz'):
+                pv_open = gzip.open(pv)
+            mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
+            for idx, mol in enumerate(mol_suppl):
+                mol_bundle.append(mol)
+                if (idx + 1) == self.max_poses:
+                    break
+            if (native is False) and (len(mol_bundle) != self.max_poses):
+                print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
+            molbundle_dict[pv] = mol_bundle
+        return molbundle_dict
 
     def path(self, name, base=False, pv=None, pv2=None):
         if base:
@@ -156,40 +173,43 @@ class Features:
             pvs = [pv for _pvs in pvs for pv in _pvs]
 
         pvs = [os.path.abspath(pv) for pv in pvs]
+        molbundles = self.get_molecules_from_files(pvs)
+        native_sts = self.get_molecules_from_files(list(native_poses.values()), native=True)
+        native_poses = {name: native_sts[pv][0] for name, pv in native_poses.items()}
 
         if self.cnn_scores:
             print('Extracting GNINA affinities.')
-            for pv in pvs:
+            for pv, bundle in molbundles.items():
                 out = self.path('gaff', pv=pv)
                 if not os.path.exists(out):
-                    self.compute_gaff(pv, out)
+                    self.compute_gaff(bundle, out)
 
             print('Extracting GNINA pose score.')
-            for pv in pvs:
+            for pv, bundle in molbundles.items():
                 out = self.path('gscore', pv=pv)
                 if not os.path.exists(out):
-                    self.compute_gscore(pv, out)
+                    self.compute_gscore(bundle, out)
 
         print('Extracting Vina minimizedAffinity.')
-        for pv in pvs:
+        for pv, bundle in molbundles.items():
             out = self.path('vaff', pv=pv)
             if not os.path.exists(out):
-                self.compute_vaff(pv, out)
+                self.compute_vaff(bundle, out)
 
         print('Extracting names.')
-        for pv in pvs:
+        for pv, bundle in molbundles.items():
             out = self.path('name', pv=pv)
             if not os.path.exists(out):
-                self.compute_name(pv, out)
+                self.compute_name(bundle, out)
 
         print('Computing RMSDs to native poses')
-        for pv in pvs:
+        for pv, bundle in molbundles.items():
             out = self.path('rmsd', pv=pv)
             if not os.path.exists(out):
-                self.compute_rmsd(pv, native_poses, out)
+                self.compute_rmsd(bundle, native_poses, out)
 
         print('Computing interaction fingerprints.')
-        for pv in pvs:
+        for pv in molbundles.keys():
             # print(pv)
             out = self.path('ifp', pv=pv)
             if not os.path.exists(out):
@@ -240,59 +260,44 @@ class Features:
                 self.compute_mcss(poses1, poses2, out, processes=processes)
 
     # Methods to calculate features
-    def compute_name(self, pv, out):
+    def compute_name(self, bundle, out):
         names = []
-        sts = Chem.ForwardSDMolSupplier(gzip.open(pv)) 
-        docked_fname = os.path.basename(pv).split('.')[0]
-        name = docked_fname.replace('-docked','')
-        for idx, st in enumerate(sts):
+        docked_fname = os.path.basename(out).split('.')[0]
+        name = docked_fname.replace('-docked_name','')
+        for idx, st in enumerate(bundle):
             names += [name]
-            if len(names) == self.max_poses:
-                break
         np.save(out, names)
 
-    def compute_gaff(self, pv, out):
+    def compute_gaff(self, bundle, out):
         gaffs = []
-        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
-        for st in sts:
+        for idx, st in enumerate(bundle):
             gaffs += [float(st.GetProp('CNNaffinity'))]
-            if len(gaffs) == self.max_poses:
-                break
         np.save(out, gaffs)
 
-    def compute_gscore(self, pv, out):
+    def compute_gscore(self, bundle, out):
         gscores = []
-        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
-        for st in sts:
+        for idx, st in enumerate(bundle):
             gscores += [logit(float(st.GetProp('CNNscore')))]
-            if len(gscores) == self.max_poses:
-                break
         np.save(out, gscores)
 
-    def compute_vaff(self, pv, out):
+    def compute_vaff(self, bundle, out):
         vaffs = []
-        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
-        for st in sts:
+        for idx, st in enumerate(bundle):
             vaffs += [float(st.GetProp('minimizedAffinity'))]
-            if len(vaffs) == self.max_poses:
-                break
         np.save(out, vaffs)
 
-    def compute_rmsd(self, pv, native_poses, out):
+    def compute_rmsd(self, bundle, native_poses, out):
         rmsds = []
-        name = pv.split('/')[-1].split('-')[0]
+        name = os.path.basename(out).split('-')[0]
         # print(name)
         if name in native_poses:
             native = native_poses[name]
-            try:
-                obrms_out = obrms[native, pv,'--firstonly']()
-                messy_rmsds = obrms_out.strip().split('\n')
-                rmsds = [float(r.split()[-1]) for r in messy_rmsds]
-            except:
-                print(f'RMSD failed for {name}')
+            for idx, st in enumerate(bundle):
+                rmsd = Chem.CalcRMS(native, st)
+                rmsds += [rmsd]
         else:
             # print(name)
-            rmsds = [-1] * self.max_poses
+            rmsds = [-1] * len(bundle)
 
         np.save(out, rmsds)
 
