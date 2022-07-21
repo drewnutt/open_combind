@@ -240,7 +240,7 @@ class Features:
         pvs : :class:`list[str]<list>`
             Path to poses to compute the single pose features
         native_poses : :class:`list[str]<list>`
-            Path to pose of the native ligand structure, if they exist  
+            Path to pose of the native ligand structures, if they exist
         """
         # For single features, there is no need to keep sub-sets of ligands
         # separated,  so just merge them at the outset to simplify the rest of
@@ -361,8 +361,8 @@ class Features:
 
         Parameters
         ----------
-        pv : :class:`list[str]<list>`
-            Path to poses
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol`s to process
         out : str
             Path to `.npy` file to save all of the pose names
         """
@@ -380,8 +380,8 @@ class Features:
         
         Parameters
         ----------
-        pv : :class:`list[str]<list>`
-            Path to poses
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol`s to process
         out : str
             Path to `.npy` file to save all of the pose CNNaffinities
         """
@@ -397,8 +397,8 @@ class Features:
         
         Parameters
         ----------
-        pv : :class:`list[str]<list>`
-            Path to poses
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol`s to process
         out : str
             Path to `.npy` file to save all of the pose CNNaffinities
         """
@@ -414,8 +414,8 @@ class Features:
         
         Parameters
         ----------
-        pv : :class:`list[str]<list>`
-            Path to poses
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol`s to process
         out : str
             Path to `.npy` file to save all of the pose Vina scores
         
@@ -428,14 +428,14 @@ class Features:
 
     def compute_rmsd(self, bundle, native_poses, out):
         """
-        Compute the root mean square deviation (RMSD) from the pose to its native pose, if available. 
+        Compute the root mean square deviation (RMSD) from the pose to its native pose, if available.
         
         Parameters
         ----------
-        pv : :class:`list[str]<list>`
-            Path to poses
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol`s to process
         native_poses : :class:`list[str]<list>`
-            Path to the available native poses
+            :class:`~rdkit.Chem.rdchem.Mol`s of the native ligand poses
         out : str
             Path to `.npy` file to save all of the pose RMSDs
         """
@@ -455,11 +455,40 @@ class Features:
         np.save(out, rmsds)
 
     def compute_ifp(self, pv, out):
+        """
+        Compute the interaction fingerprint (IFP) of the ligand poses based on the ``ifp_version``
+        
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        out : str
+            Path to `.npy` file to save all of the pose IFPs
+        
+        """
+        
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
 
     def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
+        """
+        Compute the pseudo-Tanimoto similarity between the given IFPs for the given features
+        
+        Parameters
+        ----------
+        ifps1 : :class:`list[DataFrame]<list>`
+            List of pose IFPs to calculate pairwise with `ifps2` 
+        ifps2 : :class:`list[DataFrame]<list>`
+            List of pose IFPs to calculate pairwise with `ifps1` 
+        feature : :class:`list[str]<list>`
+            List of IFP features to calculate the pseudo-Tanimoto similarity between
+        out : str
+            Path to `.npy` file to save all of the pairwise IFPs
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
+        
         if processes != 1:
             from open_combind.features.ifp_similarity import ifp_tanimoto_mp
             tanimotos = ifp_tanimoto_mp(ifps1, ifps2, feature, processes)
@@ -469,6 +498,20 @@ class Features:
         np.save(out, tanimotos)
 
     def compute_shape(self, poses1, poses2, out, processes=1):
+        """
+        Compute the pseudo-Tanimoto similarity of the shape between the given poses
+        
+        Parameters
+        ----------
+        poses1 : :class:`list[str]<list>`
+            Path to poses to calculate pairwise with `poses2` 
+        poses2 : :class:`list[str]<list>`
+            Path to poses to calculate pairwise with `poses1` 
+        out : str
+            Path to `.npy` file to save all of the pairwise shape similarities
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
         if processes != 1:
             from open_combind.features.shape import shape_mp
             sims = shape_mp(poses2, poses1, version=self.shape_version,processes=processes).T
@@ -480,6 +523,20 @@ class Features:
         np.save(out, sims)
 
     def compute_mcss(self, poses1, poses2, out, processes=1):
+        """
+        Compute the Maximum Common Substructure (MCSS) RMSD between the given poses
+        
+        Parameters
+        ----------
+        poses1 : :class:`list[str]<list>`
+            Path to poses to calculate pairwise with `poses2` 
+        poses2 : :class:`list[str]<list>`
+            Path to poses to calculate pairwise with `poses1` 
+        out : str
+            Path to `.npy` file to save all of the MCSS RMSDs
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
         if processes != 1:
             from open_combind.features.mcss import mcss_mp
             rmsds = mcss_mp(poses1, poses2, processes)
