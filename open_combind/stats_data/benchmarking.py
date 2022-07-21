@@ -50,7 +50,7 @@ def featurize(root, poseviewers, native_loc, ifp_version, mcss_custom,
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
 
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
-                        mcss_custom=mcss_custom, max_poses=max_poses, cnn_scores=not no_cnn)
+                        max_poses=max_poses, cnn_scores=not no_cnn)
 
     features.compute_single_features(poseviewers,native_poses=native_loc)
 

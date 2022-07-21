@@ -126,7 +126,6 @@ def setup_slurm(gnina_in, ligands, receptor, abox):
     cwd = os.getcwd() + '/'
     os.system(f'sed -i s,{cwd},,g {gnina_in}')
 
-
 def run_gnina_docking(gnina_dock_file):
     """
     Iterates over the lines in `gnina_dock_file` and runs each line in serial.
@@ -155,5 +154,16 @@ def run_gnina_docking(gnina_dock_file):
             gnina_run, logfile = gnina_cmd.split('>')
             logfile = logfile.strip()
             with open(logfile, 'w') as log:
-                subprocess.run(gnina_run.strip().split(), check=True, stderr=subprocess.STDOUT, stdout=log)
+                run_cmds = gnina_run.strip().split()
+                if run_exec is True:
+                    run_cmds[0] = "./gnina"
+                try:
+                    subprocess.run(run_cmds, check=True, stderr=subprocess.STDOUT, stdout=log)
+                except FileNotFoundError as fnfe:
+                    if "No such file or directory: 'gnina': 'gnina'" in str(fnfe):
+                        run_cmds[0] = "./gnina"
+                        run_exec = True
+                    else:
+                        raise fnfe
+
 

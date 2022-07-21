@@ -40,6 +40,9 @@ setup(
     # Customize MANIFEST.in if the general case does not suit your needs
     # Comment out this line to prevent the files from being packaged with your software
     include_package_data=True,
+    package_data={
+        "statistics_data": ["stats_data/default/"],
+    },
 
     # Allows `setup.py test` to work correctly with pytest
     setup_requires=[] + pytest_runner,
@@ -47,7 +50,7 @@ setup(
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     url='https://github.com/drewnutt/open_combind',  # Website
     install_requires=["pandas","numpy","click","plumbum",
-                        "ProDy>=2.0","rdkit-pypi"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
+                        "ProDy>=2.0","rdkit-pypi","requests"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
     
     entry_points={
         "console_scripts": [
