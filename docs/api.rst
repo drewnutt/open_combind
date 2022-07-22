@@ -81,4 +81,6 @@ Interaction Fingerprint (IFP)
 *****************************
 .. autoclass:: open_combind.features.ifp.Molecule
    :members:
-   :undoc-members:
+
+.. automodule:: open_combind.features.ifp
+   :members:
