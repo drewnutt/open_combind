@@ -50,22 +50,7 @@ class CompareHalogens(rdFMCS.MCSAtomCompare):
 
 def mcss(sts1, sts2):
     """
-<<<<<<< HEAD
-    Computes the RMSD between the maximum common substructure (MCS) between two molecules.
-
-    Parameters
-    ----------
-    sts1 : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of molecules to compare.
-    sts2 : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of molecules to compare.
-
-    Returns
-    -------
-    rmsds : np.ndarray
-        Matrix of RMSD values between the MCS of each pair of molecules.
-=======
-    Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
+    Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for all pairs in the two lists of `Mol`s.
 
     Parameters
     ----------
@@ -90,7 +75,6 @@ def mcss(sts1, sts2):
 
     .. math:: \\textrm{numHeavyAtoms}(mcss)\\geq \\frac{1}{2}\\textrm{min}(\\textrm{numHeavyAtoms}(pose_1),\\textrm{numHeavyAtoms}(pose_2))
 
->>>>>>> docstrings
     """
 
     memo = {}
@@ -152,7 +136,7 @@ def mcss_mp(sts1, sts2, processes=1):
     --------
     mcss : non-parallelized
     """
-    
+
     unfinished = []
     mcss_calc_unfinished = []
     group_st1 = group_mols_by_SMARTS(sts1)
@@ -299,24 +283,26 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
 
 def get_info_from_results(mcss_res):
     """
-    Check the results of `~rdkit.Chem.rdFMCS.FindMCS` to check if finished successfully.
+    Check the results of :class:`~rdkit.Chem.rdFMCS.FindMCS` to check if finished successfully.
 
     If MCSS not found, then MCSS is returned as one carbon atom
-
+    
     Parameters
     ----------
     mcss_res : :class:`~rdkit.Chem.rdFMCS.MCSResult`
-        The results of the MCSS calculation
-
+        Value returned after computing the MCSS
+    
     Returns
     -------
     str
-        The SMARTS pattern for the MCSS
+        SMARTS string of the MCSS
     int
-        The number of heavy atoms in the MCSS
+        Number of atoms in the MCSS
     :class:`~rdkit.Chem.rdchem.Mol`
-        A molecule that represents the MCSS
+        A molecule representing the MCSS
+    
     """
+    
     if not mcss_res.canceled:
         mcss = mcss_res.smartsString
         num_atoms = mcss_res.numAtoms
@@ -445,37 +431,6 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
         except:
             print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, CalcRMS doesn't work either way")
     return rmsd
-
-# def merge_halogens(structure):
-#     """
-#     Sets atomic number for all halogens to be that for flourine.
-#     This enable use of ConformerRmsd for atom typing schemes that
-#     merge halogens.
-#     """
-#     for atom in structure.atom:
-#         if atom.atomic_number in [9, 17, 35, 53]:
-#             atom.atomic_number = 9
-#     return structure
-
-def merge_halogens(structure):
-    """
-    Sets atomic number for all halogens to be that for flourine.
-
-    Parameters
-    ----------
-    structure : :class:`~rdkit.Chem.rdchem.Mol`
-        RDKit molecule
-
-    Returns
-    -------
-    structure : :class:`~rdkit.Chem.rdchem.Mol`
-        RDKit molecule with halogens replaced with fluorine
-    """
-
-    for atom in structure.atom:
-        if atom.atomic_number in [9, 17, 35, 53]:
-            atom.atomic_number = 9
-    return structure
 
 def subMol(mol, match, merge_halogens=True):
     """

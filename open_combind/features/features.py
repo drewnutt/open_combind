@@ -442,7 +442,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s to process
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
         out : str
             Path to `.npy` file to save all of the pose Vina scores
         
