@@ -6,14 +6,25 @@ API Documentation
     
 Main Combind Commands
 ---------------------
+
+structprep
+**********
 .. autofunction:: open_combind.structprep
 
+ligprep
+*******
 .. autofunction:: open_combind.ligprep
 
+dock_ligands
+************
 .. autofunction:: open_combind.dock_ligands
 
+featurize
+*********
 .. autofunction:: open_combind.featurize
 
+pose_prediction
+***************
 .. autofunction:: open_combind.pose_prediction
 
 ..
@@ -23,7 +34,7 @@ Docking Preparation
 -------------------
 
 struct_process
-*********************
+**************
 .. automodule:: open_combind.dock.struct_process
    :members: struct_process, load_complex, create_correct_ligand_sdf
  
@@ -33,12 +44,12 @@ ligand_handling
    :members: get_ligand_info_RCSB, get_ligands_from_RCSB, get_ligand_from_SMILES, ligand_selection_to_mol, RDKitParseException
 
 struct_align
-*******************************
+************
 .. automodule:: open_combind.dock.struct_align
    :members: struct_align, align_separate_ligand
  
 struct_sort
-**********************
+***********
 .. automodule:: open_combind.dock.struct_sort
    :members:
  
@@ -60,7 +71,11 @@ Features
 ********
 .. autoclass:: open_combind.features.features.Features
    :members:
-   :undoc-members:
+
+Maximum Common Substructure (MCSS)
+**********************************
+.. automodule:: open_combind.features.mcss
+   :members:
 
 Interaction Fingerprint (IFP)
 *****************************

@@ -235,6 +235,22 @@ def hbond_compute(protein, ligand, settings):
     return acceptor + donor
 
 def saltbridge_compute(protein, ligand, settings):
+    """
+    Identify and log the salt bridges between the protein and ligand atoms
+    
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        3D protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        3D ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+    Returns
+    -------
+    dict
+        dict containing all of the salt bridges found between the protein and ligand atoms
+    """
     # Note that much of the complexity here stems from taking into account
     # symetric atoms. Specifically for carboxylate and guanidinium groups,
     # we consider not just the atom that is arbitrarily assigned a formal
@@ -268,6 +284,23 @@ def saltbridge_compute(protein, ligand, settings):
     return saltbridges
 
 def contact_compute(protein, ligand, settings):
+    """
+    Identify and log the hydrophobic contacts between the protein and ligand atoms
+    
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        3D protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        3D ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+    Returns
+    -------
+    dict
+        dict containing all of the hydrophobic contacts found between the protein and ligand atoms
+    """
+    
     protein = protein.contacts
     ligand = ligand.contacts
 
@@ -305,6 +338,23 @@ def nodigits(s):
     return ''.join([i for i in s if not i.isdigit()])
 
 def compute_scores(raw, settings):
+    """
+    Given atomic level interactions between the protein and ligand compute the compute the residue level interactions.
+
+    Parameters
+    ----------
+    raw : :class:`~pandas.DataFrame`
+        Atomic level interactions between the protein and ligand
+    settings : :class:`~pandas.DataFrame`
+        Interaction fingerprint settings
+
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        Residue level interactions between the protein and ligand
+
+    """
+    
     # print("computing scores")
     if settings['level'] == 'atom':
         raw['protein_res'] = [r['protein_res']+':'+nodigits(r['protein_atom'])
@@ -347,12 +397,52 @@ def compute_scores(raw, settings):
 ################################################################################
 
 def fingerprint(protein, ligand, settings):
+    """
+    Determine the atomic level interactions present in a protein-ligand complex. The following interactions are detected:
+
+    * Hydrogen bonding
+    * Salt bridges
+    * Hydrophobic contacts
+    
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        3D protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        3D ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        Dataframe containing all of the interactions found in the complex
+    """
+    
     fp  = hbond_compute(protein, ligand, settings)
     fp += saltbridge_compute(protein, ligand, settings)
     fp += contact_compute(protein, ligand, settings)
     return pd.DataFrame.from_dict(fp)
 
 def fingerprint_poseviewer(input_file, poses, settings):
+    """
+    Compute interaction fingerprint at the atomic level of the all of the ligand poses in `input_file`
+    
+    Parameters
+    ----------
+    input_file : str
+        Path to the gzipped SDF file containing all of the ligand poses
+    poses : int
+        Number of poses to read from `input_file`
+    settings : dict
+        Settings of the interaction fingerprint
+    
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        Interaction fingerprint of each pose
+    
+    """
+    
     prot_bname = input_file.split('-to-')[-1]
     prot_fname = re.sub('-docked.*\.sdf\.gz','_prot.pdb',prot_bname)
     prot_file = f"structures/proteins/{prot_fname}"
@@ -389,6 +479,22 @@ def fingerprint_poseviewer(input_file, poses, settings):
     return fps
 
 def ifp(settings, input_file, output_file, poses):
+    """
+    Compute interaction fingerprint of the all of the ligand poses in `input_file` and save to a CSV
+    
+    Parameters
+    ----------
+    settings : dict
+        Settings of the interaction fingerprint
+    input_file : str
+        Path to the gzipped SDF file containing all of the ligand poses
+    output_file : str
+        Path to the output CSV file containing all the interactions 
+    poses : int
+        Number of poses to read from `input_file`
+    
+    """
+    
     settings['nonpolar'] = {6:1.7, 9:1.47, 17:1.75, 35:1.85, 53:1.98}
 
     # Compute atom-level interactions.

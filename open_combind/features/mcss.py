@@ -47,8 +47,10 @@ class CompareHalogens(rdFMCS.MCSAtomCompare):
 # considered for pairs of ligands with a maximum common substructure of less than half the size
 # of the smaller ligand. Hydrogen atoms were not included in the substructure nor when
 # determining the total number of atoms in each ligand.
+
 def mcss(sts1, sts2):
     """
+<<<<<<< HEAD
     Computes the RMSD between the maximum common substructure (MCS) between two molecules.
 
     Parameters
@@ -62,6 +64,33 @@ def mcss(sts1, sts2):
     -------
     rmsds : np.ndarray
         Matrix of RMSD values between the MCS of each pair of molecules.
+=======
+    Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
+
+    Parameters
+    ----------
+    sts1 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts2`
+    sts2 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts1`
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        (# poses in sts1) x (# poses in sts2) of the computed MCSS RMSDs. -1 indicates no RMSD was calculated.
+
+    See Also
+    --------
+    mcss_mp : parallelized
+
+    Notes
+    -----
+
+    If a pair of ligand poses, :math:`pose_1` and :math:`pose_2`, has a MCSS, :math:`mcss`, then we compute the RMSD if 
+
+    .. math:: \\textrm{numHeavyAtoms}(mcss)\\geq \\frac{1}{2}\\textrm{min}(\\textrm{numHeavyAtoms}(pose_1),\\textrm{numHeavyAtoms}(pose_2))
+
+>>>>>>> docstrings
     """
 
     memo = {}
@@ -101,21 +130,27 @@ def mcss(sts1, sts2):
 
 def mcss_mp(sts1, sts2, processes=1):
     """
-    Multiprocessing method to compute the RMSD between MCSS for poses in two lists of molecules.
+    Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
+
+    Parallelized accross `processes`.
 
     Parameters
     ----------
-    sts1 : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of molecules to compare.
-    sts2 : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of molecules to compare.
-    processes : int
-        Number of processes to use for computing the MCSS. Default is 1.
+    sts1 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts2`
+    sts2 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts1`
+    processes : int, default=1
+        Number of processes to use for computing the pairwise features, if -1 then use all available cores
 
     Returns
     -------
-    rmsds : np.array
-        (# poses in pv1) x (# poses in pv2) np.array of rmsds.
+    :class:`~numpy.ndarray`
+        (# poses in sts1) x (# poses in sts2) of the computed MCSS RMSDs. -1 indicates no RMSD was calculated.
+
+    See Also
+    --------
+    mcss : non-parallelized
     """
     
     unfinished = []
@@ -225,21 +260,28 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
     """
     Compute minimum RMSD between MCSS(s).
 
+    Takes into account that the mcss smarts pattern could
+    map to multiple atom indices (e.g. symetric groups).
+
     Parameters
     ----------
-    st1 : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule for the first ligand
-    st2 : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule for the second ligand
+    st1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    st2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
     keep_idxs : dict
         Dictionary with keys 'st1' and 'st2' that contain lists of indices of atoms to keep in the substructure
-    names : bool, optional, default=True
-        Whether to keep the names of the molecules
+    names : bool,default=True
+        Give the created sub-molecules the same name as the original molecules (helps with errors)
 
     Returns
     -------
     float
-        The minimum RMSD between the MCSS of the two ligands
+        Minimum RMSD between the MCSS of `st1` and `st2`
+
+    See Also
+    --------
+    compute_mcss_rmsd_mp : used during multiprocessing
     """
 
     rmsd = float('inf')
@@ -257,23 +299,24 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
 
 def get_info_from_results(mcss_res):
     """
-    Get information from the results of the MCSS calculation.
+    Check the results of `~rdkit.Chem.rdFMCS.FindMCS` to check if finished successfully.
+
+    If MCSS not found, then MCSS is returned as one carbon atom
 
     Parameters
     ----------
-    mcss_res : ` ``RDKit.rdFMCS.MCSResult`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdFMCS.html#rdkit.Chem.rdFMCS.MCSResult>`_
+    mcss_res : :class:`~rdkit.Chem.rdFMCS.MCSResult`
         The results of the MCSS calculation
 
     Returns
     -------
     str
-        The smarts pattern for the MCSS
+        The SMARTS pattern for the MCSS
     int
         The number of heavy atoms in the MCSS
-    ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
+    :class:`~rdkit.Chem.rdchem.Mol`
         A molecule that represents the MCSS
     """
-
     if not mcss_res.canceled:
         mcss = mcss_res.smartsString
         num_atoms = mcss_res.numAtoms
@@ -289,21 +332,28 @@ def compute_mcss(st1, st2, current_params):
 
     Parameters
     ----------
-    st1 : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule for the first ligand
-    st2 : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule for the second ligand
-    current_params : ` ``RDKit.rdFMCS.MCSParameters`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdFMCS.html#rdkit.Chem.rdFMCS.MCSParameters>`_
+
+    Parameters
+    ----------
+    st1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    st2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
+    current_params : :class:`~rdkit.Chem.rdFMCS.MCSParameters`
         The parameters for the MCSS calculation
 
     Returns
     -------
     str
-        The smarts pattern for the MCSS
+        SMARTS string of the MCSS
     int
         The number of heavy atoms in the MCSS
     dict
         Dictionary with keys 'st1' and 'st2' that contain lists of indices of atoms to keep in the substructure
+
+    See Also
+    --------
+    compute_mcss_mp : used during multiprocessing
     """
 
     try:
@@ -337,6 +387,10 @@ def compute_mcss_mp(st1, st2):
     st1, st2: rdkit.Mol
 
     returns: ((smarts1, smarts2), (mcss, num_atoms, substruct_idx))
+
+    See Also
+    --------
+    compute_mcss : used during serial processing
     """
 
     p = setup_MCS_params()
@@ -349,7 +403,7 @@ def setup_MCS_params():
 
     Returns
     -------
-    ` ``RDKit.rdFMCS.MCSParameters`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdFMCS.html#rdkit.Chem.rdFMCS.MCSParameters>`_
+    :class: `~rdkit.Chem.rdFMCS.MCSParameters`
         The parameters for the MCSS calculation
     """
 
@@ -364,16 +418,22 @@ def setup_MCS_params():
 
 def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     """
-    Calculates the RMSD between pose1 and pose2.
+    Calculates the RMSD between the two input molecules. Symmetry of molecules is respected during the RMSD calculation.
 
     Parameters
     ----------
-    pose1 : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule for the first ligand
-    pose2 : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule for the second ligand
+    pose1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    pose2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
     eval_rmsd : bool, optional, default=False
         Whether to evaluate the RMSD using the OpenBabel implementation .. .deprecated::
+
+
+    Returns
+    -------
+    float
+        RMSD between the two molecules
     """
 
     assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
@@ -384,28 +444,18 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
             rmsd = Chem.CalcRMS(pose2,pose1)
         except:
             print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, CalcRMS doesn't work either way")
-    # if eval_rmsd:
-    #     obrmsd = calculate_rmsd_slow(pose1,pose2)
-    #     assert np.isclose(obrmsd,rmsd,atol=1E-4), print(f"obrms:{obrmsd}\nrdkit:{rmsd}")
     return rmsd
 
-# def calculate_rmsd_slow(pose1,pose2):
-#     with tempfile.TemporaryDirectory() as tempd:
-#         tmp1 = f'{tempd}/tmp1.sdf'
-#         tmp2 = f'{tempd}/tmp2.sdf'
-
-#         writer = Chem.SDWriter(tmp1)
-#         writer.write(pose1)
-#         writer.close()
-
-#         writer = Chem.SDWriter(tmp2)
-#         writer.write(pose2)
-#         writer.close()
-
-#         raw_rmsd = obrms[tmp1,tmp2]()
-#         rmsd = float(raw_rmsd.strip().split()[-1])
-
-#     return rmsd
+# def merge_halogens(structure):
+#     """
+#     Sets atomic number for all halogens to be that for flourine.
+#     This enable use of ConformerRmsd for atom typing schemes that
+#     merge halogens.
+#     """
+#     for atom in structure.atom:
+#         if atom.atomic_number in [9, 17, 35, 53]:
+#             atom.atomic_number = 9
+#     return structure
 
 def merge_halogens(structure):
     """
@@ -413,12 +463,12 @@ def merge_halogens(structure):
 
     Parameters
     ----------
-    structure : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
+    structure : :class:`~rdkit.Chem.rdchem.Mol`
         RDKit molecule
 
     Returns
     -------
-    structure : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
+    structure : :class:`~rdkit.Chem.rdchem.Mol`
         RDKit molecule with halogens replaced with fluorine
     """
 
@@ -429,22 +479,21 @@ def merge_halogens(structure):
 
 def subMol(mol, match, merge_halogens=True):
     """
-    Returns a substructure of mol that contains the atoms in match
-    and the bonds between them.
+    Get a substructure, as a molecule, of a molecule given the atom indices of the substructure
 
     Parameters
     ----------
-    mol : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        RDKit molecule
-    match : list of int
-        Indices of atoms in mol to include in the substructure
+    mol : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule to get a substructure of
+    match : :class:`list[int]<list>`
+        Indices of atoms in Molecule to include in the substructure
     merge_halogens : bool, optional, default=True
         Whether to merge halogens into fluorine
 
     Returns
     -------
-    new_mol : ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        Substructure of mol
+    :class:`~rdkit.Chem.rdchem.Mol`
+        Substructure of `mol`
     """
 
     #not sure why this functionality isn't implemented natively
