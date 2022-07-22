@@ -38,12 +38,36 @@ class CompareHalogens(rdFMCS.MCSAtomCompare):
 # considered for pairs of ligands with a maximum common substructure of less than half the size
 # of the smaller ligand. Hydrogen atoms were not included in the substructure nor when
 # determining the total number of atoms in each ligand.
+
 def mcss(sts1, sts2):
     """
-    Computes rmsd between mcss for atoms in two poseviewer files.
+    Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
 
-    Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
+    Parameters
+    ----------
+    sts1 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts2`
+    sts2 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts1`
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        (# poses in sts1) x (# poses in sts2) of the computed MCSS RMSDs. -1 indicates no RMSD was calculated.
+
+    See Also
+    --------
+    mcss_mp : parallelized
+
+    Notes
+    -----
+
+    If a pair of ligand poses, :math:`pose_1` and :math:`pose_2`, has a MCSS, :math:`mcss`, then we compute the RMSD if 
+
+    .. math:: \\textrm{numHeavyAtoms}(mcss)\\geq \\frac{1}{2}\\textrm{min}(\\textrm{numHeavyAtoms}(pose_1),\\textrm{numHeavyAtoms}(pose_2))
+
     """
+
     memo = {}
     params = setup_MCS_params()
     # sts1 = [merge_halogens(st.copy()) for st in sts1]
@@ -83,9 +107,27 @@ def mcss(sts1, sts2):
 
 def mcss_mp(sts1, sts2, processes=1):
     """
-    Computes rmsd between mcss for atoms in two poseviewer files.
+    Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
 
-    Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
+    Parallelized accross `processes`.
+
+    Parameters
+    ----------
+    sts1 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts2`
+    sts2 : :class:`list[Mol]<list>`
+        Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts1`
+    processes : int, default=1
+        Number of processes to use for computing the pairwise features, if -1 then use all available cores
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        (# poses in sts1) x (# poses in sts2) of the computed MCSS RMSDs. -1 indicates no RMSD was calculated.
+
+    See Also
+    --------
+    mcss : non-parallelized
     """
     
     params = setup_MCS_params()
@@ -167,8 +209,25 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
     Takes into account that the mcss smarts pattern could
     map to multiple atom indices (e.g. symetric groups).
 
-    remove_idxs: dictionary with keys 'st1' and 'st2' that have lists
-    of atom indices lists to remove to create the MCSS for each pose
+    Parameters
+    ----------
+    st1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    st2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
+    keep_idxs : dict
+        Atom indices to keep for each molecule with keys named the same as the variables
+    names : bool,default=True
+        Give the created sub-molecules the same name as the original molecules (helps with errors)
+
+    Returns
+    -------
+    float
+        Minimum RMSD between the MCSS of `st1` and `st2`
+
+    See Also
+    --------
+    compute_mcss_rmsd_mp : used during multiprocessing
     """
     rmsd = float('inf')
     for kpatom_idx1 in keep_idxs['st1']:
@@ -187,12 +246,33 @@ def compute_mcss_rmsd_mp(st1, i, st2, j, keep_idxs, retain_inf):
     """
     Compute minimum rmsd between mcss(s).
 
-    Takes into account that the mcss smarts pattern could
-    map to multiple atom indices (e.g. symetric groups).
+    Used during multiprocessing
 
-    keep_idxs: dictionary with keys 'st1' and 'st2' that have lists
-    of atom indices lists to keep to create the MCSS for each pose
+    Parameters
+    ----------
+    st1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    i : int
+        array index of molecule 1
+    st2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
+    j : int
+        array index of molecule 2
+    keep_idxs : dict
+        Atom indices to keep for each molecule with keys named the same as the variables
+    retain_inf : bool
+        Do not calculate RMSD and set RMSD as -1
+
+    Returns
+    -------
+    float
+        Minimum RMSD between the MCSS of `st1` and `st2`
+
+    See Also
+    --------
+    compute_mcss_rmsd : not used with multiprocessing
     """
+
     if retain_inf:
         rmsd = -1
     else:
@@ -200,6 +280,27 @@ def compute_mcss_rmsd_mp(st1, i, st2, j, keep_idxs, retain_inf):
     return (i,j, rmsd)
 
 def get_info_from_results(mcss_res):
+    """
+    Check the results of `~rdkit.Chem.rdFMCS.FindMCS` to check if finished successfully.
+
+    If MCSS not found, then MCSS is returned as one carbon atom
+    
+    Parameters
+    ----------
+    mcss_res : :class:`~rdkit.Chem.rdFMCS.MCSResult`
+        Value returned after computing the MCSS
+    
+    Returns
+    -------
+    str
+        SMARTS string of the MCSS
+    int
+        Number of atoms in the MCSS
+    :class:`~rdkit.Chem.rdchem.Mol`
+        A molecule representing the MCSS
+    
+    """
+    
     if not mcss_res.canceled:
         mcss = mcss_res.smartsString
         num_atoms = mcss_res.numAtoms
@@ -211,7 +312,24 @@ def get_info_from_results(mcss_res):
 
 def compute_mcss(st1, st2, params):
     """
-    Compute smarts patterns for mcss(s) between two structures.
+    Compute SMARTS patterns for MCSS(s) between two structures.
+
+    Parameters
+    ----------
+    st1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    st2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
+
+    Returns
+    -------
+    str
+        SMARTS string of the MCSS
+    int
+        Number of atoms in the MCSS
+    dict
+        Which atom indices of each molecule are included in the MCSS
+
     """
     try:
         res = rdFMCS.FindMCS([st1,st2], params)
@@ -247,10 +365,19 @@ def setup_MCS_params():
 
 def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     """
-    Calculates the RMSD between pose1 and pose2.
+    Calculates the RMSD between the two input molecules. Symmetry of molecules is respected during the RMSD calculation.
 
-    pose1, pose2: rdkit.Mol
-    eval_rmsd: verify that RMSD calculation is the same as obrms
+    Parameters
+    ----------
+    pose1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    pose2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
+
+    Returns
+    -------
+    float
+        RMSD between the two molecules
     """
     assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
     try:
@@ -260,41 +387,36 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
             rmsd = Chem.CalcRMS(pose2,pose1)
         except:
             print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, CalcRMS doesn't work either way")
-    # if eval_rmsd:
-    #     obrmsd = calculate_rmsd_slow(pose1,pose2)
-    #     assert np.isclose(obrmsd,rmsd,atol=1E-4), print(f"obrms:{obrmsd}\nrdkit:{rmsd}")
     return rmsd
 
-# def calculate_rmsd_slow(pose1,pose2):
-#     with tempfile.TemporaryDirectory() as tempd:
-#         tmp1 = f'{tempd}/tmp1.sdf'
-#         tmp2 = f'{tempd}/tmp2.sdf'
-
-#         writer = Chem.SDWriter(tmp1)
-#         writer.write(pose1)
-#         writer.close()
-
-#         writer = Chem.SDWriter(tmp2)
-#         writer.write(pose2)
-#         writer.close()
-
-#         raw_rmsd = obrms[tmp1,tmp2]()
-#         rmsd = float(raw_rmsd.strip().split()[-1])
-
-#     return rmsd
-
-def merge_halogens(structure):
-    """
-    Sets atomic number for all halogens to be that for flourine.
-    This enable use of ConformerRmsd for atom typing schemes that
-    merge halogens.
-    """
-    for atom in structure.atom:
-        if atom.atomic_number in [9, 17, 35, 53]:
-            atom.atomic_number = 9
-    return structure
+# def merge_halogens(structure):
+#     """
+#     Sets atomic number for all halogens to be that for flourine.
+#     This enable use of ConformerRmsd for atom typing schemes that
+#     merge halogens.
+#     """
+#     for atom in structure.atom:
+#         if atom.atomic_number in [9, 17, 35, 53]:
+#             atom.atomic_number = 9
+#     return structure
 
 def subMol(mol, match, merge_halogens=True):
+    """
+    Get a substructure, as a molecule, of a molecule given the atom indices of the substructure
+
+    Parameters
+    ----------
+    mol : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule to get a substructure of
+    match : :class:`list[int]<list>`
+        Atom indices of the substructure
+    
+    Returns
+    -------
+    :class:`~rdkit.Chem.rdchem.Mol`
+        Substructure of `mol`
+    """
+
     #not sure why this functionality isn't implemented natively
     #but get the interconnected bonds for the match
     atoms = set(match)
@@ -310,30 +432,30 @@ def subMol(mol, match, merge_halogens=True):
                 Chem.MolFromSmiles('F'), replaceAll=True)[0]
     return new_mol
 
-def get_substructure(mol, remove_idxs):
-    """
-    Gets the substructure of mol by removing the atoms with indices
-    in remove_idxs
-    """
-    rw_mol = Chem.RWMol(mol)
-    for idx in sorted(remove_idxs,reverse=True):
-        rw_mol.RemoveAtom(idx)
+# def get_substructure(mol, remove_idxs):
+#     """
+#     Gets the substructure of mol by removing the atoms with indices
+#     in remove_idxs
+#     """
+#     rw_mol = Chem.RWMol(mol)
+#     for idx in sorted(remove_idxs,reverse=True):
+#         rw_mol.RemoveAtom(idx)
 
-    assert rw_mol.GetNumAtoms() == (mol.GetNumAtoms() - len(remove_idxs))
+#     assert rw_mol.GetNumAtoms() == (mol.GetNumAtoms() - len(remove_idxs))
 
-    substruct = Chem.Mol(rw_mol)
-    Chem.SanitizeMol(substruct)
-    return substruct
+#     substruct = Chem.Mol(rw_mol)
+#     Chem.SanitizeMol(substruct)
+#     return substruct
 
-def mcss_to_rmv_idx(mol, mcss_mol):
-    """
-    Finds the atom indices that need to be removed from mol
-    to be left with the mcss
-    """
-    mol_mcss = mol.GetSubstructMatches(mcss_mol)
-    mol_fidx = set(range(mol.GetNumAtoms()))
-    remove_idxs = []
-    for keep_idx in mol_mcss:
-        remove_idxs.append(sorted(list(mol_fidx - set(keep_idx)),reverse=True))
+# def mcss_to_rmv_idx(mol, mcss_mol):
+#     """
+#     Finds the atom indices that need to be removed from mol
+#     to be left with the mcss
+#     """
+#     mol_mcss = mol.GetSubstructMatches(mcss_mol)
+#     mol_fidx = set(range(mol.GetNumAtoms()))
+#     remove_idxs = []
+#     for keep_idx in mol_mcss:
+#         remove_idxs.append(sorted(list(mol_fidx - set(keep_idx)),reverse=True))
 
-    return remove_idxs
+#     return remove_idxs

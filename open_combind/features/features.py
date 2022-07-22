@@ -390,7 +390,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s to process
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
         out : str
             Path to `.npy` file to save all of the pose names
         """
@@ -409,7 +409,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s to process
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
         out : str
             Path to `.npy` file to save all of the pose CNNaffinities
         """
@@ -426,7 +426,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s to process
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
         out : str
             Path to `.npy` file to save all of the pose CNNaffinities
         """
@@ -443,7 +443,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s to process
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
         out : str
             Path to `.npy` file to save all of the pose Vina scores
         
@@ -461,7 +461,7 @@ class Features:
         Parameters
         ----------
         bundle : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s to process
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
         native_poses : :class:`list[str]<list>`
             Dictionary with keys as ligand names and values as :class:`~rdkit.Chem.rdchem.Mol`s of the native ligand poses
         out : str
@@ -531,10 +531,10 @@ class Features:
         
         Parameters
         ----------
-        poses1 : :class:`list[str]<list>`
-            Path to poses to calculate pairwise with `poses2` 
-        poses2 : :class:`list[str]<list>`
-            Path to poses to calculate pairwise with `poses1` 
+        poses1 : :class:`list[Mol]<list>`
+            :class:`Molrdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses2` 
+        poses2 : :class:`list[Mol]<list>`
+            :class:`Molrdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses1` 
         out : str
             Path to `.npy` file to save all of the pairwise shape similarities
         processes : int, default=1
@@ -556,10 +556,10 @@ class Features:
         
         Parameters
         ----------
-        poses1 : :class:`list[str]<list>`
-            Path to poses to calculate pairwise with `poses2` 
-        poses2 : :class:`list[str]<list>`
-            Path to poses to calculate pairwise with `poses1` 
+        poses1 : :class:`list[Mol]<list>`
+            :class:`Molrdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses2` 
+        poses2 : :class:`list[Mol]<list>`
+            :class:`Molrdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses1` 
         out : str
             Path to `.npy` file to save all of the MCSS RMSDs
         processes : int, default=1
