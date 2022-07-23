@@ -76,7 +76,7 @@ def struct_process(structs,
     * Water only
     Additionally, a ligand SDF is pulled from the PDB, if possible.
 
-    Paraameters
+    Parameters
     -----------
     structs : iterable of str
         PDB IDs of the raw PDB files that need to be processed
@@ -129,7 +129,8 @@ def struct_process(structs,
 
         prot, waters, het, ligand, lig_chain = load_complex(_protein_in, lig_id, other_lig=other_lig)
         compl = prot + ligand
-        create_correct_ligand_sdf(struct, lig_info[0], ligand, _filtered_ligand, ligand_chain=lig_chain)
+        if not os.path.exists(_filtered_ligand):
+            create_correct_ligand_sdf(struct, lig_info[0], ligand, _filtered_ligand, ligand_chain=lig_chain)
         writePDB(_filtered_protein, prot)
         if waters is not None:
             writePDB(_filtered_water, waters)
