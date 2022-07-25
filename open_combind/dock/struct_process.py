@@ -110,7 +110,7 @@ def struct_process(structs,
             continue
 
         os.system('mkdir -p {}'.format(os.path.dirname(_workdir)))
-        os.system('rm -rf {}'.format(_workdir))
+        # os.system('rm -rf {}'.format(_workdir))
         os.system('mkdir {}'.format(_workdir))
 
         other_lig = None
