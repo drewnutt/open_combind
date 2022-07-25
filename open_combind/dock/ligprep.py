@@ -10,8 +10,12 @@ def construct_set_conformers(mol, num_confs, confgen):
     else:
         print('confgen not etkdg v1 or 2 so using etdg')
         ps = Chem.ETDG()
-    cids = Chem.EmbedMultipleConfs(mol, num_confs, ps )
+    cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
     if len(cids) == 0:
+        ps.useRandomCoords = True
+        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
+    if len(cids) == 0:
+        ps = Chem.ETDG()
         ps.useRandomCoords = True
         cids = Chem.EmbedMultipleConfs(mol, num_confs, ps )
     return cids
