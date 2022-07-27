@@ -39,8 +39,14 @@ def run_featurization(root, helper_ligands, query_fname, protein_name, helper_li
     query_ligand = query_fname.split('/')[-1].split('-')[0].split('_')[0]
     helpers_to_use = query_to_helpers(query_ligand, protein_name, helper_list_root, selection_criterion)
     helper_ligands = [ligand for ligand in helper_ligands if ligand.split('/')[-1].split('-')[0] in helpers_to_use] + [query_fname]
-    # print(helper_ligands)
-    return featurize(root, helper_ligands, native_loc, ifp_version, mcss_version, shape_version, False, False, processes, 100, False)
+    print(helper_ligands)
+    native_poses = {}
+    for native_path in native_loc:
+        name = native_path.split('/')[-1].replace('.sdf', '')
+        # sts = Chem.SDMolSupplier(native_path)
+        native_poses[name] = native_path
+    print(native_poses)
+    return featurize(root, helper_ligands, native_poses, ifp_version, mcss_version, shape_version, False, False, processes, 100, False)
 
 
 def featurize(root, poseviewers, native_loc, ifp_version, mcss_custom,
