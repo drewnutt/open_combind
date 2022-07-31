@@ -149,6 +149,7 @@ def run_gnina_docking(gnina_dock_file):
         return lines
 
     print("Running GNINA docking")
+    run_exec = False
     with open(gnina_dock_file) as gnina_cmds:
         for gnina_cmd in tqdm(gnina_cmds, total=get_num_lines(gnina_dock_file)):
             gnina_run, logfile = gnina_cmd.split('>')

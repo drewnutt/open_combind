@@ -49,7 +49,7 @@ setup(
 
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     url='https://github.com/drewnutt/open_combind',  # Website
-    install_requires=["pandas","numpy","click","plumbum",
+    install_requires=["pandas","numpy","click","plumbum","tqdm",
                         "ProDy>=2.0","rdkit-pypi","requests"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
     
     entry_points={
