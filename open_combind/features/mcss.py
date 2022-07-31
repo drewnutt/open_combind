@@ -7,6 +7,24 @@ from rdkit.Chem import rdFMCS
 # from plumbum.cmd import obrms
 from open_combind.utils import mp
 
+class CompareHalogens(rdFMCS.MCSAtomCompare):
+    def __call__(self, p, mol1, atom1, mol2, atom2):
+        a1 = mol1.GetAtomWithIdx(atom1)
+        a2 = mol2.GetAtomWithIdx(atom2)
+        a1_an = a1.GetAtomicNum()
+        a2_an = a2.GetAtomicNum()
+        if (a1_an != a2_an):
+            if (a1_an not in [9, 17, 35, 53]) or (a2_an not in [9, 17, 35, 53]):
+                return False
+        if (p.MatchValences and a1.GetTotalValence() != a2.GetTotalValence()):
+            return False
+        if (p.MatchChiralTag and not self.CheckAtomChirality(p, mol1, atom1, mol2, atom2)):
+            return False
+        if (p.MatchFormalCharge and not self.CheckAtomCharge(p, mol1, atom1, mol2, atom2)):
+            return False
+        if p.RingMatchesRingOnly:
+            return self.CheckAtomRingMatch(p, mol1, atom1, mol2, atom2)
+        return True
 # To compute the substructure similarity for a pair of candidate poses, the maximum common
 # substructure of the two ligands is identified using Canvas (Schrodinger LLC) and then mapped
 # onto each candidate pose. Finally, the RMSD between these two sets of atoms is computed and
