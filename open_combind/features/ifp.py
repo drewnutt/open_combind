@@ -4,6 +4,7 @@ Compute interaction fingerprints for poseviewer files.
 
 import tempfile
 import os
+import re
 import click
 import numpy as np
 import pandas as pd
@@ -363,7 +364,8 @@ def fingerprint(protein, ligand, settings):
     return pd.DataFrame.from_dict(fp)
 
 def fingerprint_poseviewer(input_file, poses, settings):
-    prot_fname = input_file.split('-to-')[-1].replace('-docked.sdf.gz','_prot.pdb')
+    prot_bname = input_file.split('-to-')[-1]
+    prot_fname = re.sub('-docked.*\.sdf\.gz','_prot.pdb',prot_bname)
     prot_file = f"structures/proteins/{prot_fname}"
     # print(prot_file)
 
