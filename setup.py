@@ -42,6 +42,7 @@ setup(
     include_package_data=True,
     package_data={
         "statistics_data": ["stats_data/default/"],
+        "custom_atom_types": ["dock/crossdock_atom_types.txt"],
     },
 
     # Allows `setup.py test` to work correctly with pytest
