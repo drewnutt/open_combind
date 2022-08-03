@@ -2,7 +2,7 @@ import os
 import subprocess
 from glob import glob
 
-GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log}'  #: default options for GNINA
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 --min_rmsd_filter 0 > {log}'  #: default options for GNINA
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
