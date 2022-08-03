@@ -30,6 +30,8 @@ class Features:
         self.root = os.path.abspath(root)
         if pv_root is None:
             self.pv_root = self.root + '/docking'
+        else:
+            self.pv_root = pv_root
 
         self.ifp_version = ifp_version
         self.shape_version = shape_version
@@ -39,7 +41,7 @@ class Features:
 
         self.raw = {}
 
-    def get_molecules_from_files(self,pvs,native=False):
+    def get_molecules_from_files(self, pvs, native=False):
         molbundle_dict = dict()
         for pv in pvs:
             # mol_bundle = Chem.FixedMolSizeMolBundle()
@@ -61,11 +63,11 @@ class Features:
         if base:
             return '{}/{}'.format(self.root, name)
 
-        if self.pv_root != self.root+'/docking':
-            if pv is not None:
-                pv = pv.replace(self.pv_root), self.root+'/single'
-            if pv2 is not None:
-                pv2 = pv2.replace(self.pv_root), self.root+'/single'
+        # if self.pv_root != self.root+'/docking':
+        #     if pv is not None:
+        #         pv = pv.replace(self.pv_root, self.root+'/single')
+        #     if pv2 is not None:
+        #         pv2 = pv2.replace(self.pv_root, self.root+'/single')
 
         # single features
         if name == 'rmsd':
