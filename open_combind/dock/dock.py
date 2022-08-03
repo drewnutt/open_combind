@@ -2,7 +2,7 @@ import os
 import subprocess
 from glob import glob
 
-GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log}'  #: default options for GNINA
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 --min_rmsd_filter 0 > {log}'  #: default options for GNINA
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
@@ -149,6 +149,7 @@ def run_gnina_docking(gnina_dock_file):
         return lines
 
     print("Running GNINA docking")
+    run_exec = False
     with open(gnina_dock_file) as gnina_cmds:
         for gnina_cmd in tqdm(gnina_cmds, total=get_num_lines(gnina_dock_file)):
             gnina_run, logfile = gnina_cmd.split('>')

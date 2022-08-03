@@ -7,6 +7,27 @@ from rdkit.Chem import rdFMCS
 # from plumbum.cmd import obrms
 from open_combind.utils import mp
 
+class CompareHalogens(rdFMCS.MCSAtomCompare):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, p, mol1, atom1, mol2, atom2):
+        a1 = mol1.GetAtomWithIdx(atom1)
+        a2 = mol2.GetAtomWithIdx(atom2)
+        a1_an = a1.GetAtomicNum()
+        a2_an = a2.GetAtomicNum()
+        if (a1_an != a2_an):
+            if (a1_an not in [9, 17, 35, 53]) or (a2_an not in [9, 17, 35, 53]):
+                return False
+        if (p.MatchValences and a1.GetTotalValence() != a2.GetTotalValence()):
+            return False
+        if (p.MatchChiralTag and not self.CheckAtomChirality(p, mol1, atom1, mol2, atom2)):
+            return False
+        if (p.MatchFormalCharge and not self.CheckAtomCharge(p, mol1, atom1, mol2, atom2)):
+            return False
+        if p.RingMatchesRingOnly:
+            return self.CheckAtomRingMatch(p, mol1, atom1, mol2, atom2)
+        return True
 # To compute the substructure similarity for a pair of candidate poses, the maximum common
 # substructure of the two ligands is identified using Canvas (Schrodinger LLC) and then mapped
 # onto each candidate pose. Finally, the RMSD between these two sets of atoms is computed and
@@ -22,6 +43,7 @@ def mcss(sts1, sts2):
     Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
     """
     memo = {}
+    params = setup_MCS_params()
     # sts1 = [merge_halogens(st.copy()) for st in sts1]
     # sts2 = [merge_halogens(st.copy()) for st in sts2]
 
@@ -39,7 +61,7 @@ def mcss(sts1, sts2):
             if (sma1, sma2) in memo:
                 mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
             else:
-                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2)
+                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, params)
                 memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
                 memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
 
@@ -64,6 +86,8 @@ def mcss_mp(sts1, sts2, processes=1):
     Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
     """
     memo = {}
+    
+    params = setup_MCS_params()
     # sts1 = [merge_halogens(st.copy()) for st in sts1]
     # sts2 = [merge_halogens(st.copy()) for st in sts2]
 
@@ -80,9 +104,9 @@ def mcss_mp(sts1, sts2, processes=1):
             if (sma1, sma2) in memo:
                 mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
             else:
-                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2)
+                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, params)
                 memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
-                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
+                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1': keep_idxs['st2'],'st2':keep_idxs['st1']})
 
             retain_inf = False
             if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
@@ -153,13 +177,12 @@ def get_info_from_results(mcss_res):
     mcss_mol = Chem.MolFromSmarts(mcss)
     return mcss, num_atoms, mcss_mol
 
-def compute_mcss(st1, st2):
+def compute_mcss(st1, st2, params):
     """
     Compute smarts patterns for mcss(s) between two structures.
     """
     try:
-        res = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
-                completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact)
+        res = rdFMCS.FindMCS([st1,st2], params)
         mcss, num_atoms, mcss_mol = get_info_from_results(res)
         pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
         pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
@@ -167,15 +190,28 @@ def compute_mcss(st1, st2):
     except AssertionError:
         # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
         # but this is slow, so only should do it when we need to do it (but checking is also slow)
-        newres = rdFMCS.FindMCS([st1,st2], ringMatchesRingOnly=True,
-                completeRingsOnly=True, bondCompare=rdFMCS.BondCompare.CompareOrderExact,
-                ringCompare=rdFMCS.RingCompare.PermissiveRingFusion)
+
+        #This is the same as ringCompare=rdFMC.RingCompare.PermissiveRingFusion
+        # see https://github.com/rdkit/rdkit/issues/5438
+        params.BondCompareParameters.MatchFusedRings = True
+        params.BondCompareParameters.MatchFusedRingsStrict = False
+        newres = rdFMCS.FindMCS([st1, st2], params)
+        params.BondCompareParameters.MatchFusedRings = False
         mcss, num_atoms, mcss_mol = get_info_from_results(newres)
     substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
                     'st2': st2.GetSubstructMatches(mcss_mol)}
 
 
     return mcss, num_atoms, substruct_idx#, rmv_idx
+
+def setup_MCS_params():
+    params = rdFMCS.MCSParameters()
+    params.AtomCompareParameters.ringMatchesRingOnly=True,
+    params.AtomCompareParameters.completeRingsOnly=True,
+    params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
+    params.AtomTyper = CompareHalogens()
+
+    return params
 
 def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     """

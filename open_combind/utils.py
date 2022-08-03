@@ -54,3 +54,12 @@ def mp(function, unfinished, processes):
 def mkdir(path):
     if not os.path.exists(path):
         os.mkdir(path)
+
+def count_poses(pv):
+    if os.path.splitext(pv)[-1] == ".gz":
+        import gzip
+        pv = gzip.open(pv)
+    else:
+        pv = open(pv)
+    num_poses = [1 for i in Chem.ForwardSDMolSupplier(pv)]
+    return sum(num_poses)
