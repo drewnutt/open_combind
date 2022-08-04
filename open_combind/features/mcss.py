@@ -4,6 +4,7 @@ import subprocess
 import os
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
+from rdkit.Chem.rdmolops import ReplaceSubstructs
 # from plumbum.cmd import obrms
 from open_combind.utils import mp
 
@@ -206,8 +207,8 @@ def compute_mcss(st1, st2, params):
 
 def setup_MCS_params():
     params = rdFMCS.MCSParameters()
-    params.AtomCompareParameters.ringMatchesRingOnly=True,
-    params.AtomCompareParameters.completeRingsOnly=True,
+    params.AtomCompareParameters.RingMatchesRingOnly = True
+    params.AtomCompareParameters.CompleteRingsOnly = True
     params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
     params.AtomTyper = CompareHalogens()
 
@@ -262,7 +263,7 @@ def merge_halogens(structure):
             atom.atomic_number = 9
     return structure
 
-def subMol(mol, match):
+def subMol(mol, match, merge_halogens=True):
     #not sure why this functionality isn't implemented natively
     #but get the interconnected bonds for the match
     atoms = set(match)
@@ -272,7 +273,11 @@ def subMol(mol, match):
         for b in atom.GetBonds():
             if b.GetOtherAtomIdx(a) in atoms:
                 bonds.add(b.GetIdx())
-    return Chem.PathToSubmol(mol,list(bonds))
+    new_mol = Chem.PathToSubmol(mol, list(bonds))
+    if merge_halogens:
+        new_mol = ReplaceSubstructs(new_mol, Chem.MolFromSmarts('[F,Cl,Br,I]'),
+                Chem.MolFromSmiles('F'), replaceAll=True)
+    return new_mol
 
 def get_substructure(mol, remove_idxs):
     """
