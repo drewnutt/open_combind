@@ -2,7 +2,7 @@ import os
 import gzip
 from rdkit.Chem import AllChem as Chem
 
-def construct_set_conformers(mol, num_confs, confgen):
+def construct_set_conformers(mol, num_confs, confgen, random_seed=-1):
     if confgen == 'etkdg_v1':
         ps = Chem.ETKDG()
     elif confgen == 'etkdg_v2':
@@ -10,22 +10,22 @@ def construct_set_conformers(mol, num_confs, confgen):
     else:
         print('confgen not etkdg v1 or 2 so using etdg')
         ps = Chem.ETDG()
-    cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
+    cids = Chem.EmbedMultipleConfs(mol, num_confs, ps, randomSeed=random_seed)
     if len(cids) == 0:
         ps.useRandomCoords = True
-        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
+        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps, randomSeed=random_seed)
     if len(cids) == 0:
         ps = Chem.ETDG()
         ps.useRandomCoords = True
-        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps )
+        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps, randomSeed=random_seed)
     return cids
 
-def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200):
+def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
     mol = Chem.Mol(inmol)
     Chem.SanitizeMol(mol)
     mol = Chem.AddHs(mol, addCoords=True)
     if num_confs > 0:
-        cids = construct_set_conformers(mol, num_confs, confgen)
+        cids = construct_set_conformers(mol, num_confs=num_confs, confgen=confgen, random_seed=random_seed)
     else:
         cids = [-1]
     assert len(cids) > 0
@@ -47,9 +47,9 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200):
     return mol, best_conf, cenergy[best_conf]
 
 
-def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200):
+def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
     mol, best_conf, _ = make3DConf(inmol, num_confs=num_confs,
-                                confgen=confgen, ff=ff, maxIters=maxIters)
+                                confgen=confgen, ff=ff, maxIters=maxIters, random_seed=random_seed)
 
     writer = Chem.SDWriter(out_fname)
     writer.write(mol, best_conf)
