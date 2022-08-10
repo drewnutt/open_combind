@@ -144,7 +144,7 @@ class Molecule:
         #            ('[CX3](=[NH2X3+])[NH2X3]', 1, [1, 2])]
         # These are pulled from pharmit's positive and negative ions
         pos_smartss = [('[+,+2,+3,+4]', 0, [0]), #positive ions first
-                    ('[$(CC)](=N)N', 2, [1,2]),
+                    ('[$(C*)](=N)N', 2, [1,2]),
                     ('C(N)(N)=N', 0, [1,2,3]),
                     ('[$([nH]1cncc1)]', 0, [0])]
         neg_smartss =[('[-,-2,-3,-4]', 0, [0]),
