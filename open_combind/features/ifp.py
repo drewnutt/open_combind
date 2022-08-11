@@ -144,25 +144,22 @@ class Molecule:
         #            ('[CX3](=[NH2X3+])[NH2X3]', 1, [1, 2])]
         # These are pulled from pharmit's positive and negative ions
         pos_smartss = [('[+,+2,+3,+4]', 0, [0]), #positive ions first
-                    ('[$(C*)](=N)N', 2, [1,2]),
-                    ('C(N)(N)=N', 0, [1,2,3]),
-                    ('[$([nH]1cncc1)]', 0, [0])]
-        neg_smartss =[('[-,-2,-3,-4]', 0, [0]),
-                    ('C(=O)[O-,OH,OX1]', 0,[1,2]),
-                    ('[S,P](=O)[O-,OH,OX1]', 2,[1,2]),
-                    ('c1[nH1]nnn1', 0,[1,2]),
-                    ('c1nn[nH1]n1', 0, [1,2]),
-                    ('C(=O)N[OH1,O-,OX1]', 0, [1,2]),
-                    ('C(=O)N[OH1,O-]', 0, [1,2]),
-                    ('CO(=N[OH1,O-])', 0,[1,2]),
-                    ('[$(N-[SX4](=O)(=O)[CX4](F)(F)F)]', 0,[1,2])]
+                        ('[$(C*)](=, -N)N', 0, [1, 2]),
+                        ('C(N)(N)=N', 0, [1, 2,3]),
+                        ('[nH]1cncc1', 0, [0, 2])]
+        neg_smartss = [('[-, -2, -3, -4]', 0, [0]),
+                        ('[S,P,C](=O)[O-, OH, OX1]', 0, [1, 2]),
+                        ('c1[nH1]nnn1', 0, [1, 3]),
+                        ('c1nn[nH1]n1', 0, [1, 3]),
+                        ('C(=O)N[OH1, O-, OX1]', 0, [1, 2]),
+                        ('CO(=N[OH1, O-])', 0, [1, 2]),
+                        ('[$(N-[SX4](=O)(=O)[CX4](F)(F)F)]', 0, [1, 2])]
 
-        smartss = [(ss,k,v,+1) for ss, k, v in pos_smartss] + [(ss,k,v,-1) for ss, k, v in neg_smartss]
+        smartss = [(MolFromSmarts(ss), k, v, +1) for ss, k, v in pos_smartss] + [(MolFromSmarts(ss), k, v, -1) for ss, k, v in neg_smartss]
         idx_to_atom = {atom.GetIdx(): atom for atom in self.mol.GetAtoms()}
 
         for smarts, k, v, charge in smartss:
-            mol = MolFromSmarts(smarts)
-            matches = self.mol.GetSubstructMatches(mol)
+            matches = self.mol.GetSubstructMatches(smarts)
             # if len(matches):
             #     print(smarts)
             for match in matches:
