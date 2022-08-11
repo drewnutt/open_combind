@@ -276,7 +276,7 @@ def subMol(mol, match, merge_halogens=True):
     new_mol = Chem.PathToSubmol(mol, list(bonds))
     if merge_halogens:
         new_mol = ReplaceSubstructs(new_mol, Chem.MolFromSmarts('[F,Cl,Br,I]'),
-                Chem.MolFromSmiles('F'), replaceAll=True)
+                Chem.MolFromSmiles('F'), replaceAll=True)[0]
     return new_mol
 
 def get_substructure(mol, remove_idxs):
