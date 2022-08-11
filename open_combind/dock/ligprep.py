@@ -10,14 +10,15 @@ def construct_set_conformers(mol, num_confs, confgen, random_seed=-1):
     else:
         print('confgen not etkdg v1 or 2 so using etdg')
         ps = Chem.ETDG()
-    cids = Chem.EmbedMultipleConfs(mol, num_confs, ps, randomSeed=random_seed)
+    ps.randomSeed = random_seed
+    cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
     if len(cids) == 0:
         ps.useRandomCoords = True
-        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps, randomSeed=random_seed)
+        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
     if len(cids) == 0:
         ps = Chem.ETDG()
         ps.useRandomCoords = True
-        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps, randomSeed=random_seed)
+        cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
     return cids
 
 def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
