@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from glob import glob
 from rdkit.Chem import AllChem as Chem
+from rdkit.Chem.rdMolTransforms import ComputeCentroid
+from rdkit.Geometry.rdGeometry import Point3D
 from open_combind.utils import basename, mp, mkdir, np_load
 from scipy.special import logit
 
@@ -26,7 +28,8 @@ class Features:
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
                  max_poses=10000, pv_root=None,
-                 ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True):
+                 ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True,
+                 template='',check_center_ligs=False):
         self.root = os.path.abspath(root)
         if pv_root is None:
             self.pv_root = self.root + '/docking'
@@ -38,11 +41,20 @@ class Features:
         self.max_poses = max_poses
         self.ifp_features = ifp_features
         self.cnn_scores = cnn_scores
+        self.template = template
+        self.check_center_ligs = check_center_ligs
+        with open(self.template) as tmpfile:
+            template_line = tmpfile.readlines()[0]
+        abox_ligand = template_line.split('--autobox_ligand')[-1].split()[0]
+        self.center_ligand = Chem.MolFromMolFile(abox_ligand) if self.check_center_ligs else None
 
         self.raw = {}
 
-    def get_molecules_from_files(self, pvs, native=False):
+    def get_molecules_from_files(self, pvs, native=False, center_ligand=None):
         molbundle_dict = dict()
+        center = Point3D(0,0,0)
+        if center_ligand is not None:
+            center = ComputeCentroid(center_ligand.GetConformer())
         for pv in pvs:
             # mol_bundle = Chem.FixedMolSizeMolBundle()
             mol_bundle = []
@@ -50,12 +62,21 @@ class Features:
             if pv.endswith('.gz'):
                 pv_open = gzip.open(pv)
             mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
-            for idx, mol in enumerate(mol_suppl):
+            mol_count = 0
+            for mol in mol_suppl:
+                lig_centroid = ComputeCentroid(mol.GetConformer())
+                displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                # print(distance)
+                if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
+                    print(f"skipped for {pv}")
+                    continue
                 mol_bundle.append(mol)
-                if (idx + 1) == self.max_poses:
+                mol_count += 1
+                if mol_count == self.max_poses:
                     break
-            if (native is False) and (len(mol_bundle) != self.max_poses):
+            if (native is False) and (mol_count != self.max_poses):
                 print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
+            print(mol_count,pv)
             molbundle_dict[pv] = mol_bundle
         return molbundle_dict
 
@@ -126,7 +147,10 @@ class Features:
 
         return data
 
-    def load_single_features(self, pvs, ligands=None):
+    def load_single_features(self, pvs, ligands=None, center_ligand=None):
+        center = Point3D(0,0,0)
+        if center_ligand is not None:
+            center = ComputeCentroid(center_ligand.GetConformer())
         rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
         for pv in pvs:
             _rmsds = np.load(self.path('rmsd', pv=pv))
@@ -139,8 +163,14 @@ class Features:
             _ifps = pd.read_csv(self.path('ifp', pv=pv))
             _ifps = [_ifps.loc[_ifps.pose==p] for p in range(max(_ifps.pose)+1)]
 
+            #Need to check for if ligand is centered here.
             sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
-            _poses = [st for st in sts]
+            _poses = []
+            for st in sts:
+                distance = ComputeCentroid(st.GetConformer()).Distance(center)
+                if center_ligand is not None and distance > 15:
+                    continue
+                poses.append(st)
 
             keep = []
             for i in range(len(_names)):
@@ -173,9 +203,8 @@ class Features:
         # the method.
         if type(pvs[0]) == list:
             pvs = [pv for _pvs in pvs for pv in _pvs]
-
         pvs = [os.path.abspath(pv) for pv in pvs]
-        molbundles = self.get_molecules_from_files(pvs)
+        molbundles = self.get_molecules_from_files(pvs, center_ligand=self.center_ligand)
         native_sts = self.get_molecules_from_files(list(native_poses.values()), native=True)
         native_poses = {name: native_sts[pv][0] for name, pv in native_poses.items()}
 
@@ -219,7 +248,7 @@ class Features:
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         mkdir(self.root)
-        rmsds1, gscores1, gaffs1, vaffs1, poses1, names1, ifps1 = self.load_single_features(pvs)
+        rmsds1, gscores1, gaffs1, vaffs1, poses1, names1, ifps1 = self.load_single_features(pvs, center_ligand=self.center_ligand)
         out = self.path('rmsd1')
         np.save(out, rmsds1)
         out = self.path('gscore1')
