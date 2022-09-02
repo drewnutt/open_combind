@@ -152,13 +152,15 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 @click.option('--no-cnn', is_flag=True)
 @click.option('--use-shape', is_flag=True)
 @click.option('--processes', default=1)
+@click.option('--template', default='structures/template/*.template')
+@click.option('--check_center_ligs', is_flag=True)
 def featurize(root, poseviewers, native, ifp_version,
             shape_version, screen, no_mcss,
-            use_shape, processes, max_poses, no_cnn):
+            use_shape, processes, max_poses, no_cnn, template, check_center_ligs):
 
     oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
                 max_poses=max_poses, no_cnn=no_cnn, screen=screen, ifp_version=ifp_version,
-                shape_version=shape_version, processes=processes)
+                shape_version=shape_version, processes=processes, template=template, check_center_ligs=check_center_ligs)
 ################################################################################
 
 

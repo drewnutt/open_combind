@@ -113,9 +113,11 @@ def setup_slurm(gnina_in, ligands, receptor, abox):
         Path to the autobox_ligands
      """
     import tarfile
+    import pkg_resources
 
     native_ligs = glob('structures/ligands/*.sdf')
-    tarfiles = (receptor, abox, *ligands, *native_ligs)
+    custom_atom_typing = pkg_resources.resource_filename(__name__, "dock/crossdock_atom_types.txt")
+    tarfiles = (receptor, abox, *ligands, *native_ligs, custom_atom_typing)
     new_tar = gnina_in.replace('.txt', '.tar.gz')
     tar = tarfile.open(new_tar, "w:gz")
 
