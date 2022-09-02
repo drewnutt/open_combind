@@ -167,10 +167,12 @@ class Features:
             sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
             _poses = []
             for st in sts:
-                distance = ComputeCentroid(st.GetConformer()).Distance(center)
-                if center_ligand is not None and distance > 15:
+                lig_centroid = ComputeCentroid(st.GetConformer())
+                displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                # print(distance)
+                if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
                     continue
-                poses.append(st)
+                _poses.append(st)
 
             keep = []
             for i in range(len(_names)):
