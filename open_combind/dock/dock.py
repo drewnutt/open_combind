@@ -114,9 +114,13 @@ def setup_slurm(gnina_in, ligands, receptor, abox):
      """
     import tarfile
     import pkg_resources
+    import shutil
 
     native_ligs = glob('structures/ligands/*.sdf')
-    custom_atom_typing = pkg_resources.resource_filename(__name__, "dock/crossdock_atom_types.txt")
+    custom_atom_typing = pkg_resources.resource_filename(__name__, "crossdock_atom_types.txt")
+    shutil.copy(custom_atom_typing,os.getcwd())
+    custom_atom_typing = custom_atom_typing.split('/')[-1]
+
     tarfiles = (receptor, abox, *ligands, *native_ligs, custom_atom_typing)
     new_tar = gnina_in.replace('.txt', '.tar.gz')
     tar = tarfile.open(new_tar, "w:gz")
@@ -127,6 +131,8 @@ def setup_slurm(gnina_in, ligands, receptor, abox):
 
     cwd = os.getcwd() + '/'
     os.system(f'sed -i s,{cwd},,g {gnina_in}')
+
+    os.remove(os.path.abspath(custom_atom_typing))
 
 def run_gnina_docking(gnina_dock_file):
     """
