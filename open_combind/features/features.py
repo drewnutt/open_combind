@@ -43,9 +43,10 @@ class Features:
         self.cnn_scores = cnn_scores
         self.template = template
         self.check_center_ligs = check_center_ligs
-        with open(self.template) as tmpfile:
-            template_line = tmpfile.readlines()[0]
-        abox_ligand = template_line.split('--autobox_ligand')[-1].split()[0]
+        if len(self.template):
+            with open(self.template) as tmpfile:
+                template_line = tmpfile.readlines()[0]
+            abox_ligand = template_line.split('--autobox_ligand')[-1].split()[0]
         self.center_ligand = Chem.MolFromMolFile(abox_ligand) if self.check_center_ligs else None
 
         self.raw = {}
@@ -148,7 +149,6 @@ class Features:
         return data
 
     def load_single_features(self, pvs, ligands=None, center_ligand=None):
-        center = Point3D(0,0,0)
         if center_ligand is not None:
             center = ComputeCentroid(center_ligand.GetConformer())
         rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
@@ -167,22 +167,33 @@ class Features:
             sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
             _poses = []
             for st in sts:
-                distance = ComputeCentroid(st.GetConformer()).Distance(center)
-                if center_ligand is not None and distance > 15:
-                    continue
-                poses.append(st)
+                if center_ligand is not None:
+                    lig_centroid = ComputeCentroid(st.GetConformer())
+                    displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                    # print(distance)
+                    if np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5:
+                        print(f"skipped for {pv}")
+                        continue
+                _poses.append(st)
+            print(len(poses))
 
             keep = []
             for i in range(len(_names)):
                 if ((ligands == None or (_names[i] in ligands))
                     and sum(_names[:i] == _names[i]) < self.max_poses):
                     keep += [i]
+            print(keep)
             rmsds += [_rmsds[keep]]
             if self.cnn_scores:
                 gscores += [_gscores[keep]]
                 gaffs += [_gaffs[keep]]
             vaffs += [_vaffs[keep]]
             names += [_names[keep]]
+            for i in keep:
+                try:
+                    assert _poses[i]
+                except:
+                    print(i)
             poses += [_poses[i] for i in keep]
             ifps += [_ifps[i] for i in keep]
 
