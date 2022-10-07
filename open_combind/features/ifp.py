@@ -8,8 +8,8 @@ import re
 import click
 import numpy as np
 import pandas as pd
-from rdkit.Chem import MolFromSmarts
-from rdkit.Chem.AllChem import ForwardSDMolSupplier, MolFromPDBFile
+from rdkit.Chem import MolFromSmarts,ForwardSDMolSupplier,MolFromPDBFile, AddHs
+from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField, OptimizeMolecule
 import gzip
 
 def resname(atom):
@@ -54,15 +54,22 @@ def angle_vector(v1, v2):
 
 class Molecule:
     def __init__(self, mol, is_protein, settings):
-        self.mol = mol
+        self.mol = self.init_hydrogens(mol)
         self.is_protein = is_protein
         self.settings = settings
 
         self.contacts = self.init_contacts()
         self.hbond_donors, self.hbond_acceptors = self.init_hbond()
         self.charged, self.charge_groups = self.init_saltbridge()
-        # if is_protein:
-        #     print(self.charged)
+
+    def init_hydrogens(self, mol, optimize=False):
+        mol_w_Hs = AddHs(mol,addCoords=True)
+        if optimize:
+            ff = UFFGetMoleculeForceField(mol_w_Hs)
+            for atom in mol.GetAtoms():
+                ff.AddFixedPoint(atom.GetIdx())
+            OptimizeMolecule(ff)
+        return mol_w_Hs
 
     def init_contacts(self):
         coord, vdw, atom_name, res_name = [], [], [], []
@@ -236,27 +243,8 @@ def saltbridge_compute(protein, ligand, settings):
         for ligand_atoms, lig_charge in ligand.charge_groups.values():
             residue_id = resname(protein_atoms[0]).split(':')[2]
             protein_charge = 1 * (residue_id in ['LYS','ARG','HIS']) - 1 * (residue_id in ['ASP','GLU'])
-            # print(ligand_atoms, lig_charge)
-            # lig_charge = ligand_atom.GetFormalCharge()
-            # protein_charge = protein_atom.GetFormalCharge()
             if lig_charge * protein_charge >= 0: continue
 
-            # Expand protein_atom and ligand_atom to all symetric atoms
-            # ... think carboxylates and guanidiniums.
-            # if ('saltbridge_resonance' in settings and
-            #     ligand_atom.GetIdx() in ligand.charge_groups):
-            #     ligand_atoms = ligand.charge_groups[ligand_atom.GetIdx()]
-            # else:
-            #     ligand_atoms = [ligand_atom]
-            
-            # if ('saltbridge_resonance' in settings and
-            #     resname(protein_atom) in protein.charge_groups):
-            #     protein_atoms = protein.charge_groups[resname(protein_atom)]
-            # else:
-            #     protein_atoms = [protein_atom]
-
-            # Get minimum distance between any pair of protein and ligand
-            # atoms in the groups.
             dist = float('inf')
             for _ligand_atom in ligand_atoms:
                 for _protein_atom in protein_atoms:
