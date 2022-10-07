@@ -3,7 +3,7 @@ import pkg_resources
 from rdkit.Chem.rdMolTransforms import ComputeCentroid
 from rdkit.Chem.rdmolfiles import MolFromMolFile
 
-CMD = "gnina -r {prot} --autobox_ligand {abox_lig} --autobox_add {aadd} --custom_atoms {atom_file} "
+CMD = "gnina -r {prot} --autobox_ligand {abox_lig} --custom_atoms {atom_file} "
 # CMD = "gnina -r {prot} --center_x {lig_x:.3f} --center_y {lig_y:.3f} --center_z {lig_z:.3f} --size_x {box_x} --size_y {box_y} --size_z {box_z} "
 
 def make_grid(pdb,

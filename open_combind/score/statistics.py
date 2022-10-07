@@ -61,7 +61,7 @@ def compute_stats(protein, pairs_root, stats_root, features):
     for feature in features:
         if feature == 'mcss':
             sd = 0.03*6
-            domain = (0, 15)
+            domain = (0, 6)
             df = df[~np.isinf(df[feature])]
         else:
             sd = 0.03
