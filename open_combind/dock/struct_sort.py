@@ -2,6 +2,8 @@ import os
 import shutil
 from prody import parsePDB, writePDB
 from plumbum.cmd import obabel
+from pdbfixer import PDBFixer
+from openmm.app import PDBFile
 
 def split_complex(complex_loc, pdb_id, structname,ligand_select='hetatm',
         structures_loc = "structures/"):
@@ -28,6 +30,7 @@ def split_complex(complex_loc, pdb_id, structname,ligand_select='hetatm',
         if ligand_select != "hetatm" or ligand_select != "hetero":
             prot_st = prot_st.select(f"not {ligand_select}")
         writePDB(prot_path,prot_st)
+        protonate_protein(prot_path)
 
 def struct_sort(structs, opt_path='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'):
     structures_loc = opt_path.replace("aligned/{pdbid}/{pdbid}_aligned.pdb","")
@@ -45,3 +48,12 @@ def struct_sort(structs, opt_path='structures/aligned/{pdbid}/{pdbid}_aligned.pd
             split_complex(opt_complex, struct, opt_complex,
                     ligand_select=ligand_select,
                     structures_loc = structures_loc)
+
+def protonate_protein(path_to_protein, pH=7.0):
+    print(path_to_protein)
+    pdb = PDBFixer(filename=path_to_protein)
+    pdb.findMissingResidues()
+    pdb.findMissingAtoms()
+    pdb.addMissingAtoms()
+    pdb.addMissingHydrogens(pH=pH)
+    PDBFile.writeFile(pdb.topology,pdb.positions,open(path_to_protein,'w'))
