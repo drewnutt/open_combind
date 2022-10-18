@@ -27,7 +27,7 @@ def align_separate_ligand(struct, trans_matrix,
     return True
     
 
-def struct_align(template, structs, dist=12.0, retry=True,
+def struct_align(template, structs, dist=15.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
                  ligand_info='structures/raw/{pdbid}.info',
                  aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
@@ -75,9 +75,9 @@ def struct_align(template, structs, dist=12.0, retry=True,
         selection_text = 'hetatm'
     else:
         selection_text = temp_liginfo[1]
-    template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
+    # template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
     templ_lig_chain = template_st.select(selection_text).getChids()[0]
-    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text})')
+    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text}) and heavy')
     transform_matrix = 0
     for struct in structs:
         query_path = filtered_protein.format(pdbid=struct)
@@ -103,22 +103,26 @@ def struct_align(template, structs, dist=12.0, retry=True,
             selection_text = 'hetatm'
         else:
             selection_text = q_liginfo[1]
-        query_to_align = query.select(f'calpha within {dist} of {selection_text}')
+        # query_to_align = query.select(f'calpha within {dist} of {selection_text}')
+        query_lig_chain = query.select(selection_text).getChids()[0]
+        query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
         try:
-            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
-                                                            seqid=1, overlap=1)[0]
+            # query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
+            #                                                 seqid=1, overlap=1)[0]
+            # query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
+            #                                                 seqid=1, overlap=1)[0]
+            matches = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
+                                                            seqid=1, overlap=1)
+            # print([[match[2],match[3]] for match in matches])
+            query_match, template_match, _, _ = matches[0]
         except IndexError as ie:
             print(str(ie))
-            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=False,
+            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=False,
                                                             seqid=1, overlap=1)[0]
-        if len(query_match) < 0.5 * min(len(query_to_align), len(template_to_align)):
-            # print(len(query_match))
-            print(f"WARNING: Bad quality chain alignment of {struct}, "
-                    "trying with only protein atoms on ligand chain")
-            query_lig_chain = query.select(selection_text).getChids()[0]
-            query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text})')
-            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
-                                                            seqid=1, overlap=1)[0]
+        # if len(query_match) < 0.5 * min(len(query_prot_chain), len(templ_prot_chain)):
+        #     # print(len(query_match))
+        #     print(f"WARNING: Bad quality chain alignment of {struct}, "
+        #             "trying with only protein atoms on ligand chain")
             # print(len(query_match))
         transform = calcTransformation(query_match, template_match)
         query_aligned = transform.apply(query)
