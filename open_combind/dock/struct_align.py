@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from prody import parsePDB, writePDB, matchChains, calcTransformation
 from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
@@ -70,13 +71,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
     template_st = parsePDB(template_path)
     template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
-    temp_liginfo = open(template_liginfo_path, 'r').readlines()
-    if len(temp_liginfo[0].strip('\n')) < 4:
-        selection_text = 'hetatm'
-    else:
-        selection_text = temp_liginfo[1]
-    # template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
-    templ_lig_chain = template_st.select(selection_text).getChids()[0]
+    selection_text, templ_lig_chain = get_selection_texts(template_liginfo_path, template_st)
     templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text}) and heavy')
     transform_matrix = 0
     for struct in structs:
@@ -98,13 +93,10 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
         query = parsePDB(f'{_workdir}/{_query_fname}')
         query_liginfo_path = query_path.replace(f'processed/{struct}', 'raw').replace('_complex.pdb', '.info')
-        q_liginfo = open(query_liginfo_path, 'r').readlines()
-        if len(q_liginfo[0].strip('\n')) < 4:
-            selection_text = 'hetatm'
-        else:
-            selection_text = q_liginfo[1]
+
+        selection_text, query_lig_chain = get_selection_texts(query_liginfo_path, query)
         # query_to_align = query.select(f'calpha within {dist} of {selection_text}')
-        query_lig_chain = query.select(selection_text).getChids()[0]
+        print(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
         query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
         try:
             # query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
@@ -147,3 +139,15 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
     return transform_matrix
 
+def get_selection_texts(liginfo_path, prot):
+    liginfo = open(liginfo_path, 'r').readlines()
+    if len(liginfo[0].strip('\n')) < 4:
+        selection_text = 'hetatm'
+    else:
+        selection_text = liginfo[1].strip()
+    # lig_chain = prot.select(selection_text).getChids()[0]
+    # if selection_text == f'chain {lig_chain}':
+    unique_chains, counts = np.unique(prot.select(f'not {selection_text} and protein within 5 of {selection_text}').getChids(), return_counts=True)
+    lig_chain = unique_chains[counts.argmax()]
+
+    return selection_text, lig_chain
