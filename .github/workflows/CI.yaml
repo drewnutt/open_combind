@@ -70,11 +70,11 @@ jobs:
     #     python-version: ${{ matrix.python-version }}
     - name: Install OpenMM 
       run: |
-        conda install -c conda-forge openmm 
+        $CONDA/bin/conda install -c conda-forge openmm -y 
 
     - name: Install PDBFixer
       run: |
-        git clone https://github.com/openmm/pdbfixer.git && cd pdbfixer && python -m pip install .
+         python -m pip install git+https://github.com/openmm/pdbfixer.git
 
     - name: Testing Dependencies
       shell: bash
