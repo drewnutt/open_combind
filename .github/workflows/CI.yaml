@@ -43,10 +43,10 @@ jobs:
         df -h
         ulimit -a
 
-    - name: Install Dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt -yq install openbabel
+    # - name: Install Dependencies (Linux)
+    #   if: runner.os == 'Linux'
+    #   run: |
+    #     sudo apt -yq install openbabel
 
     # - name: Get OpenBabel (From Tarball)
     #   if: runner.os == 'Linux'
@@ -69,8 +69,11 @@ jobs:
     #   with:
     #     python-version: ${{ matrix.python-version }}
     - name: Install OpenMM 
-      run: |
-        $CONDA/bin/conda install -c conda-forge openmm -y 
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        activate-environment: opencombind-dev
+        environment-file: devtools/conda-envs/test_env.yaml
 
     - name: Install PDBFixer
       run: |
