@@ -74,7 +74,7 @@ jobs:
 
     - name: Install PDBFixer
       run: |
-        git clone git@github.com:openmm/pdbfixer.git && python setup.py install
+        git clone git@github.com:openmm/pdbfixer.git && cd pdbfixer && python setup.py install
 
     - name: Testing Dependencies
       shell: bash
