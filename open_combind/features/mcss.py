@@ -6,7 +6,7 @@ from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 from rdkit.Chem.rdmolops import ReplaceSubstructs
 # from plumbum.cmd import obrms
-from open_combind.utils import mp
+from open_combind.utils import mp, standardize_mol
 
 class CompareHalogens(rdFMCS.MCSAtomCompare):
     def __init__(self, *args, **kwargs):
@@ -45,8 +45,8 @@ def mcss(sts1, sts2):
     """
     memo = {}
     params = setup_MCS_params()
-    # sts1 = [merge_halogens(st.copy()) for st in sts1]
-    # sts2 = [merge_halogens(st.copy()) for st in sts2]
+    sts1 = [standardize_mol(st.copy()) for st in sts1]
+    sts2 = [standardize_mol(st.copy()) for st in sts2]
 
     bad_apples = []
     rmsds = []
@@ -189,6 +189,7 @@ def compute_mcss(st1, st2, params):
         pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
         assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
     except AssertionError:
+        print("assert error")
         # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
         # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
@@ -199,8 +200,8 @@ def compute_mcss(st1, st2, params):
         newres = rdFMCS.FindMCS([st1, st2], params)
         params.BondCompareParameters.MatchFusedRings = False
         mcss, num_atoms, mcss_mol = get_info_from_results(newres)
-    substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
-                    'st2': st2.GetSubstructMatches(mcss_mol)}
+    substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol,uniquify=False),
+                    'st2': st2.GetSubstructMatches(mcss_mol,uniquify=False)}
 
 
     return mcss, num_atoms, substruct_idx#, rmv_idx
@@ -211,6 +212,7 @@ def setup_MCS_params():
     params.AtomCompareParameters.CompleteRingsOnly = True
     params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
     params.AtomTyper = CompareHalogens()
+    # params.AtomTyper = rdFMCS.AtomCompare.CompareAnyHeavyAtom
 
     return params
 

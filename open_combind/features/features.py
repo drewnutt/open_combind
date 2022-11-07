@@ -6,7 +6,7 @@ from glob import glob
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem.rdMolTransforms import ComputeCentroid
 from rdkit.Geometry.rdGeometry import Point3D
-from open_combind.utils import basename, mp, mkdir, np_load
+from open_combind.utils import basename, mp, mkdir, np_load, standardize_mol
 from scipy.special import logit
 
 IFP = {'rd1':    {'version'           : 'rd1',
@@ -71,7 +71,7 @@ class Features:
                 if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
                     print(f"skipped for {pv}")
                     continue
-                mol_bundle.append(mol)
+                mol_bundle.append(standardize_mol(mol))
                 mol_count += 1
                 if mol_count == self.max_poses:
                     break
