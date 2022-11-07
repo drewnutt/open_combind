@@ -54,8 +54,8 @@ def angle_vector(v1, v2):
 
 class Molecule:
     def __init__(self, mol, is_protein, settings):
-        self.mol = self.init_hydrogens(mol)
         self.is_protein = is_protein
+        self.mol = mol if self.is_protein else self.init_hydrogens(mol)
         self.settings = settings
 
         self.contacts = self.init_contacts()

@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from prody import parsePDB, writePDB, matchChains, calcTransformation
 from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
@@ -27,7 +28,7 @@ def align_separate_ligand(struct, trans_matrix,
     return True
     
 
-def struct_align(template, structs, dist=12.0, retry=True,
+def struct_align(template, structs, dist=15.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
                  ligand_info='structures/raw/{pdbid}.info',
                  aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
@@ -70,14 +71,8 @@ def struct_align(template, structs, dist=12.0, retry=True,
 
     template_st = parsePDB(template_path)
     template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
-    temp_liginfo = open(template_liginfo_path, 'r').readlines()
-    if len(temp_liginfo[0].strip('\n')) < 4:
-        selection_text = 'hetatm'
-    else:
-        selection_text = temp_liginfo[1]
-    template_to_align = template_st.select(f'calpha within {dist} of {selection_text}')
-    templ_lig_chain = template_st.select(selection_text).getChids()[0]
-    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text})')
+    selection_text, templ_lig_chain = get_selection_texts(template_liginfo_path, template_st)
+    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text}) and heavy')
     transform_matrix = 0
     for struct in structs:
         query_path = filtered_protein.format(pdbid=struct)
@@ -98,27 +93,28 @@ def struct_align(template, structs, dist=12.0, retry=True,
 
         query = parsePDB(f'{_workdir}/{_query_fname}')
         query_liginfo_path = query_path.replace(f'processed/{struct}', 'raw').replace('_complex.pdb', '.info')
-        q_liginfo = open(query_liginfo_path, 'r').readlines()
-        if len(q_liginfo[0].strip('\n')) < 4:
-            selection_text = 'hetatm'
-        else:
-            selection_text = q_liginfo[1]
-        query_to_align = query.select(f'calpha within {dist} of {selection_text}')
+
+        selection_text, query_lig_chain = get_selection_texts(query_liginfo_path, query)
+        # query_to_align = query.select(f'calpha within {dist} of {selection_text}')
+        print(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
+        query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
         try:
-            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
-                                                            seqid=1, overlap=1)[0]
+            # query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
+            #                                                 seqid=1, overlap=1)[0]
+            # query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
+            #                                                 seqid=1, overlap=1)[0]
+            matches = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
+                                                            seqid=1, overlap=1)
+            # print([[match[2],match[3]] for match in matches])
+            query_match, template_match, _, _ = matches[0]
         except IndexError as ie:
             print(str(ie))
-            query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=False,
+            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=False,
                                                             seqid=1, overlap=1)[0]
-        if len(query_match) < 0.5 * min(len(query_to_align), len(template_to_align)):
-            # print(len(query_match))
-            print(f"WARNING: Bad quality chain alignment of {struct}, "
-                    "trying with only protein atoms on ligand chain")
-            query_lig_chain = query.select(selection_text).getChids()[0]
-            query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text})')
-            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
-                                                            seqid=1, overlap=1)[0]
+        # if len(query_match) < 0.5 * min(len(query_prot_chain), len(templ_prot_chain)):
+        #     # print(len(query_match))
+        #     print(f"WARNING: Bad quality chain alignment of {struct}, "
+        #             "trying with only protein atoms on ligand chain")
             # print(len(query_match))
         transform = calcTransformation(query_match, template_match)
         query_aligned = transform.apply(query)
@@ -143,3 +139,15 @@ def struct_align(template, structs, dist=12.0, retry=True,
 
     return transform_matrix
 
+def get_selection_texts(liginfo_path, prot):
+    liginfo = open(liginfo_path, 'r').readlines()
+    if len(liginfo[0].strip('\n')) < 4:
+        selection_text = 'hetatm'
+    else:
+        selection_text = liginfo[1].strip()
+    # lig_chain = prot.select(selection_text).getChids()[0]
+    # if selection_text == f'chain {lig_chain}':
+    unique_chains, counts = np.unique(prot.select(f'not {selection_text} and protein within 5 of {selection_text}').getChids(), return_counts=True)
+    lig_chain = unique_chains[counts.argmax()]
+
+    return selection_text, lig_chain

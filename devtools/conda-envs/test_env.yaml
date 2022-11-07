@@ -1,18 +1,12 @@
-name: test
+name: opencombind-dev
 channels:
 
-  - defaults
+  - conda-forge
 dependencies:
     # Base depends
-  - python
+  - openmm
+  - numpy
   - pip
-
-    # Testing
-  - pytest
-  - pytest-cov
-  - codecov
-
-    # Pip-only installs
   #- pip:
   #  - codecov
 
