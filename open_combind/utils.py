@@ -2,6 +2,7 @@ from multiprocessing import Pool
 import os
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem.MolStandardize.rdMolStandardize import Uncharger, TautomerEnumerator
 
 def np_load(fname, halt=True, delete=False):
     fname = os.path.abspath(fname)
@@ -63,3 +64,9 @@ def count_poses(pv):
         pv = open(pv)
     num_poses = [1 for i in Chem.ForwardSDMolSupplier(pv)]
     return sum(num_poses)
+
+def standardize_mol(inmol,uncharger,tautenum):
+    mol = tautenum.Canonicalize(inmol)
+    mol = uncharger.uncharge(mol)
+    Chem.SanitizeMol(mol)
+    return mol
