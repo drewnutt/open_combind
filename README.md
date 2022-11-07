@@ -188,8 +188,9 @@ should be aggregrated. (Most query ligands have 20 associated helper ligands.)
 
 ## Installation
 
-    1. Install [OpenBabel](http://openbabel.org/wiki/Category:Installation)
-    2. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
+    1. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
+    2. Install [OpenMM](https://github.com/openmm/openmm). 
+    3. Install [PDBFixer](https://github.com/openmm/pdbfixer)
     3. Clone this repository
     4. `cd` into the cloned repository and run `pip install .`. This will install any remaining dependencies.
 
