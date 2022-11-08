@@ -1,7 +1,8 @@
 import os
 import shutil
 from prody import parsePDB, writePDB
-from plumbum.cmd import obabel
+from rdkit.Chem import MolFromPDBFile, SDWriter
+# from plumbum.cmd import obabel
 from pdbfixer import PDBFixer
 from openmm.app import PDBFile
 
@@ -20,7 +21,11 @@ def split_complex(complex_loc, pdb_id, structname,ligand_select='hetatm',
             assert lig_st is not None, f"no ligand found in {structname} using {ligand_select}"
             writePDB(lig_pdb_path,lig_st)
 
-            obabel[lig_pdb_path, '-O', lig_path]()
+            rdk_lig = MolFromPDBFile(lig_pdb_path)
+            lig_writer = SDWriter(lig_path)
+            lig_writer.write(rdk_lig)
+            lig_writer.close()
+            # obabel[lig_pdb_path, '-O', lig_path]()
             os.remove(lig_pdb_path)
         else:
             shutil.copy(aligned_lig_path,lig_path)
