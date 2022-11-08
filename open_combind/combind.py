@@ -254,9 +254,9 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
         native_poses[name] = native_path
     print(native_poses)
 
-    template_file = sorted(glob(template))[0]
+    # template_file = sorted(glob(template))[0]
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
-                        max_poses=max_poses, cnn_scores=not no_cnn, template=template_file, check_center_ligs=check_center_ligs)
+                        max_poses=max_poses, cnn_scores=not no_cnn )#template=template_file, check_center_ligs=check_center_ligs)
 
     features.compute_single_features(poseviewers, native_poses=native_poses)
 
