@@ -75,9 +75,9 @@ jobs:
         activate-environment: opencombind-dev
         environment-file: devtools/conda-envs/test_env.yaml
 
-    - name: Install PDBFixer
-      run: |
-         pip install git+https://github.com/openmm/pdbfixer.git
+    # - name: Install PDBFixer
+    #   run: |
+    #      pip install git+https://github.com/openmm/pdbfixer.git
 
     - name: Testing Dependencies
       shell: bash
