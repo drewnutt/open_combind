@@ -6,6 +6,7 @@ from glob import glob
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem.rdMolTransforms import ComputeCentroid
 from rdkit.Geometry.rdGeometry import Point3D
+from rdkit.Chem.MolStandardize.rdMolStandardize import Uncharger, TautomerEnumerator
 from open_combind.utils import basename, mp, mkdir, np_load, standardize_mol
 from scipy.special import logit
 
@@ -52,6 +53,8 @@ class Features:
         self.raw = {}
 
     def get_molecules_from_files(self, pvs, native=False, center_ligand=None):
+        unC = Uncharger()
+        te = TautomerEnumerator()
         molbundle_dict = dict()
         center = Point3D(0,0,0)
         if center_ligand is not None:
@@ -71,7 +74,7 @@ class Features:
                 if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
                     print(f"skipped for {pv}")
                     continue
-                mol_bundle.append(standardize_mol(mol))
+                mol_bundle.append(standardize_mol(mol,unC,te))
                 mol_count += 1
                 if mol_count == self.max_poses:
                     break
