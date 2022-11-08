@@ -5,6 +5,7 @@ import os
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 from rdkit.Chem.rdmolops import ReplaceSubstructs
+from rdkit.Chem.MolStandardize.rdMolStandardize import Uncharger, TautomerEnumerator
 # from plumbum.cmd import obrms
 from open_combind.utils import mp, standardize_mol
 
@@ -45,8 +46,11 @@ def mcss(sts1, sts2):
     """
     memo = {}
     params = setup_MCS_params()
-    sts1 = [standardize_mol(st.copy()) for st in sts1]
-    sts2 = [standardize_mol(st.copy()) for st in sts2]
+    unC = Uncharger()
+    te = TautomerEnumerator()
+
+    sts1 = [standardize_mol(Chem.Mol(st),unC,te) for st in sts1]
+    sts2 = [standardize_mol(Chem.Mol(st),unC,te) for st in sts2]
 
     bad_apples = []
     rmsds = []
@@ -86,11 +90,13 @@ def mcss_mp(sts1, sts2, processes=1):
 
     Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
     """
+    unC = Uncharger()
+    te = TautomerEnumerator()
     memo = {}
     
     params = setup_MCS_params()
-    # sts1 = [merge_halogens(st.copy()) for st in sts1]
-    # sts2 = [merge_halogens(st.copy()) for st in sts2]
+    sts1 = [standardize_mol(Chem.Mol(st),unC,te) for st in sts1]
+    sts2 = [standardize_mol(Chem.Mol(st),unC,te) for st in sts2]
 
     unfinished = []
     for j, st1 in enumerate(sts1):
