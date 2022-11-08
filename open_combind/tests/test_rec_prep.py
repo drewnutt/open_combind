@@ -75,8 +75,8 @@ def test_struct_sort():
     lig_truth = "open_combind/tests/structures/ligands/{pdbid}_lig_truth.sdf"
     lig_test = "open_combind/tests/structures/ligands/{pdbid}_lig.sdf"
     for pdbid in input_structs:
-        prot_tu = parsePDB(prot_truth.format(pdbid=pdbid))
-        prot_te = parsePDB(prot_test.format(pdbid=pdbid))
+        prot_tu = parsePDB(prot_truth.format(pdbid=pdbid)).select('heavy')
+        prot_te = parsePDB(prot_test.format(pdbid=pdbid)).select('heavy')
         assert prot_tu.numAtoms('protein') == prot_te.numAtoms('protein')
         assert prot_te.numAtoms('hetero') == 0
         assert prot_te.numAtoms('water') == 0
