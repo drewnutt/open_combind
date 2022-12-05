@@ -206,8 +206,8 @@ def compute_mcss(st1, st2, params):
         newres = rdFMCS.FindMCS([st1, st2], params)
         params.BondCompareParameters.MatchFusedRings = False
         mcss, num_atoms, mcss_mol = get_info_from_results(newres)
-    substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol,uniquify=False),
-                    'st2': st2.GetSubstructMatches(mcss_mol,uniquify=False)}
+    substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),#uniquify=False),
+                    'st2': st2.GetSubstructMatches(mcss_mol)}#,uniquify=False)}
 
 
     return mcss, num_atoms, substruct_idx#, rmv_idx
