@@ -358,9 +358,9 @@ def fingerprint_poseviewer(input_file, poses, settings):
     fps = []
     with gzip.open(input_file) as fp:
         mols = ForwardSDMolSupplier(fp, removeHs=False)
-        rdk_prot = MolFromPDBFile(prot_file)
+        rdk_prot = MolFromPDBFile(prot_file, removeHs=False)
         if rdk_prot is None:
-            rdk_prot = MolFromPDBFile(prot_file,sanitize=False)
+            rdk_prot = MolFromPDBFile(prot_file,sanitize=False, removeHs=False)
             # print(rdk_prot)
         assert rdk_prot is not None, f"RDKit cannot read protein file {prot_file}"
 

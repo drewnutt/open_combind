@@ -65,7 +65,7 @@ class Features:
             pv_open = pv
             if pv.endswith('.gz'):
                 pv_open = gzip.open(pv)
-            mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
+            mol_suppl = Chem.ForwardSDMolSupplier(pv_open,removeHs=False)
             mol_count = 0
             for mol in mol_suppl:
                 lig_centroid = ComputeCentroid(mol.GetConformer())
@@ -80,7 +80,7 @@ class Features:
                     break
             if (native is False) and (mol_count != self.max_poses):
                 print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
-            print(mol_count,pv)
+            # print(mol_count,pv)
             molbundle_dict[pv] = mol_bundle
         return molbundle_dict
 
@@ -167,7 +167,7 @@ class Features:
             _ifps = [_ifps.loc[_ifps.pose==p] for p in range(max(_ifps.pose)+1)]
 
             #Need to check for if ligand is centered here.
-            sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+            sts = Chem.ForwardSDMolSupplier(gzip.open(pv),removeHs=False)
             _poses = []
             for st in sts:
                 if center_ligand is not None:
