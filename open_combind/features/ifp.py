@@ -62,7 +62,7 @@ class Molecule:
         self.hbond_donors, self.hbond_acceptors = self.init_hbond()
         self.charged, self.charge_groups = self.init_saltbridge()
 
-    def init_hydrogens(self, mol, optimize=False):
+    def init_hydrogens(self, mol, optimize=True):
         mol_w_Hs = AddHs(mol,addCoords=True)
         if optimize:
             ff = UFFGetMoleculeForceField(mol_w_Hs)
