@@ -58,7 +58,8 @@ def protonate_protein(path_to_protein, pH=7.0):
     print(path_to_protein)
     pdb = PDBFixer(filename=path_to_protein)
     # pdb.findMissingResidues()
-    # pdb.findMissingAtoms()
-    # pdb.addMissingAtoms()
+    pdb.missingResidues = {}
+    pdb.findMissingAtoms()
+    pdb.addMissingAtoms()
     pdb.addMissingHydrogens(pH=pH)
     PDBFile.writeFile(pdb.topology,pdb.positions,open(path_to_protein,'w'))
