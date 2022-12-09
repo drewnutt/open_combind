@@ -9,6 +9,7 @@ import importlib.resources
 from glob import glob
 
 from open_combind.utils import *
+from prody import confProDy, LOGGER
 
 ###############################################################################
 
@@ -63,6 +64,7 @@ def structprep(templ_struct='', struct=''):
     Files ending with `_lig` contain only the small molecule ligand present in the
     structure, and files ending with `_prot` contain everything else.
     """
+    confProDy(verbosity='none')
     from open_combind.dock.struct_align import struct_align
     from open_combind.dock.struct_sort import struct_sort
     from open_combind.dock.struct_process import struct_process
