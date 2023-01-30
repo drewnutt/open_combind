@@ -96,7 +96,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
         selection_text, query_lig_chain = get_selection_texts(query_liginfo_path, query)
         # query_to_align = query.select(f'calpha within {dist} of {selection_text}')
-        print(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
+        # print(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
         query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
         try:
             # query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
