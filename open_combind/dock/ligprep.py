@@ -2,7 +2,7 @@ import os
 import gzip
 from rdkit.Chem import AllChem as Chem
 
-def construct_set_conformers(mol, num_confs, confgen, random_seed=-1):
+def construct_set_conformers(mol, *, num_confs, confgen, random_seed=-1):
     if confgen == 'etkdg_v1':
         ps = Chem.ETKDG()
     elif confgen == 'etkdg_v2':
@@ -21,7 +21,7 @@ def construct_set_conformers(mol, num_confs, confgen, random_seed=-1):
         cids = Chem.EmbedMultipleConfs(mol, num_confs, ps)
     return cids
 
-def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
+def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=1000, random_seed=-1):
     mol = Chem.Mol(inmol)
     Chem.SanitizeMol(mol)
     mol = Chem.AddHs(mol, addCoords=True)
@@ -45,48 +45,53 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, 
 
     assert mol.GetConformer(best_conf).Is3D(), f"can't make {mol.GetProp('_Name')} into 3d"
 
-    return mol, best_conf, cenergy[best_conf]
+    return mol, best_conf, cenergy
 
 
-def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
-    mol, best_conf, _ = make3DConf(inmol, num_confs=num_confs,
-                                confgen=confgen, ff=ff, maxIters=maxIters, random_seed=random_seed)
+def write3DConf(inmol, out_fname, **kwargs):
+    mol, best_conf, _ = make3DConf(inmol, **kwargs)
+    # mol, best_conf, _ = make3DConf(inmol, num_confs=num_confs,
+    #                             confgen=confgen, ff=ff, maxIters=maxIters, random_seed=random_seed)
 
     writer = Chem.SDWriter(out_fname)
     writer.write(mol, best_conf)
     writer.close()
 
-def write3DConfs(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
-    mol, _, _ = make3DConf(inmol, num_confs=num_confs,
-                                confgen=confgen, ff=ff, maxIters=maxIters, random_seed=random_seed)
+def write3DConfs(inmol, out_fname, num_out_confs=10, **kwargs):
+    mol, _, energies = make3DConf(inmol, **kwargs)
+    # mol, _, energies = make3DConf(inmol, num_confs=num_confs,
+    #                             confgen=confgen, ff=ff, maxIters=maxIters, random_seed=random_seed)
 
 
     # writer = Chem.SDWriter(out_fname.split('.')[0]+f'_{conf}.sdf')
+    sorted_confs = sorted(list(range(mol.GetNumConformers())),key=lambda x: energies[x])
     writer = Chem.SDWriter(out_fname.split('.')[0]+f'_multconf.sdf')
-    for conf in range(mol.GetNumConformers()):
-        writer.write(mol, conf)
+    for conf in range(min(num_out_confs,mol.GetNumConformers())):
+        writer.write(mol, sorted_confs[conf])
     writer.close()
 
-def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=10,maxIters=200):
+def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=50,maxIters=1000):
     input_info = open(input_file).readlines()
     if len(input_info) == 1:
         mol = Chem.MolFromSmiles(input_info[0].strip())
         mol.SetProp('_Name', os.path.basename(input_file).replace('.smi', ''))
 
-        write3DConf(mol, output_file, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
+        write3DConfs(mol, output_file, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
     else:
-        writer = Chem.SDWriter(output_file)
-        for line in input_info:
-            smile, name = line.strip().split(' ')
-            print(name)
-            mol = Chem.MolFromSmiles(smile)
-            mol.SetProp('_Name', name)
+        ## need to make the multiplexed write out several conformations per ligand
+        raise NotImplementedError
+        # writer = Chem.SDWriter(output_file)
+        # for line in input_info:
+        #     smile, name = line.strip().split(' ')
+        #     print(name)
+        #     mol = Chem.MolFromSmiles(smile)
+        #     mol.SetProp('_Name', name)
 
-            mol, best_conf, _ = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
+        #     mol, best_conf, _ = make3DConf(mol, confgen=confgen, ff=ff, num_confs=num_confs, maxIters=maxIters)
        
-            writer.write(mol, best_conf)
+        #     writer.write(mol, best_conf)
 
-        writer.close()
+        # writer.close()
 
 def ligprep(smiles,num_confs=10,confgen='etkdg_v2',maxIters=200):
     sdf_file = smiles.replace('.smi', '.sdf')
