@@ -65,10 +65,14 @@ class Molecule:
     def init_hydrogens(self, mol, optimize=True):
         mol_w_Hs = AddHs(mol,addCoords=True)
         if optimize:
-            ff = UFFGetMoleculeForceField(mol_w_Hs)
-            for atom in mol.GetAtoms():
-                ff.AddFixedPoint(atom.GetIdx())
-            OptimizeMolecule(ff)
+            try:
+                ff = UFFGetMoleculeForceField(mol_w_Hs)
+                for atom in mol_w_Hs.GetAtoms():
+                    if atom.GetAtomicNum() > 1:
+                        ff.AddFixedPoint(atom.GetIdx())
+                OptimizeMolecule(ff)
+            except:
+                print(f"couldn't optimize hydrogens for {mol.GetProp('_Name')}")
         return mol_w_Hs
 
     def init_contacts(self):
@@ -358,9 +362,9 @@ def fingerprint_poseviewer(input_file, poses, settings):
     fps = []
     with gzip.open(input_file) as fp:
         mols = ForwardSDMolSupplier(fp, removeHs=False)
-        rdk_prot = MolFromPDBFile(prot_file, removeHs=False)
+        rdk_prot = MolFromPDBFile(prot_file,removeHs=False)
         if rdk_prot is None:
-            rdk_prot = MolFromPDBFile(prot_file,sanitize=False, removeHs=False)
+            rdk_prot = MolFromPDBFile(prot_file,sanitize=False,removeHs=False)
             # print(rdk_prot)
         assert rdk_prot is not None, f"RDKit cannot read protein file {prot_file}"
 
