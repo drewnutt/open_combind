@@ -56,6 +56,17 @@ def write3DConf(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, ma
     writer.write(mol, best_conf)
     writer.close()
 
+def write3DConfs(inmol, out_fname, confgen='etkdg_v2', ff='UFF', num_confs=10, maxIters=200, random_seed=-1):
+    mol, _, _ = make3DConf(inmol, num_confs=num_confs,
+                                confgen=confgen, ff=ff, maxIters=maxIters, random_seed=random_seed)
+
+
+    # writer = Chem.SDWriter(out_fname.split('.')[0]+f'_{conf}.sdf')
+    writer = Chem.SDWriter(out_fname.split('.')[0]+f'_multconf.sdf')
+    for conf in range(mol.GetNumConformers()):
+        writer.write(mol, conf)
+    writer.close()
+
 def ligprocess(input_file, output_file, confgen='etkdg_v2', ff='UFF', num_confs=10,maxIters=200):
     input_info = open(input_file).readlines()
     if len(input_info) == 1:
