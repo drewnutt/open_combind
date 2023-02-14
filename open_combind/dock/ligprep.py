@@ -148,7 +148,7 @@ def process_both(inname,ext,outname):
     elif ext == 'sdf':
         mol = next(Chem.ForwardSDMolSupplier(inname))
         mol.SetProp('_Name', os.path.basename(input_file).replace('.sdf', ''))
-        write3DConf(mol, outname)
+        write3DConfs(mol, outname)
 
 if __name__ == '__main__':
     import sys
