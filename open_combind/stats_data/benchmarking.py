@@ -119,11 +119,13 @@ if __name__ == "__main__":
     parser.add_argument('--query_ligand', required=True,help='query ligand docked poses')
     parser.add_argument('--protein_name', required=True, help='name of protein class')
     parser.add_argument('--stats_root',required=True,help='Directory that contains helper lists and protein statistics are in `<stats_root>/protein_statistics`')
+    parser.add_argument('--merged_stats_root',default=None,help='Directory that contains merged protein statistics')
     parser.add_argument('--selection_criterion',choices=['affinity','mcss'], default='affinity',help='how to select the helper ligands')
     parser.add_argument('--native', nargs='*', default=[],help='location of native poses')
     parser.add_argument('--interactions',default='mcss,hbond,saltbridge,contact',help='interactions to use for featurization and pose prediction')
     parser.add_argument('--processes',type=int,default=1,help='# of processes to use')
     parser.add_argument('--pose_csv',help='name of pose_csv to use, if not set then `<protein_name>_<query_ligand>_<selection_criterion>.csv`')
+    parser.add_argument('--alpha',help='alpha for the combind objective')
 
     args = parser.parse_args()
 
@@ -134,6 +136,8 @@ if __name__ == "__main__":
             args.stats_root,native_loc=args.native, selection_criterion=args.selection_criterion,processes=args.processes)
     if args.pose_csv is None:
         args.pose_csv = f"{args.protein_name}_{args.query_ligand.split('/')[-1].split('-')[0].split('_')[0]}_{args.selection_criterion}.csv"
-    merged_stats_root = merge_correct_stats(args.protein_name,args.stats_root,interactions)
+    if args.merged_stats_root is None:
+        print("merging stats")
+        args.merged_stats_root = merge_correct_stats(args.protein_name,args.stats_root,interactions)
     prot_features.load_features()
-    pose_prediction(prot_features,args.pose_csv,merged_stats_root,features=interactions)
+    pose_prediction(prot_features,args.pose_csv,args.merged_stats_root,features=interactions,alpha=args.alpha)
