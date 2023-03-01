@@ -11,8 +11,8 @@ from scipy.special import logit
 
 IFP = {'rd1':    {'version'           : 'rd1',
                    'level'             : 'residue',
-                   'hbond_dist_opt'    : 2.5,
-                   'hbond_dist_cut'    : 3.0,
+                   'hbond_dist_opt'    : 2.8,
+                   'hbond_dist_cut'    : 3.5,
                    'hbond_angle_opt'   : 60.0,
                    'hbond_angle_cut'   : 90.0,
                    'sb_dist_opt'       : 4.0,

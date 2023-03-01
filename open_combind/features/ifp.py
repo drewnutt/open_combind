@@ -205,28 +205,28 @@ def _hbond_compute(donor_mol, acceptor_mol, settings, protein_is_donor):
     hbonds = []
     for donor in donor_mol.hbond_donors:
         for acceptor in acceptor_mol.hbond_acceptors:
-            for hydrogen in _get_bonded_hydrogens(donor):
-                dist = distance(acceptor, hydrogen)
-                if dist > settings['hbond_dist_cut']: continue
-                angle = angle_atom(donor, hydrogen, acceptor)
-                if angle < settings['hbond_angle_cut']: continue
+            # for hydrogen in _get_bonded_hydrogens(donor):
+            dist = distance(acceptor, donor)
+            if dist > settings['hbond_dist_cut']: continue
+            # angle = angle_atom(donor, hydrogen, acceptor)
+            # if angle < settings['hbond_angle_cut']: continue
 
-                if protein_is_donor:
-                    label = 'hbond_donor'
-                    protein_atom = donor
-                    ligand_atom = acceptor
-                else:
-                    label = 'hbond_acceptor'
-                    protein_atom = acceptor
-                    ligand_atom = donor
+            if protein_is_donor:
+                label = 'hbond_donor'
+                protein_atom = donor
+                ligand_atom = acceptor
+            else:
+                label = 'hbond_acceptor'
+                protein_atom = acceptor
+                ligand_atom = donor
 
-                hbonds += [{'label': label,
-                            'protein_res': resname(protein_atom),
-                            'protein_atom': atomname(protein_atom),
-                            'ligand_atom': atomname(ligand_atom),
-                            'dist': dist,
-                            'angle': angle,
-                            'hydrogen': atomname(hydrogen)}]
+            hbonds += [{'label': label,
+                        'protein_res': resname(protein_atom),
+                        'protein_atom': atomname(protein_atom),
+                        'ligand_atom': atomname(ligand_atom),
+                        'dist': dist}]
+                        # 'angle': angle,
+                        # 'hydrogen': atomname(hydrogen)}]
     return hbonds
 
 def hbond_compute(protein, ligand, settings):
@@ -324,10 +324,10 @@ def compute_scores(raw, settings):
         elif label in ['hbond_donor', 'hbond_acceptor']:
             group['score'] = (  _piecewise(group['dist'],
                                            settings['hbond_dist_opt'],
-                                           settings['hbond_dist_cut'])
-                              * _piecewise(180 - group['angle'],
-                                           settings['hbond_angle_opt'],
-                                           settings['hbond_angle_cut']))
+                                           settings['hbond_dist_cut']))
+                              # * _piecewise(180 - group['angle'],
+                              #              settings['hbond_angle_opt'],
+                              #              settings['hbond_angle_cut']))
 
             # One hydrogen bond per hydrogen
             if label == 'hbond_donor':
