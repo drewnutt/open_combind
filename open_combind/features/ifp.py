@@ -205,26 +205,26 @@ def _hbond_compute(donor_mol, acceptor_mol, settings, protein_is_donor):
     hbonds = []
     for donor in donor_mol.hbond_donors:
         for acceptor in acceptor_mol.hbond_acceptors:
-            # for hydrogen in _get_bonded_hydrogens(donor):
-            dist = distance(acceptor, donor)
-            if dist > settings['hbond_dist_cut']: continue
-            # angle = angle_atom(donor, hydrogen, acceptor)
-            # if angle < settings['hbond_angle_cut']: continue
+            for hydrogen in _get_bonded_hydrogens(donor):
+                dist = distance(acceptor, donor)
+                if dist > settings['hbond_dist_cut']: continue
+                # angle = angle_atom(donor, hydrogen, acceptor)
+                # if angle < settings['hbond_angle_cut']: continue
 
-            if protein_is_donor:
-                label = 'hbond_donor'
-                protein_atom = donor
-                ligand_atom = acceptor
-            else:
-                label = 'hbond_acceptor'
-                protein_atom = acceptor
-                ligand_atom = donor
+                if protein_is_donor:
+                    label = 'hbond_donor'
+                    protein_atom = donor
+                    ligand_atom = acceptor
+                else:
+                    label = 'hbond_acceptor'
+                    protein_atom = acceptor
+                    ligand_atom = donor
 
-            hbonds += [{'label': label,
-                        'protein_res': resname(protein_atom),
-                        'protein_atom': atomname(protein_atom),
-                        'ligand_atom': atomname(ligand_atom),
-                        'dist': dist}]
+                hbonds += [{'label': label,
+                            'protein_res': resname(protein_atom),
+                            'protein_atom': atomname(protein_atom),
+                            'ligand_atom': atomname(ligand_atom),
+                            'dist': dist}]
                         # 'angle': angle,
                         # 'hydrogen': atomname(hydrogen)}]
     return hbonds
