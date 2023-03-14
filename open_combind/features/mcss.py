@@ -2,6 +2,7 @@ import tempfile
 import numpy as np
 import subprocess
 import os
+import itertools
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 from rdkit.Chem.rdmolops import ReplaceSubstructs
@@ -99,31 +100,18 @@ def mcss_mp(sts1, sts2, processes=1):
     sts2 = [standardize_mol(Chem.Mol(st),unC,te) for st in sts2]
 
     unfinished = []
-    for j, st1 in enumerate(sts1):
-        n_st1_atoms = st1.GetNumHeavyAtoms()
-        sma1 = Chem.MolToSmarts(st1)
-        # rmsds += [np.zeros(len(sts2))]
-        for i, st2 in enumerate(sts2):
-            if i > j:  # only calculate lower triangle
-                break
-            n_st2_atoms = st2.GetNumHeavyAtoms()
-            sma2 = Chem.MolToSmarts(st2)
-            if (sma1, sma2) in memo:
-                mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
-            else:
-                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, params)
-                memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
-                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1': keep_idxs['st2'],'st2':keep_idxs['st1']})
+    group_st1 = group_mols_by_SMARTS(sts1)
+    group_st2 = group_mols_by_SMARTS(sts2)
+    for g1, g2 in itertools.product(group_st1, group_st2):
+        # print(g1[0],g1[1])
+        # print(len(g1),len(g2))
+        if (g2[0],g2[1],g1[0],g1[1]) in unfinished:
+            continue
+        unfinished += [(g1[0],g1[1],g2[0],g2[1])]
 
-            retain_inf = False
-            if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
-                # or n_mcss_atoms <= 10):
-                retain_inf = True
-            unfinished += [(st1,i,st2,j,keep_idxs,retain_inf)]
-
-    results = mp(compute_mcss_rmsd_mp,unfinished,processes)
-
-    rows, cols, values = zip(*results)
+    results = mp(compute_mcss_and_rmsd,unfinished,processes)
+    itr_results = itertools.chain.from_iterable(results)
+    rows, cols, values = zip(*itr_results)
     # row_col_val = np.array([rows,cols,values])
     # non_inf = row_col_val[row_col_val[:,2] >= 0]
     # inf_vals = row_col_val[row_col_val[:,2] < 0][:,:-1]
@@ -134,6 +122,50 @@ def mcss_mp(sts1, sts2, processes=1):
     full_simi_mat = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
     # full_simi_mat[inf_vals[:,1].astype(np.int64),inf_vals[:,0].astype(np.int64)] = -1 #float('inf')
     return np.where(full_simi_mat<0,np.inf,full_simi_mat)
+
+def group_mols_by_SMARTS(mols):
+    """
+    Group RDKit molecules by SMARTS pattern and return a list of tuples that have the molecules and the indices of the molecules in the original list
+    """
+    smarts = [Chem.MolToSmarts(mol) for mol in mols]
+    unique_smarts = list(set(smarts))
+    groups = []
+    for us in unique_smarts:
+        indices = [i for i, x in enumerate(smarts) if x == us]
+        group_mols = [mols[i] for i in indices]
+        groups.append((group_mols, indices))
+    return groups
+
+def compute_mcss_and_rmsd(poses1, idxs1, poses2, idxs2):
+    params = setup_MCS_params()
+    n_st1_atoms = poses1[0].GetNumHeavyAtoms()
+    n_st2_atoms = poses2[0].GetNumHeavyAtoms()
+    mcss, n_mcss_atoms, keep_idxs = compute_mcss(poses1[0],poses2[0],params)
+    rmsds = []
+    if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
+        # or n_mcss_atoms <= 10):
+        for i,j in itertools.product(idxs1,idxs2):
+            if i > j:
+                rmsds.append((j,i,-1))
+            else:
+                rmsds.append((i,j,-1))
+    else:
+        # Get the RMSD for each unique pair with one pose from each group
+        for (p1, i), (p2,j) in itertools.product(zip(poses1, idxs1),zip(poses2, idxs2)):
+            rmsd = compute_mcss_rmsd(p1, p2, keep_idxs, names=False)
+            if i > j:
+                rmsds.append((j,i,rmsd))
+            else:
+                rmsds.append((i,j,rmsd))
+
+#     for p1, i, p2, j in zip(poses1, idxs1, poses2, idxs2):
+#         rmsd = compute_mcss_rmsd(p1, p2, keep_idxs, names=False)
+#         if i > j:
+#             rmsds.append((j,i,rmsd))
+#         else:
+#             rmsds.append((i,j,rmsd))
+    return  rmsds
+    
 
 def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
     """
