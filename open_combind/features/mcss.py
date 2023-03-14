@@ -98,22 +98,13 @@ def mcss_mp(sts1, sts2, processes=1):
     for g1, g2 in itertools.product(group_st1, group_st2):
         # print(g1[0],g1[1])
         # print(len(g1),len(g2))
-        if (g2[0],g2[1],g1[0],g1[1]) in unfinished:
+        if (g2[0],g2[1],g1[0],g1[1],len(sts1),len(sts2)) in unfinished:
             continue
-        unfinished += [(g1[0],g1[1],g2[0],g2[1])]
+        unfinished += [(g1[0],g1[1],g2[0],g2[1],len(sts1),len(sts2))]
 
     results = mp(compute_mcss_and_rmsd,unfinished,processes)
-    itr_results = itertools.chain.from_iterable(results)
-    rows, cols, values = zip(*itr_results)
-    # row_col_val = np.array([rows,cols,values])
-    # non_inf = row_col_val[row_col_val[:,2] >= 0]
-    # inf_vals = row_col_val[row_col_val[:,2] < 0][:,:-1]
-    rmsds_bottom = np.zeros((len(sts1),len(sts2)))
-    # rmsds_bottom[non_inf[:,0].astype(np.int64),non_inf[:,1].astype(np.int64)] = non_inf[:,2]
-    # full_simi_mat[inf_vals[:,0].astype(np.int64),inf_vals[:,1].astype(np.int64)] = -1 #float('inf')
-    rmsds_bottom[rows,cols] = values
+    rmsds_bottom = sum(results)
     full_simi_mat = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
-    # full_simi_mat[inf_vals[:,1].astype(np.int64),inf_vals[:,0].astype(np.int64)] = -1 #float('inf')
     return np.where(full_simi_mat<0,np.inf,full_simi_mat)
 
 def group_mols_by_SMARTS(mols):
@@ -129,7 +120,7 @@ def group_mols_by_SMARTS(mols):
         groups.append((group_mols, indices))
     return groups
 
-def compute_mcss_and_rmsd(poses1, idxs1, poses2, idxs2):
+def compute_mcss_and_rmsd(poses1, idxs1, poses2, idxs2, n_rows, n_cols):
     params = setup_MCS_params()
     n_st1_atoms = poses1[0].GetNumHeavyAtoms()
     n_st2_atoms = poses2[0].GetNumHeavyAtoms()
@@ -151,13 +142,10 @@ def compute_mcss_and_rmsd(poses1, idxs1, poses2, idxs2):
             else:
                 rmsds.append((i,j,rmsd))
 
-#     for p1, i, p2, j in zip(poses1, idxs1, poses2, idxs2):
-#         rmsd = compute_mcss_rmsd(p1, p2, keep_idxs, names=False)
-#         if i > j:
-#             rmsds.append((j,i,rmsd))
-#         else:
-#             rmsds.append((i,j,rmsd))
-    return  rmsds
+    rows, cols, values = zip(*rmsds)
+    rmsds_curr = np.zeros((n_rows,n_cols))
+    rmsds_curr[rows,cols] = values
+    return rmsds_curr
     
 
 def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
