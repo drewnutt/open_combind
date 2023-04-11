@@ -65,7 +65,7 @@ def write3DConfs(inmol, out_fname, num_out_confs=10, **kwargs):
 
     # writer = Chem.SDWriter(out_fname.split('.')[0]+f'_{conf}.sdf')
     sorted_confs = sorted(list(range(mol.GetNumConformers())),key=lambda x: energies[x])
-    writer = Chem.SDWriter(out_fname.split('.')[0]+f'_multconf.sdf')
+    writer = Chem.SDWriter(out_fname.split('.')[0]+'.sdf')
     for conf in range(min(num_out_confs,mol.GetNumConformers())):
         writer.write(mol, sorted_confs[conf])
     writer.close()
