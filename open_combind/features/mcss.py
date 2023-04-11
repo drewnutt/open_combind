@@ -6,6 +6,7 @@ import itertools
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 from rdkit.Chem.rdmolops import ReplaceSubstructs
+from rdkit.Chem.AllChem import AssignBondOrdersFromTemplate
 # from plumbum.cmd import obrms
 from open_combind.utils import mp
 
@@ -88,19 +89,17 @@ def mcss_mp(sts1, sts2, processes=1):
     Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
     """
     
-    params = setup_MCS_params()
-    # sts1 = [merge_halogens(st.copy()) for st in sts1]
-    # sts2 = [merge_halogens(st.copy()) for st in sts2]
+    global _sts1, _sts2
+    _sts1 = sts1
+    _sts2 = sts2
 
     unfinished = []
     group_st1 = group_mols_by_SMARTS(sts1)
     group_st2 = group_mols_by_SMARTS(sts2)
     for g1, g2 in itertools.product(group_st1, group_st2):
-        # print(g1[0],g1[1])
-        # print(len(g1),len(g2))
-        if (g2[0],g2[1],g1[0],g1[1],len(sts1),len(sts2)) in unfinished:
+        if (g2[1],g1[1]) in unfinished:
             continue
-        unfinished += [(g1[0],g1[1],g2[0],g2[1],len(sts1),len(sts2))]
+        unfinished += [(g1[1],g2[1])]
 
     results = mp(compute_mcss_and_rmsd,unfinished,processes)
     rmsds_bottom = sum(results)
@@ -120,11 +119,11 @@ def group_mols_by_SMARTS(mols):
         groups.append((group_mols, indices))
     return groups
 
-def compute_mcss_and_rmsd(poses1, idxs1, poses2, idxs2, n_rows, n_cols):
+def compute_mcss_and_rmsd(idxs1, idxs2):
     params = setup_MCS_params()
-    n_st1_atoms = poses1[0].GetNumHeavyAtoms()
-    n_st2_atoms = poses2[0].GetNumHeavyAtoms()
-    mcss, n_mcss_atoms, keep_idxs = compute_mcss(poses1[0],poses2[0],params)
+    n_st1_atoms = _sts1[idxs1[0]].GetNumHeavyAtoms()
+    n_st2_atoms = _sts2[idxs2[0]].GetNumHeavyAtoms()
+    mcss, n_mcss_atoms, keep_idxs = compute_mcss(_sts1[idxs1[0]],_sts2[idxs2[0]],params)
     rmsds = []
     if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
         # or n_mcss_atoms <= 10):
@@ -135,8 +134,8 @@ def compute_mcss_and_rmsd(poses1, idxs1, poses2, idxs2, n_rows, n_cols):
                 rmsds.append((i,j,-1))
     else:
         # Get the RMSD for each unique pair with one pose from each group
-        for (p1, i), (p2,j) in itertools.product(zip(poses1, idxs1),zip(poses2, idxs2)):
-            rmsd = compute_mcss_rmsd(p1, p2, keep_idxs, names=False)
+        for i,j in itertools.product(idxs1, idxs2):
+            rmsd = compute_mcss_rmsd(_sts1[i], _sts2[j], keep_idxs, names=False)
             if i > j:
                 rmsds.append((j,i,rmsd))
             else:
@@ -206,8 +205,9 @@ def compute_mcss(st1, st2, params):
         mcss, num_atoms, mcss_mol = get_info_from_results(res)
         pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
         pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
+        pose1 = AssignBondOrdersFromTemplate(pose2, pose1)
         assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
-    except AssertionError:
+    except (AssertionError, ValueError):
         # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
         # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
@@ -228,7 +228,7 @@ def setup_MCS_params():
     params = rdFMCS.MCSParameters()
     params.AtomCompareParameters.RingMatchesRingOnly = True
     params.AtomCompareParameters.CompleteRingsOnly = True
-    params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
+    params.BondTyper = rdFMCS.BondCompare.CompareAny
     params.AtomTyper = CompareHalogens()
 
     return params
@@ -240,7 +240,12 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     pose1, pose2: rdkit.Mol
     eval_rmsd: verify that RMSD calculation is the same as obrms
     """
-    assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
+    try:
+        pose1 = AssignBondOrdersFromTemplate(pose2, pose1)
+        assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
+    except (AssertionError, Chem.KekulizeException, ValueError):
+        pose2 = AssignBondOrdersFromTemplate(pose1, pose2)
+        assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
     try:
         rmsd = Chem.CalcRMS(pose1,pose2)
     except:
