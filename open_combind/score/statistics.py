@@ -62,12 +62,14 @@ def compute_stats(protein, pairs_root, stats_root, features):
         if feature == 'mcss':
             sd = 0.03*6
             domain = (0, 6)
+            df_curr = df[~np.isinf(df[feature])].copy()
         else:
             sd = 0.03
             domain = (0, 1)
+            df_curr = df.copy()
         
-        nat_vals = df.loc[(df.rmsd1 <= 2.0)&(df.rmsd2 <= 2.0), feature]
-        ref_vals = df.loc[:, feature]
+        nat_vals = df_curr.loc[(df_curr.rmsd1 <= 2.0)&(df_curr.rmsd2 <= 2.0), feature]
+        ref_vals = df_curr.loc[:, feature]
         nat = DensityEstimate(domain=domain, sd=sd).fit(nat_vals)
         ref = DensityEstimate(domain=domain, sd=sd).fit(ref_vals)
         if not os.path.isdir(f'{stats_root}/{protein}'):
