@@ -7,6 +7,7 @@ import sys
 import click
 import importlib.resources
 from glob import glob
+from collections import namedtuple
 
 from open_combind.utils import *
 from prody import confProDy, LOGGER
@@ -17,6 +18,9 @@ from prody import confProDy, LOGGER
 STATS_ROOT = 'stats_data/default'
 SHAPE_VERSION = 'pharm_max'
 IFP_VERSION = 'rd1'
+
+# Ligprep arguments for multiprocessing
+LigprepArgs = namedtuple('LigprepArgs', ['num_out_confs', 'num_confs', 'confgen', 'maxIters', 'ff', 'seed'])
 
 def main():
     pass
@@ -92,8 +96,9 @@ def structprep(templ_struct='', struct=''):
 # Not super sure what is absolutely necessary in this step, especially if starting from sdf
 # instead of starting from smiles
 def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
-        ligand_smiles="SMILES", delim=",", sdffile=False,
-        num_confs=10, confgen='etkdg_v2', max_iterations=200, processes=1):
+        ligand_smiles="SMILES", delim=",", sdffile=False, num_out_confs=10,
+        num_confs=50, confgen='etkdg_v2', ff="UFF", max_iterations=1000,
+        seed=-1, processes=1):
     """
     Prepare ligands for docking, from smiles or sdf.
 
@@ -116,24 +121,29 @@ def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
         CSV Delimiter
     sdffile: bool, default=False
         `smiles` is a SDF file containing all of the ligands
-    num_confs: int, default=10
+    num_out_confs: int, default=10
+        Number of conformations to output for each ligand
+    num_confs: int, default=50
         Number of conformations for RDKit to generate initially with rdkit.EmbedMultipleConfs for later minimization
     confgen: str, default="etkdg_v2"
         Conformation generation embedded parameters model to use (see: `rdkit.Chem.rdDistGeom <https://www.rdkit.org/docs/source/rdkit.Chem.rdDistGeom.html>`_)
-    max_iterations: int, default=200
+    ff: str, default="UFF"
+        Force field to use for minimization (see: `rdkit.Chem.rdForceFieldHelpers <https://www.rdkit.org/docs/source/rdkit.Chem.rdForceFieldHelpers.html>`_)
+    max_iterations: int, default=1000
         Number of iterations to minimize the generated conformations with the UFF force field
+    seed: int, default=-1
+        Random seed to use for RDKit conformer generation (`-1` implies no random seed)
     processes: int, default=1
         Number of processes to use, -1 implies all available cores. Cannot use with `multiplex`.
     """
 
-    from open_combind.dock.ligprep import ligprep, ligsplit
+    from open_combind.dock.ligprep import ligprep, ligprep_mp, ligsplit
     mkdir(root)
     if not sdffile:
         ligands = pd.read_csv(smiles, sep=delim)
         print('Prepping {} mols from {} in {}'.format(len(ligands), smiles, root))
         if multiplex:
             _name = os.path.splitext(os.path.basename(smiles))[0]
-            # _root = f'{root}/{_name}'
             _smiles = f'{root}/{_name}.smi'
             _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
@@ -142,24 +152,24 @@ def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
                 with open(_smiles, 'w') as fp:
                     for _, ligand in ligands.iterrows():
                         fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                ligprep(_smiles, num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
+                ligprep(_smiles, num_out_confs=num_out_confs, num_confs=num_confs, confgen=confgen, maxIters=max_iterations, ff=ff, seed=seed)
         else:
             unfinished = []
             for _, ligand in ligands.iterrows():
                 _name = ligand[ligand_names]
-                # _root = f'{root}/{_name}'
                 _smiles = f'{root}/{_name}.smi'
                 _sdf = os.path.splitext(_smiles)[0] + '.sdf'
 
                 if not os.path.exists(_sdf):
-                    # mkdir(_root)
                     with open(_smiles, 'w') as fp:
                         fp.write('{} {}\n'.format(ligand[ligand_smiles], ligand[ligand_names]))
-                    unfinished += [(_smiles, num_confs, confgen, max_iterations)]
-            mp(ligprep, unfinished, processes)
+                    ligprep_args = LigprepArgs(num_out_confs=num_out_confs, num_confs=num_confs, confgen=confgen, maxIters=max_iterations, ff=ff, seed=seed)
+                    unfinished += [(_smiles, ligprep_args)]
+            mp(ligprep_mp, unfinished, processes)
     else:
-        ligsplit(smiles, root, multiplex=multiplex, processes=processes,
-                num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
+        raise NotImplementedError
+        # ligsplit(smiles, root, multiplex=multiplex, processes=processes,
+        #         num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
 
 def dock_ligands(ligands, template=None, dock_file="", root='docking', screen=False, slurm=False, now=False):
     """

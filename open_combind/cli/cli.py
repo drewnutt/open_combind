@@ -85,12 +85,16 @@ def structprep(struct, templ_struct):
 @click.option('--ligand-names', default='ID')
 @click.option('--ligand-smiles', default='SMILES')
 @click.option('--delim', default=',')
-@click.option('--processes', default=1)
-@click.option('--num_confs', default=10)
-@click.option('--max_iterations', default=200)
+@click.option('--num-out-confs', default=10)
+@click.option('--num-confs', default=50)
 @click.option('--confgen', default='etkdg_v2')
+@click.option('--ff', default="UFF")
+@click.option('--max-iterations', default=1000)
+@click.option('--seed', default=-1)
+@click.option('--processes', default=1)
 def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles,
-            delim, processes, sdffile, num_confs, confgen, max_iterations):
+            delim, processes, sdffile, num_out_confs, num_confs, confgen,
+            max_iterations, seed, ff):
     """
     Prepare ligands for docking, from smiles or sdf.
 
@@ -109,7 +113,8 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles,
     """
     oc.ligprep(smiles, root=root, multiplex=multiplex, ligand_names=ligand_names,
             ligand_smiles=ligand_smiles, delim=delim, sdffile=sdffile,
-            num_confs=num_confs, confgen=confgen, max_iterations=max_iterations, processes=processes)
+            num_out_confs=num_out_confs, num_confs=num_confs, confgen=confgen,
+            max_iterations=max_iterations, ff=ff, processes=processes, seed=seed)
 
 
 @cli.command()
@@ -119,7 +124,7 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles,
 @click.option('--screen', is_flag=True)
 @click.option('--slurm', is_flag=True)
 @click.option('--now', is_flag=True)
-@click.option('--dock_file')
+@click.option('--dock-file')
 def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
     """
     Dock "ligands" to "grid".
@@ -153,7 +158,7 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 @click.option('--use-shape', is_flag=True)
 @click.option('--processes', default=1)
 @click.option('--template', default='structures/template/*.template')
-@click.option('--check_center_ligs', is_flag=True)
+@click.option('--check-center-ligs', is_flag=True)
 def featurize(root, poseviewers, native, ifp_version,
             shape_version, screen, no_mcss,
             use_shape, processes, max_poses, no_cnn, template, check_center_ligs):
