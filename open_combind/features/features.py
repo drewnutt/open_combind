@@ -85,32 +85,15 @@ class Features:
         if base:
             return '{}/{}'.format(self.root, name)
 
-        # if self.pv_root != self.root+'/docking':
-        #     if pv is not None:
-        #         pv = pv.replace(self.pv_root, self.root+'/single')
-        #     if pv2 is not None:
-        #         pv2 = pv2.replace(self.pv_root, self.root+'/single')
-
         # single features
-        if name == 'rmsd':
-            return pv.replace('.sdf.gz', '_rmsd.npy')
-        elif name == 'gscore':
-            return pv.replace('.sdf.gz', '_gscore.npy')
-        elif name == 'gaff':
-            return pv.replace('.sdf.gz', '_gaff.npy')
-        elif name == 'vaff':
-            return pv.replace('.sdf.gz', '_vaff.npy')
-        elif name == 'name':
-            return pv.replace('.sdf.gz', '_name.npy')
-        elif name == 'ifp':
-            suffix = '_ifp_{}.csv'.format(self.ifp_version)
-            return pv.replace('.sdf.gz', suffix)
+        if name in ['rmsd', 'gscore', 'gaff', 'vaff', 'name','ifp']:
+            if name == 'ifp':
+                ext = '_ifp_{}.csv'.format(self.ifp_version)
+            else:
+                ext = '_{}.npy'.format(name)
+            return pv.replace('.gz', '').replace('.sdf', ext)
 
         # pair features
-        elif name == 'shape':
-            return f'{self.root}/shape.npy'
-        elif name == 'mcss':
-            return f'{self.root}/mcss.npy'
         else:
             return f'{self.root}/{name}.npy'
 
