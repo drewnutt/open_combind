@@ -255,9 +255,14 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
         Number of processes to use, -1 implies all cores.
     """
 
+    from open_combind.dock.postprocessing import coalesce_poses, write_poses
     from open_combind.features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
+    
+    for poseviewer in poseviewers:
+        sorted_poses = coalesce_poses(poseviewer)
+        write_poses(sorted_poses, poseviewer)
 
     native_poses = {}
     for native_path in glob(native):
@@ -270,6 +275,7 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
     features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
                         max_poses=max_poses, cnn_scores=not no_cnn, template=template_file, check_center_ligs=check_center_ligs)
 
+    print(poseviewers)
     features.compute_single_features(poseviewers, native_poses=native_poses)
 
     if screen:
