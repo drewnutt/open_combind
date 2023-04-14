@@ -15,10 +15,12 @@ def make_grid(pdb,
     ligfile = os.path.abspath(LIGFILE.format(pdb=pdb))
     protfile = os.path.abspath(PROTFILE.format(pdb=pdb))
     docktemp = os.path.abspath(DOCKTEMP.format(pdb=pdb))
-    if CUSTOMATOMS is None and '{atom_file}' in CMD:
-        atom_file = pkg_resources.resource_filename(__name__, "crossdock_atom_types.txt")
-    else:
-        atom_file = os.path.abspath(CUSTOMATOMS)
+    atom_file = ''
+    if '{atom_file}' in CMD:
+        if CUSTOMATOMS is None:
+            atom_file = pkg_resources.resource_filename(__name__, "crossdock_atom_types.txt")
+        else:
+            atom_file = os.path.abspath(CUSTOMATOMS)
 
 
     cmd = CMD.format(prot=protfile, abox_lig=ligfile, aadd=box_add, atom_file=atom_file)
