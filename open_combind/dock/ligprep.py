@@ -60,7 +60,6 @@ def write3DConf(inmol, out_fname, **kwargs):
     writer.close()
 
 def write3DConfs(inmol, out_fname, num_out_confs=10, **kwargs):
-    print(kwargs)
     mol, _, energies = make3DConf(inmol, **kwargs)
 
 
@@ -150,8 +149,7 @@ def process_both(inname,ext,outname, **kwargs):
         ligprocess(inname,outname, **kwargs)
     elif ext == 'sdf':
         mol = next(Chem.ForwardSDMolSupplier(inname))
-        mol.SetProp('_Name', os.path.basename(input_file).replace('.sdf', ''))
-        print(kwargs)
+        mol.SetProp('_Name', os.path.basename(inname).replace('.sdf', ''))
         write3DConfs(mol, outname, **kwargs)
 
 if __name__ == '__main__':
