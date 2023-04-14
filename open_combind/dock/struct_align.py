@@ -13,6 +13,24 @@ def align_successful(out_dir, struct):
 def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
+    """
+    Transform the the ligand using the provided transformation matrix
+
+    Parameters
+    ----------
+    ligand_path : str
+        Path to the ligand SDF file that needs to be transformed
+    trans_matrix : :class:`~numpy.ndarray`
+        Transformation matrix describing the transformation of the ligand
+    transformed_lig_path : str
+        Path to the transformed ligand SDF file for output
+
+    Returns
+    -------
+    bool
+        If the ligand file existed and the transformation was performed
+    """
+
     ligand_path = downloaded_ligand.format(pdbid=struct)
     """
     Transform the the ligand using the provided transformation matrix
