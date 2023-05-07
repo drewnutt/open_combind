@@ -2,15 +2,25 @@
 Compute interaction fingerprints for poseviewer files.
 """
 
-import tempfile
 import os
 import re
 import click
+import gzip
 import numpy as np
 import pandas as pd
+# import NamedTemporaryFile from tempfile
+from tempfile import NamedTemporaryFile
+
+from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import MolFromSmarts,ForwardSDMolSupplier,MolFromPDBFile, AddHs
 from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField, OptimizeMolecule
-import gzip
+
+from openmm.app import *
+from openmm import *
+from openmm.unit import *
+from openff.toolkit import Molecule as openff_Molecule
+from openmmforcefields.generators import SystemGenerator
+import MDAnalysis as mda
 
 def resname(atom):
     info = atom.GetPDBResidueInfo()
@@ -55,25 +65,12 @@ def angle_vector(v1, v2):
 class Molecule:
     def __init__(self, mol, is_protein, settings):
         self.is_protein = is_protein
-        self.mol = mol if self.is_protein else self.init_hydrogens(mol)
+        self.mol = mol #if self.is_protein else self.init_hydrogens(mol)
         self.settings = settings
 
         self.contacts = self.init_contacts()
         self.hbond_donors, self.hbond_acceptors = self.init_hbond()
         self.charged, self.charge_groups = self.init_saltbridge()
-
-    def init_hydrogens(self, mol, optimize=True):
-        mol_w_Hs = AddHs(mol,addCoords=True)
-        if optimize:
-            try:
-                ff = UFFGetMoleculeForceField(mol_w_Hs)
-                for atom in mol_w_Hs.GetAtoms():
-                    if atom.GetAtomicNum() > 1:
-                        ff.AddFixedPoint(atom.GetIdx())
-                OptimizeMolecule(ff)
-            except:
-                print(f"couldn't optimize hydrogens for {mol.GetProp('_Name')}")
-        return mol_w_Hs
 
     def init_contacts(self):
         coord, vdw, atom_name, res_name = [], [], [], []
@@ -345,6 +342,18 @@ def compute_scores(raw, settings):
     return pd.concat(scores).sort_index()
 
 ################################################################################
+def add_hydrogens(mol, use_uff=False):
+    mol_w_Hs = AddHs(mol,addCoords=True)
+    if use_uff:
+        try:
+            ff = UFFGetMoleculeForceField(mol_w_Hs)
+            for atom in mol_w_Hs.GetAtoms():
+                if atom.GetAtomicNum() > 1:
+                    ff.AddFixedPoint(atom.GetIdx())
+            OptimizeMolecule(ff)
+        except:
+            print(f"couldn't optimize hydrogens for {mol.GetProp('_Name')}")
+    return mol_w_Hs
 
 def fingerprint(protein, ligand, settings):
     fp  = hbond_compute(protein, ligand, settings)
@@ -353,23 +362,42 @@ def fingerprint(protein, ligand, settings):
     return pd.DataFrame.from_dict(fp)
 
 def fingerprint_poseviewer(input_file, poses, settings):
+    speed = 0
+    for i in range(Platform.getNumPlatforms()):
+        p = Platform.getPlatform(i)
+        if p.getSpeed() > speed:
+            platform = p
+            speed = p.getSpeed()
+
+    if platform.getName() == 'CUDA':
+        platform.setPropertyDefaultValue('Precision', 'mixed')
+        print('Set precision for platform', platform.getName(), 'to mixed')
+
     prot_bname = input_file.split('-to-')[-1]
-    prot_fname = re.sub('-docked.*\.sdf\.gz','_prot.pdb',prot_bname)
+    prot_fname = re.sub('-docked.*\.sdf(\.gz)?','_prot.pdb',prot_bname)
     prot_file = f"structures/proteins/{prot_fname}"
+    forcefield_kwargs = { 'constraints': None, 'rigidWater': True, 'removeCMMotion': False, 'hydrogenMass': 4*amu }
+    system_generator = SystemGenerator(
+        forcefields=["amber/protein.ff14SB.xml", "implicit/gbn2.xml"],
+        small_molecule_forcefield="gaff-2.11",
+        forcefield_kwargs = forcefield_kwargs,
+    )
     # print(prot_file)
 
     # print(input_file)
     fps = []
-    with gzip.open(input_file) as fp:
+    if input_file.endswith('.sdf.gz'):
+        openfile = gzip.open
+    else:
+        openfile = open
+    with openfile(input_file,'rb') as fp:
         mols = ForwardSDMolSupplier(fp, removeHs=False)
-        rdk_prot = MolFromPDBFile(prot_file,removeHs=False)
-        if rdk_prot is None:
-            rdk_prot = MolFromPDBFile(prot_file,sanitize=False,removeHs=False)
-            # print(rdk_prot)
-        assert rdk_prot is not None, f"RDKit cannot read protein file {prot_file}"
+        # rdk_prot = MolFromPDBFile(prot_file,removeHs=False)
+        # if rdk_prot is None:
+        #     rdk_prot = MolFromPDBFile(prot_file,sanitize=False,removeHs=False)
+        #     # print(rdk_prot)
+        protein_pdb = PDBFile(prot_file)
 
-        protein = Molecule(rdk_prot, True, settings)
-        assert protein is not None
         # print(len(protein.charged))
         
         for i, ligand in enumerate(mols):
@@ -377,9 +405,56 @@ def fingerprint_poseviewer(input_file, poses, settings):
             if ligand is None:
                 print('ligand unreadable')
                 continue
+            ligand_with_uffhs = add_hydrogens(ligand, use_uff=True)
+            # Chem.RemoveStereochemistry(ligand_with_uffhs)
+            # add stereochemistry
+            Chem.AssignStereochemistryFrom3D(ligand_with_uffhs)
+            Chem.Kekulize(ligand_with_uffhs)
+            Chem.SetAromaticity(ligand_with_uffhs, Chem.AromaticityModel.AROMATICITY_MDL)
 
+            ligand_mol = openff_Molecule.from_rdkit(ligand_with_uffhs)
+            modeller = Modeller(protein_pdb.topology, protein_pdb.positions)
+
+            modeller.add(ligand_mol.to_topology().to_openmm(), ligand_mol.conformers[0].to_openmm())
+
+            if i == 0:
+                print(f"{input_file}\tNumber of atoms in the system: {modeller.topology.getNumAtoms()}")
+                system = system_generator.create_system(modeller.topology, molecules=ligand_mol)
+
+                for atom in modeller.topology.atoms():
+                    if atom.element.symbol != 'H':
+                        system.setParticleMass(atom.index, 0*amu)
+            # create a langevin integrator
+            integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 2*femtosecond)
+            # # create a simulation object
+            simulation = Simulation(modeller.topology, system, integrator, platform=platform)
+            simulation.context.setPositions(modeller.positions)
+            # minimize the energy
+            simulation.minimizeEnergy()
+
+            #output the minimized structure of prot and lig
+            md_sim = mda.Universe(simulation)
+
+            lig_pose = md_sim.select_atoms("resname UNK")
+            ligand = lig_pose.atoms.convert_to("RDKIT")
+            ligand = Chem.AssignBondOrdersFromTemplate(ligand_with_uffhs, ligand)
+
+            prot_pose = md_sim.select_atoms("protein")
+            # write out prot pose to a pdb file and read it back in with RDKit
+            with NamedTemporaryFile(suffix='.pdb') as prot_pdb:
+                with mda.Writer(prot_pdb.name) as w:
+                    w.write(prot_pose)
+                rdk_prot = Chem.MolFromPDBFile(prot_pdb.name, removeHs=False)
+                if rdk_prot is None:
+                    rdk_prot = MolFromPDBFile(prot_file,sanitize=False,removeHs=False)
+                assert rdk_prot is not None, f"RDKit cannot read protein file {prot_file}"
+
+
+            protein = Molecule(rdk_prot, True, settings)
+            assert protein is not None
             ligand = Molecule(ligand, False, settings)
             fps += [fingerprint(protein, ligand, settings)]
+            # print(len(fps))
             fps[-1]['pose'] = i
 
     fps = pd.concat(fps, ignore_index=True, sort=False)
