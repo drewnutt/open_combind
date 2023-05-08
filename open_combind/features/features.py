@@ -59,26 +59,24 @@ class Features:
         for pv in pvs:
             # mol_bundle = Chem.FixedMolSizeMolBundle()
             mol_bundle = []
-            pv_open = pv
-            if pv.endswith('.gz'):
-                pv_open = gzip.open(pv)
-            mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
-            mol_count = 0
-            for mol in mol_suppl:
-                lig_centroid = ComputeCentroid(mol.GetConformer())
-                displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
-                # print(distance)
-                if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
-                    print(f"skipped for {pv}")
-                    continue
-                mol_bundle.append(mol)
-                mol_count += 1
-                if mol_count == self.max_poses:
-                    break
-            if (native is False) and (mol_count != self.max_poses):
-                print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
-            print(mol_count,pv)
-            molbundle_dict[pv] = mol_bundle
+            with gzip.open(pv,'rb') as pv_file:
+                mol_suppl = Chem.ForwardSDMolSupplier(pv_file)
+                mol_count = 0
+                for mol in mol_suppl:
+                    lig_centroid = ComputeCentroid(mol.GetConformer())
+                    displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                    # print(distance)
+                    if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
+                        print(f"skipped for {pv}")
+                        continue
+                    mol_bundle.append(mol)
+                    mol_count += 1
+                    if mol_count == self.max_poses:
+                        break
+                if (native is False) and (mol_count != self.max_poses):
+                    print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
+                print(mol_count,pv)
+                molbundle_dict[pv] = mol_bundle
         return molbundle_dict
 
     def path(self, name, base=False, pv=None, pv2=None):
@@ -146,39 +144,39 @@ class Features:
             _ifps = pd.read_csv(self.path('ifp', pv=pv))
             _ifps = [_ifps.loc[_ifps.pose==p] for p in range(max(_ifps.pose)+1)]
 
-            #Need to check for if ligand is centered here.
-            sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
-            _poses = []
-            for st in sts:
-                if center_ligand is not None:
-                    lig_centroid = ComputeCentroid(st.GetConformer())
-                    displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
-                    # print(distance)
-                    if np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5:
-                        print(f"skipped for {pv}")
-                        continue
-                _poses.append(st)
-            print(len(poses))
+            with gzip.open(pv,'rb') as pv_file:
+                sts = Chem.ForwardSDMolSupplier(pv_file)
+                _poses = []
+                for st in sts:
+                    if center_ligand is not None:
+                        lig_centroid = ComputeCentroid(st.GetConformer())
+                        displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                        # print(distance)
+                        if np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5:
+                            print(f"skipped for {pv}")
+                            continue
+                    _poses.append(st)
+                print(len(poses))
 
-            keep = []
-            for i in range(len(_names)):
-                if ((ligands == None or (_names[i] in ligands))
-                    and sum(_names[:i] == _names[i]) < self.max_poses):
-                    keep += [i]
-            print(keep)
-            rmsds += [_rmsds[keep]]
-            if self.cnn_scores:
-                gscores += [_gscores[keep]]
-                gaffs += [_gaffs[keep]]
-            vaffs += [_vaffs[keep]]
-            names += [_names[keep]]
-            for i in keep:
-                try:
-                    assert _poses[i]
-                except:
-                    print(i)
-            poses += [_poses[i] for i in keep]
-            ifps += [_ifps[i] for i in keep]
+                keep = []
+                for i in range(len(_names)):
+                    if ((ligands == None or (_names[i] in ligands))
+                        and sum(_names[:i] == _names[i]) < self.max_poses):
+                        keep += [i]
+                print(keep)
+                rmsds += [_rmsds[keep]]
+                if self.cnn_scores:
+                    gscores += [_gscores[keep]]
+                    gaffs += [_gaffs[keep]]
+                vaffs += [_vaffs[keep]]
+                names += [_names[keep]]
+                for i in keep:
+                    try:
+                        assert _poses[i]
+                    except:
+                        print(i)
+                poses += [_poses[i] for i in keep]
+                ifps += [_ifps[i] for i in keep]
 
         rmsds = np.hstack(rmsds)
         names = np.hstack(names)
@@ -191,7 +189,7 @@ class Features:
             gscores = None
         return rmsds, gscores, gaffs, vaffs, poses, names, ifps
 
-    def compute_single_features(self, pvs, native_poses):
+    def compute_single_features(self, pvs, native_poses, processes=1):
         # For single features, there is no need to keep sub-sets of ligands
         # separated,  so just merge them at the outset to simplify the rest of
         # the method.
@@ -234,11 +232,19 @@ class Features:
                 self.compute_rmsd(bundle, native_poses, out)
 
         print('Computing interaction fingerprints.')
+        comp_ifp = Features.compute_ifp_wrapper
+        if processes != 1:
+            ifp_unfinished = []
+            comp_ifp = ifp_unfinished.append
         for pv in molbundles.keys():
             # print(pv)
             out = self.path('ifp', pv=pv)
             if not os.path.exists(out):
-                self.compute_ifp(pv, out)
+                comp_ifp((self, pv, out))
+        if processes != 1:
+            print(ifp_unfinished)
+            mp(Features.compute_ifp_wrapper, ifp_unfinished, processes=processes)
+        
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         mkdir(self.root)
@@ -330,6 +336,11 @@ class Features:
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
+
+    @staticmethod
+    def compute_ifp_wrapper(self, pv, out):
+        # self, pv, out = args
+        self.compute_ifp(pv, out)
 
     def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
         if processes != 1:
