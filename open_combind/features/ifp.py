@@ -442,8 +442,9 @@ def fingerprint_poseviewer(input_file, poses, settings):
             prot_pose = md_sim.select_atoms("protein")
             # write out prot pose to a pdb file and read it back in with RDKit
             with NamedTemporaryFile(suffix='.pdb') as prot_pdb:
-                with mda.Writer(prot_pdb.name) as w:
-                    w.write(prot_pose)
+                with warnings.catch_warnings():
+                    with mda.Writer(prot_pdb.name) as w:
+                        w.write(prot_pose)
                 rdk_prot = Chem.MolFromPDBFile(prot_pdb.name, removeHs=False)
                 if rdk_prot is None:
                     rdk_prot = MolFromPDBFile(prot_file,sanitize=False,removeHs=False)
