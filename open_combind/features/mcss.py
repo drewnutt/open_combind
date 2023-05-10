@@ -101,7 +101,7 @@ def mcss_mp(sts1, sts2, processes=1):
             continue
         unfinished += [(g1[1],g2[1])]
 
-    results = mp(compute_mcss_and_rmsd,unfinished,processes)
+    results = mp(compute_mcss_and_rmsd,unfinished,processes, maxtasksperchild=3)
     rmsds_bottom = sum(results)
     full_simi_mat = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
     return np.where(full_simi_mat<0,np.inf,full_simi_mat)

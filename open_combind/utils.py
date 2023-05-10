@@ -43,11 +43,11 @@ def basename(path):
     x = os.path.splitext(x)[0]
     return x
 
-def mp(function, unfinished, processes):
+def mp(function, unfinished, processes, maxtasksperchild=None):
     if processes == -1:  # Will use all available cpus if processes is -1
         processes = None
     if unfinished:
-        with Pool(processes=processes) as pool:
+        with Pool(processes=processes, maxtasksperchild=maxtasksperchild) as pool:
             x = pool.starmap(function, unfinished)
         return x
 
