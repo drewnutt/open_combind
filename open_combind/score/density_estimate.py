@@ -156,9 +156,31 @@ class DensityEstimate:
         de.fx = (self(de.x)*self.n_samples + other(de.x)*other.n_samples) / de.n_samples
         return de
 
+    def _std(self, others):
+        """
+        Returns a new function representing the standard deviation of other functions
+        when self is the average. The domain of the new function covers the
+        domain of both input functions with the same number of points as self.
+        """
+        if isinstance(others, DensityEstimate):
+            others = [others]
+        de = DensityEstimate(points = self.points,
+                                out_of_bounds=self.out_of_bounds,
+                                reflect = self.reflect)
+        de.x = np.linspace(min(self.x[0], others[0].x[0]),
+                            max(self.x[-1], others[0].x[-1]), self.points)
+        de.n_samples = self.n_samples
+        de.fx = np.zeros(de.x.shape)
+        for other in others:
+            de.fx += (self.fx - other(de.x))**2 * other.n_samples
+        de.fx = np.sqrt(de.fx / de.n_samples)
+        return de
+
     @classmethod
     def merge(cls, des):
         out = des[0]
         for de in des[1:]:
             out = out._average(de)
         return out
+
+
