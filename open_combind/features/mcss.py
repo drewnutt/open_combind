@@ -205,9 +205,8 @@ def compute_mcss(st1, st2, params):
         mcss, num_atoms, mcss_mol = get_info_from_results(res)
         pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
         pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
-        pose1 = AssignBondOrdersFromTemplate(pose2, pose1)
         assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
-    except (AssertionError, ValueError):
+    except AssertionError:
         # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
         # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
@@ -228,7 +227,7 @@ def setup_MCS_params():
     params = rdFMCS.MCSParameters()
     params.AtomCompareParameters.RingMatchesRingOnly = True
     params.AtomCompareParameters.CompleteRingsOnly = True
-    params.BondTyper = rdFMCS.BondCompare.CompareAny
+    params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
     params.AtomTyper = CompareHalogens()
 
     return params
@@ -240,12 +239,7 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     pose1, pose2: rdkit.Mol
     eval_rmsd: verify that RMSD calculation is the same as obrms
     """
-    try:
-        pose1 = AssignBondOrdersFromTemplate(pose2, pose1)
-        assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
-    except (AssertionError, Chem.KekulizeException, ValueError):
-        pose2 = AssignBondOrdersFromTemplate(pose1, pose2)
-        assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
+    assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
     try:
         rmsd = Chem.CalcRMS(pose1,pose2)
     except:
