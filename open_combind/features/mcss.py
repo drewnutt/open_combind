@@ -47,8 +47,6 @@ def mcss(sts1, sts2):
     """
     memo = {}
     params = setup_MCS_params()
-    # sts1 = [merge_halogens(st.copy()) for st in sts1]
-    # sts2 = [merge_halogens(st.copy()) for st in sts2]
 
     bad_apples = []
     rmsds = []
@@ -89,20 +87,33 @@ def mcss_mp(sts1, sts2, processes=1):
     Returns a (# poses in pv1) x (# poses in pv2) np.array of rmsds.
     """
     
-    global _sts1, _sts2
-    _sts1 = sts1
-    _sts2 = sts2
-
     unfinished = []
+    mcss_calc_unfinished = []
     group_st1 = group_mols_by_SMARTS(sts1)
     group_st2 = group_mols_by_SMARTS(sts2)
     for g1, g2 in itertools.product(group_st1, group_st2):
-        if (g2[1],g1[1]) in unfinished:
+        if (g2[0],g2[1],g1[0],g1[1]) in unfinished:
             continue
-        unfinished += [(g1[1],g2[1])]
+        mcss_calc_unfinished += [(g1[0][0], g2[0][0])]
+        unfinished += [(g1[0],g1[1],g2[0],g2[1])]
 
-    results = mp(compute_mcss_and_rmsd,unfinished,processes, maxtasksperchild=3)
-    rmsds_bottom = sum(results)
+    print("calculating mcss first")
+    # TODO: make the number of processes for computing the mcss available to the user
+    # this should control to some extent, the amount of memory that is used. More processes == more memory
+    mcss_results = mp(compute_mcss_mp, mcss_calc_unfinished, min(processes, 3), maxtasksperchild=3)
+    keys, vals = zip(*mcss_results)
+    global mcss_info
+    mcss_info = dict(zip(keys,vals))
+
+    print("now calculating rmsds")
+    results = mp(compute_mcss_and_rmsd,unfinished,processes)
+
+    #unpack results into dense matrix
+    itr_results = itertools.chain.from_iterable(results)
+    rows, cols, values = zip(*itr_results)
+    rmsds_bottom = np.zeros((len(sts1),len(sts2)))
+    rmsds_bottom[rows,cols] = values
+    # matrix is symmetric, so copy over diagonal
     full_simi_mat = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
     return np.where(full_simi_mat<0,np.inf,full_simi_mat)
 
@@ -116,15 +127,19 @@ def group_mols_by_SMARTS(mols):
     for us in unique_smarts:
         indices = [i for i, x in enumerate(smarts) if x == us]
         group_mols = [mols[i] for i in indices]
-        groups.append((group_mols, indices))
+        groups.append((group_mols, indices, us))
     return groups
 
-def compute_mcss_and_rmsd(idxs1, idxs2):
-    params = setup_MCS_params()
-    n_st1_atoms = _sts1[idxs1[0]].GetNumHeavyAtoms()
-    n_st2_atoms = _sts2[idxs2[0]].GetNumHeavyAtoms()
-    mcss, n_mcss_atoms, keep_idxs = compute_mcss(_sts1[idxs1[0]],_sts2[idxs2[0]],params)
+def compute_mcss_and_rmsd(mols1, idxs1, mols2, idxs2):
     rmsds = []
+
+    n_st1_atoms = mols1[0].GetNumHeavyAtoms()
+    n_st2_atoms = mols2[0].GetNumHeavyAtoms()
+
+    smarts1 = Chem.MolToSmarts(mols1[0])
+    smarts2 = Chem.MolToSmarts(mols2[0])
+    assert (smarts1,smarts2) in mcss_info, f"can't find mcss info the pair: {mols1.GetProp('_Name')} and {mol2.GetProp('_Name')}"
+    mcss, n_mcss_atoms, keep_idxs = mcss_info[(smarts1,smarts2)] 
     if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
         # or n_mcss_atoms <= 10):
         for i,j in itertools.product(idxs1,idxs2):
@@ -134,17 +149,14 @@ def compute_mcss_and_rmsd(idxs1, idxs2):
                 rmsds.append((i,j,-1))
     else:
         # Get the RMSD for each unique pair with one pose from each group
-        for i,j in itertools.product(idxs1, idxs2):
-            rmsd = compute_mcss_rmsd(_sts1[i], _sts2[j], keep_idxs, names=False)
-            if i > j:
-                rmsds.append((j,i,rmsd))
+        for i,j in itertools.product(range(len(mols1)), range(len(mols2))):
+            rmsd = compute_mcss_rmsd(mols1[i], mols2[j], keep_idxs, names=False)
+            if idxs1[i] > idxs2[j]:
+                rmsds.append((idxs2[j], idxs1[i],rmsd))
             else:
-                rmsds.append((i,j,rmsd))
+                rmsds.append((idxs1[i], idxs2[j], rmsd))
 
-    rows, cols, values = zip(*rmsds)
-    rmsds_curr = np.zeros((n_rows,n_cols))
-    rmsds_curr[rows,cols] = values
-    return rmsds_curr
+    return rmsds
     
 
 def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
@@ -196,32 +208,38 @@ def get_info_from_results(mcss_res):
     mcss_mol = Chem.MolFromSmarts(mcss)
     return mcss, num_atoms, mcss_mol
 
-def compute_mcss(st1, st2, params):
+def compute_mcss(st1, st2, current_params):
     """
     Compute smarts patterns for mcss(s) between two structures.
     """
     try:
-        res = rdFMCS.FindMCS([st1,st2], params)
+        res = rdFMCS.FindMCS([st1,st2], current_params)
         mcss, num_atoms, mcss_mol = get_info_from_results(res)
-        pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
-        pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
-        assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
+        if not res.canceled:
+            pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
+            pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
+            assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
     except AssertionError:
+        print("in the assertion")
         # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
         # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
         #This is the same as ringCompare=rdFMC.RingCompare.PermissiveRingFusion
         # see https://github.com/rdkit/rdkit/issues/5438
-        params.BondCompareParameters.MatchFusedRings = True
-        params.BondCompareParameters.MatchFusedRingsStrict = False
-        newres = rdFMCS.FindMCS([st1, st2], params)
-        params.BondCompareParameters.MatchFusedRings = False
+        current_params.BondCompareParameters.MatchFusedRings = True
+        current_params.BondCompareParameters.MatchFusedRingsStrict = False
+        newres = rdFMCS.FindMCS([st1, st2], current_params)
         mcss, num_atoms, mcss_mol = get_info_from_results(newres)
+        current_params.BondCompareParameters.MatchFusedRings = False
     substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
                     'st2': st2.GetSubstructMatches(mcss_mol)}
 
-
     return mcss, num_atoms, substruct_idx#, rmv_idx
+
+def compute_mcss_mp(st1, st2):
+    p = setup_MCS_params()
+    mcss, num_atoms, substruct_idx = compute_mcss(st1,st2, p)
+    return ((Chem.MolToSmarts(st1),Chem.MolToSmarts(st2)), (mcss, num_atoms, substruct_idx))
 
 def setup_MCS_params():
     params = rdFMCS.MCSParameters()
@@ -229,6 +247,7 @@ def setup_MCS_params():
     params.AtomCompareParameters.CompleteRingsOnly = True
     params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
     params.AtomTyper = CompareHalogens()
+    params.Timeout = 420
 
     return params
 
