@@ -1,4 +1,4 @@
-.. _topics-index
+.. _topics-index:
 
 Welcome to Open-ComBind's documentation!
 =========================================================
