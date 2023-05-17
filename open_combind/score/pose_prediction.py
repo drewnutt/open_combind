@@ -5,18 +5,38 @@ class PosePrediction:
     """
     Compute sets of poses that optimize the ComBind scoring function.
 
-    ligands ([str, ]): names of ligands for which to predict poses.
-    features ([str, ]): names of features for computing similarity scores.
-    data ({}): Raw data.
-    stats ({feature: {'native': score.DensityEstimate,
-                      'reference': score.DensityEstimate}})
-    alpha (float): Factor to which to weight the GNINA CNNscores.
-
-    max_poses (int): largest number of poses for any ligand.
-    single (np.array, # ligands)
-    pair (np.array, # ligands x # ligands x max_poses x max_poses)
+    Parameters
+    ----------
+    ligands: `list[str]<list>`
+        names of ligands for which to predict poses.
+    features: `list[str]<list>`
+        names of features for computing similarity scores.
+    data: dict
+        Raw data.
+    stats: `dict[str, ~open_combind.score.DensityEstimate]<dict>`
+    alpha: float
+        Factor to which to weight the GNINA CNNscores.
+    max_poses: int
+        largest number of poses for any ligand.
+    single: :class:`~numpy.ndarray`
+        1 x # ligands, array of ligand docking scores.
+    pair: :class:`~numpy.ndarray`
+        # ligands x # ligands x max_poses x max_poses, array of pairwise energy terms.
     """
     def __init__(self, ligands, features, data, stats, alpha):
+        """
+        Parameters
+        ----------
+        ligands: `list[str]<list>`
+            names of ligands for which to predict poses.
+        features: `list[str]<list>`
+            names of features for computing similarity scores.
+        data: dict
+            Raw data.
+        stats: `dict[str, ~open_combind.score.DensityEstimate]<dict>`
+        alpha: float
+            Factor to which to weight the GNINA CNNscores.
+        """
         self.ligands = ligands
         self.features = features
         self.data = data
@@ -30,6 +50,11 @@ class PosePrediction:
     def _get_max_poses(self):
         """
         Get largest number of poses present for any ligand.
+
+        Returns
+        -------
+        max_poses: int
+           maximum number of poses for any ligand. 
         """
         return max(len(self.data['gscore'][ligand]) for ligand in self.ligands)
 
@@ -38,6 +63,11 @@ class PosePrediction:
         Transform docking scores into a # ligands x # poses array.
 
         * Scale docking scores by - self.alpha *
+
+        Returns
+        -------
+        single: :class:`~numpy.ndarray`
+            1 x # ligands, array of ligand docking scores.
         """
         single = [self.data['gscore'][ligand] for ligand in self.ligands]
         single = [self.pad(x, self.max_poses,C=np.nan) for x in single]
@@ -54,6 +84,11 @@ class PosePrediction:
         likelihood in the native v. reference distribution.
 
         Sum over feature types to get a single energy term for each pose pair.
+
+        Returns
+        -------
+        pair: :class:`~numpy.ndarray`
+            # ligands x # ligands x max_poses x max_poses, array of pairwise energy terms.
         """
         pair = np.zeros((len(self.ligands), len(self.ligands),
                          self.max_poses, self.max_poses))
@@ -81,8 +116,17 @@ class PosePrediction:
 
         Perform coordinant ascent from "restart" random initial configurations.
 
-        max_iterations (int): Maximum number of iterations to attempt before exiting.
-        restart (int): Number of times to run the optimization
+        Parameters
+        ----------
+        max_iterations: int 
+            Maximum number of iterations to attempt before exiting.
+        restart: int
+            Number of times to run the optimization
+
+        Returns
+        -------
+        poses: `dict[str, int]<dict>`
+            {ligand_name: pose_number, }, where pose_number is the pose number selected by the objective
         """
         if len(self.ligands) == 1:
             return {self.ligands[0]: 0}
@@ -108,10 +152,19 @@ class PosePrediction:
     def optimize_poses(self, poses, max_iterations):
         """
         Find (local) optimum by performing coordinate ascent starting from
-        "poses".
+        `poses`.
 
-        poses ({ligand_name: current pose number, })
-        max_iterations (int): 
+        Parameters
+        ----------
+        poses: `dict[str, int]<dict>`
+            {ligand_name: current pose number, }
+        max_iterations: int 
+            Maximum number of iterations to attempt before exiting.
+
+        Returns
+        -------
+        poses: `dict[str, int]<dict>`
+            {ligand_name: pose_number, }, where pose_number is the pose number selected by the objective
         """
         for _ in range(max_iterations):
             update = False
@@ -131,8 +184,17 @@ class PosePrediction:
         """
         Returns the terms of the log posterior involving "query".
 
-        poses ({ligand_name: current pose number, })
-        query (ligand_name)
+        Parameters
+        ----------
+        poses: `dict[str, int]<dict>`
+            {ligand_name: current pose number, }, currently selected poses
+        query: str
+            Ligand name to compute partial log posterior for.
+
+        Returns
+        -------
+        plp: :class:`~numpy.ndarray`
+            1 x max_poses, array of partial log posterior terms.
         """
         iposes = {self.ligands.index(lig): pose
                   for lig, pose in poses.items()
@@ -149,7 +211,15 @@ class PosePrediction:
         """
         Returns the log posterior for pose cluster.
 
-        poses ({ligand_name: current pose number, })
+        Parameters
+        ----------
+        poses: `dict[str, int]<dict>`
+            {ligand_name: current pose number, }, currently selected poses
+
+        Returns
+        -------
+        lp: float
+            Log posterior for pose cluster.
         """
         iposes = [(self.ligands.index(lig), pose) for lig, pose in poses.items()]
         lp = 0
@@ -165,6 +235,22 @@ class PosePrediction:
         """
         Expand array to ("shape1",) if 1D or ("shape1", "shape2") if 2D
         and fill missing values with "C".
+
+        Parameters
+        ----------
+        x: :class:`~numpy.ndarray`
+            Array to pad.
+        shape1: int
+            First dimension of padded array.
+        shape2: int, default=0
+            Second dimension of padded array.
+        C: float, default=-:class:`~numpy.inf`
+            Value to fill missing values with.
+        
+        Returns
+        -------
+        y: :class:`~numpy.ndarray`
+            Padded array.
         """
         if len(x.shape) == 1:
             y = np.zeros(shape1)+C
