@@ -2,7 +2,7 @@ import os
 import subprocess
 from glob import glob
 
-GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 --min_rmsd_filter 0 > {log}'  #: default options for GNINA
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 --min_rmsd_filter 0 > {log}'  #: default command for GNINA docking
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
@@ -14,8 +14,22 @@ def docking_failed(gnina_log):
     return any(phrase in logtxt for phrase in phrases)
 
 def check_dock_line(infile):
-    # if not infile.endswith('\n'):
-    #     infile += '\n'
+    """
+    Checks that the input docking line contains the necessary keywords for GNINA docking
+
+    Parameters
+    ----------
+    infile : str
+        Input format string of the form::
+
+             -l {lig} -o {out} <OTHER_GNINA_KWARGS> > {log}
+
+    Returns
+    -------
+    str
+        The input docking line with the necessary keywords
+    """
+
     if not infile.startswith(' '):
         infile = ' ' + infile
 
@@ -56,8 +70,8 @@ def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=
         tarball
     now : bool, default=False
         After generating docking string, run docking immediately
-
     """
+
     outfile = "{root}/{inlig}-docked.sdf.gz"
     if infile is None:
         infile = GNINA
@@ -99,19 +113,19 @@ def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=
 
 def setup_slurm(gnina_in, ligands, receptor, abox):
     """
-     Creates a tarball of the `receptor`, `abox` and all of the `ligands`. Then runs :command:`sed` on `gnina_in` to remove the path to the current working directory.
+    Creates a tarball of the `receptor`, `abox` and all of the `ligands`. Then runs :command:`sed` on `gnina_in` to remove the path to the current working directory.
 
-     Parameters
-     ----------
-     gnina_in : str
-        Path to the GNINA docking commands file relative to the current working directory
-     ligands : list of str
-       Paths of the ligands
-     receptor : str
-        Path to the receptor file
-     abox : str
-        Path to the autobox_ligands
-     """
+    Parameters
+    ----------
+    gnina_in : str
+       Path to the GNINA docking commands file relative to the current working directory
+    ligands : list of str
+      Paths of the ligands
+    receptor : str
+       Path to the receptor file
+    abox : str
+       Path to the autobox_ligands
+    """
     import tarfile
     import pkg_resources
     import shutil

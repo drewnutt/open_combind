@@ -11,6 +11,25 @@ def make_grid(pdb,
               DOCKTEMP='structures/template/{pdb}.template',
               CUSTOMATOMS=None,
               box_add=8):
+    """
+    Make a docking template for crossdocking on a protein with the ``autobox_ligand`` defined by the cognate ligand.
+
+    Parameters
+    ----------
+    pdb : str
+        The PDB code of the protein to make a template for.
+    PROTFILE : str
+        The path to the protein file.
+    LIGFILE : str
+        The path to the ligand file.
+    DOCKTEMP : str
+        The path to the output template file.
+    CUSTOMATOMS : str
+        The path to a custom atom types file. If `None` and the template requires it, the default will be used.
+    box_add : float
+        The amount to add to the box size to make sure the ligand is fully enclosed.
+    """
+
 
     ligfile = os.path.abspath(LIGFILE.format(pdb=pdb))
     protfile = os.path.abspath(PROTFILE.format(pdb=pdb))

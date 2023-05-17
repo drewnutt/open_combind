@@ -8,6 +8,9 @@ from prody import writePDBStream
 
 
 class RDKitParseException(Exception):
+    """
+    Exception raised when RDKit cannot parse a molecule
+    """
     def __init__(self, message):
         super().__init__(message)
 
@@ -72,13 +75,13 @@ def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None,
 
 def ligand_selection_to_mol(ligand_selection, query_ligand, outfile=None):
     """
-    Converts a :class:`~prody.atomic.atomgroup.AtomGroup` to a :class:`~rdkit.Chem.rdchem.Mol` using another :class:`~rdkit.Chem.rdchem.Mol` as a template for the correct bond orders of the :class:`~prody.atomic.AtomGroup`
+    Converts a :class:`~prody.atomic.atomgroup.AtomGroup` to a :class:`~rdkit.Chem.rdchem.Mol` using another :class:`~rdkit.Chem.rdchem.Mol` as a template for the correct bond orders of the :class:`~prody.atomic.atomgroup.AtomGroup`
 
     Parameters
     ----------
     ligand_selection : :class:`~prody.atomic.atomgroup.AtomGroup`
         Selection from a PDB file containing the atoms of the ligand
-    query_ligand : :class:`~rdkit.Chem.Mol`
+    query_ligand : :class:`~rdkit.Chem.rdchem.Mol`
         Template molecule with correct bond orders (atomic coordinates are irrelevant)
     outfile : str
         Path to the output SDF file of ligand, if not specified then the ligand is not saved to a file

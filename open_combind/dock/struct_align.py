@@ -5,6 +5,24 @@ from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
 
 def align_successful(out_dir, struct):
+    """
+    Check if a given PDB ID has been aligned
+
+    Only checks for the presence of the file. Does not check if the file is valid.
+
+    Parameters
+    ----------
+    out_dir : str
+        Path to the aligned protein directory
+    struct : str
+        PDB ID of the protein-ligand complex to check
+    
+    Returns
+    -------
+    bool
+        If the structure with the provided PDB ID has been aligned
+    """
+
     if not os.path.isfile('{0}/{1}/{1}_aligned.pdb'.format(out_dir, struct)):
         return False
     else:
@@ -14,7 +32,7 @@ def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
     """
-    Transform the the ligand using the provided transformation matrix
+    Transform the the ligand using the provided transformation matrix and write it to a new file.
 
     Parameters
     ----------
@@ -166,6 +184,8 @@ def struct_align(template, structs, dist=15.0, retry=True,
 def get_selection_texts(liginfo_path, prot):
     """
     Get the selection text for the ligand and the chain of the ligand
+
+    Selects the ligand chain as the protein chain that is within 5 |angst| of the ligand
 
     Parameters
     ----------

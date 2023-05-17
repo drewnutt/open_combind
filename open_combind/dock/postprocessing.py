@@ -7,6 +7,28 @@ from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolAlign import CalcRMS
 
 def coalesce_poses(docked_files, sort_by='CNNscore', filter_RMSD=None, reverse=True):
+    """
+    .. include :: <isotech.txt>
+    
+    Coalesce multiple docked poses into a single file, sorted by a given property
+
+    Parameters
+    ----------
+    docked_files : `list[str]<list>`
+        List of docked pose files to coalesce
+    sort_by : str
+        Property to sort the poses by
+    filter_RMSD : str
+        Ground truth molecule file, filter poses that are >2 |angst| RMSD from GT
+    reverse : bool
+        Reverse the sort order, i.e. lowest first
+
+    Returns
+    -------
+    sorted_mols : `list[Mol]<list>`
+        List of sorted :class:`~rdkit.Chem.rdchem.Mol` objects
+    """
+
     mols = []
     if isinstance(docked_files, str):
         docked_files = [docked_files]
@@ -28,6 +50,17 @@ def coalesce_poses(docked_files, sort_by='CNNscore', filter_RMSD=None, reverse=T
     return sorted_mols
 
 def write_poses(sorted_mols, out_file):
+    """
+    Write poses to a file
+
+    Parameters
+    ----------
+    sorted_mols : `list[Mol]<list>`
+        List of sorted :class:`~rdkit.Chem.rdchem.Mol` objects
+    out_file : str
+        Output file to write the poses to
+    """
+
     if out_file.endswith('.gz'):
         openfile=gzip.open
     else:
