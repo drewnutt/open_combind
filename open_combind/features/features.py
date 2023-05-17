@@ -187,6 +187,7 @@ class Features:
         pvs : :class:`list[str]<list>`
             Poses that need features loaded
         ligands : 
+
 		center_ligand: :class:`rdkit.Chem.rdchem.Mol<rdkit.Chem.rdchem.Mol>`
 			Ligand to center the poses around (default: None)
 

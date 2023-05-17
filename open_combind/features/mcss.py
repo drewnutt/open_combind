@@ -415,7 +415,6 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     eval_rmsd : bool, optional, default=False
         Whether to evaluate the RMSD using the OpenBabel implementation .. .deprecated::
 
-
     Returns
     -------
     float
