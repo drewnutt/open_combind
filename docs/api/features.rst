@@ -1,3 +1,6 @@
+.. _api/features:
+
+=================
 Docked Pose Featurization
 =================
 .. toctree::

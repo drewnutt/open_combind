@@ -1,3 +1,6 @@
+.. _api/dock:
+
+=================
 Protein and Ligand Preprocessing and Docking
 =================
 .. toctree::

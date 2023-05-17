@@ -1,3 +1,6 @@
+.. _api/score:
+
+=================
 Scoring, DensityEstimator, and PosePrediction
 =================
 .. toctree::
@@ -10,4 +13,5 @@ Scoring, DensityEstimator, and PosePrediction
    :members:
 
 .. automodule:: open_combind.score.pose_prediction
+   :members:
 

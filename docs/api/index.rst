@@ -1,3 +1,6 @@
+.. _api/index:
+
+=================
 Command Line Interface
 =================
 Open-Combind is primarily used through its command line interface. It provides a series of commands that step through the molecular docking workflow or one command to run everything in serial.
