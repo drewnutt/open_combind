@@ -7,7 +7,7 @@ Open-Combind is an open-source fork of `ComBind <https://github.com/drorlab/comb
 Open-ComBind is a molecular docking pipeline that harnesses multiple ligand predictions of a molecular docking software. Open-ComBind allows use of ligands without known docked poses to determine the docked pose of a query ligand. This is done through pairwise featurization of the poses and then minimization of the ComBind likelihood.
 
 First Steps
------------
+===========
 
 .. toctree::
    :maxdepth: 2
@@ -25,7 +25,7 @@ First Steps
 .. _section-basics:
 
 User Guide
-----------
+==========
 .. toctree::
    :maxdepth: 1
    api/index
