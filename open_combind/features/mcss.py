@@ -137,7 +137,7 @@ def mcss_mp(sts1, sts2, processes=1):
     mcss_info = dict(zip(keys,vals))
 
     print("now calculating rmsds")
-    results = mp(compute_mcss_and_rmsd,unfinished,processes)
+    results = mp(compute_mcss_rmsd_mp,unfinished,processes)
 
     #unpack results into dense matrix
     itr_results = itertools.chain.from_iterable(results)
