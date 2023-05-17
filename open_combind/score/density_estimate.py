@@ -9,18 +9,48 @@ class DensityEstimate:
     by n_samples.
 
     DensityEstimates can be averaged.
+
+    Attributes
+    ----------
+    points : int 
+        number of values at which to compute density.
+    out_of_bounds : (None or float)
+        If asked to return a density for a value outside the domain, if None,
+        return closest density, else return this value.
+    sd : float
+        standard deviation of gaussian kernel.
+    reflect : bool
+        If True compute density for domain + left and right flanks, then
+        reflect flanks and add to center. (This provides better behaviour at
+        boundaries.)
+    domain : (float, float)
+        range of values at which to compute density if left as None, use min
+        and max of input data.
+    n_samples : float
+        number of samples used to compute density estimate.
+    x : np.array
+        x values at which density is computed.
+    fx : np.array
+        density estimate at each x value.
     """
     def __init__(self, points=100, domain=None, sd=1.0,
                  reflect=True, out_of_bounds=None):
         """
-        points (int): number of values at which to compute density.
-        domain ((float, float)): range of values at which to compute density
+        Parameters
+        ----------
+        points: int 
+            number of values at which to compute density.
+        domain: (float, float)
+            range of values at which to compute density
             if left as None, use min and max of input data.
-        sd (float): standard deviation of gaussian kernel.
-        reflect (bool): If True compute density for domain + left and right
+        sd: float 
+            standard deviation of gaussian kernel.
+        reflect: bool 
+            If True compute density for domain + left and right
             flanks, then reflect flanks and add to center. (This provides
             better behaviour at boundaries.)
-        out_of_bounds (None or float): If asked to return a density for a
+        out_of_bounds: None or float
+            If asked to return a density for a
             value outside the domain, if None, return closest density, else
             return this value.
         """
