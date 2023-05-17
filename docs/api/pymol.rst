@@ -6,5 +6,10 @@ PyMol Visualization of IFP
 
 These scripts can be loaded into `PyMol <http://www.pymol.org/>`_ to visualize the calculated interaction fingerprints (IFPs).
 
-.. automodule:: open_combind.pymol.view_complexes
-   :undoc-members: load_complexes, load_top_docked, load_results, show_interactions
+.. autofunction:: open_combind.pymol.view_complexes.load_complexes
+
+.. autofunction:: open_combind.pymol.view_complexes.load_top_docked
+
+.. autofunction:: open_combind.pymol.view_complexes.load_results
+
+.. autofunction:: open_combind.pymol.view_complexes.show_interactions
