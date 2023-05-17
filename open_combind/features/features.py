@@ -86,6 +86,27 @@ class Features:
         self.raw = {}
 
     def get_molecules_from_files(self, pvs, native=False, center_ligand=None):
+        """
+        .. include :: <isotech.txt>
+        Load molecules from docked files containing many poses of a ligand.
+        
+        If `center_ligand` is set, then the poses will be filtered to only include poses
+        whose centroid are within 7.5 |angst| of the centroid of the `center_ligand`.
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            List of pose viewer files to load
+        native : bool, default=False
+            Whether the loaded file contains a native pose. Only one pose should be there.
+        center_ligand : :class:`rdkit.Chem.rdchem.Mol`
+            Center ligand to use for filtering poses
+
+        Returns
+        -------
+        molbundle_dict : :class:`dict[str, list[rdkit.Chem.rdchem.Mol]]<dict>`
+            Dictionary of pose viewer files to list of molecules
+        """
         molbundle_dict = dict()
         center = Point3D(0,0,0)
         if center_ligand is not None:
@@ -116,6 +137,26 @@ class Features:
         return molbundle_dict
 
     def path(self, name, base=False, pv=None, pv2=None):
+        """
+        Get the path to a feature file
+
+        Parameters
+        ----------
+        name : str
+            Name of the feature
+        base : bool, default=False
+            Whether to return the path to the base feature file
+        pv : str, default=None
+            Path to the pose viewer file
+        pv2 : str, default=None
+            Path to the second pose viewer file
+        
+        Returns
+        -------
+        path : str
+            Path to the feature file
+        """
+
         if base:
             return '{}/{}'.format(self.root, name)
 
@@ -132,6 +173,10 @@ class Features:
             return f'{self.root}/{name}.npy'
 
     def load_features(self):
+        """
+        Load all of the features into self.raw
+        """
+
         paths = glob(f'{self.root}/*.npy')
         for path in paths:
             name = path.split('/')[-1][:-4]
@@ -193,14 +238,22 @@ class Features:
 
         Returns
         -------
-        rmsds : list
-        gscores : list
-        gaffs : list
-        vaffs : list
-        poses : list
-        names : list
-        ifps : list
+        list
+            List of rmsds to the native pose for each loaded ligand
+        list
+            List of docking scores for each loaded ligand
+        list
+            List of GNINA computed CNNaffinity scores for each loaded ligand
+        list
+            List of Vina Affinity scores for each loaded ligand
+        list
+            List of poses for each loaded ligand
+        list
+            List of names for each loaded ligand
+        list
+            List of IFPs for each loaded ligand
         """
+
         if center_ligand is not None:
             center = ComputeCentroid(center_ligand.GetConformer())
         rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
@@ -323,6 +376,8 @@ class Features:
         """
         Computes the pairwise features for the poses in `pvs` and `pvs2`. If `pvs2` is not specified,
         then the pairwise features are computed between the poses in `pvs`
+
+        Requires the `compute_single_features` method to have been run first as the IFPs are loaded from disk
 
         Parameters
         ----------
