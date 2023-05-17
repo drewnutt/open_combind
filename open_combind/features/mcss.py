@@ -71,9 +71,9 @@ def mcss(sts1, sts2):
     Notes
     -----
 
-    If a pair of ligand poses, :math:`pose_1` and :math:`pose_2`, has a MCSS, :math:`mcss`, then we compute the RMSD if 
+    If a pair of ligand poses, :math:`p_1` and :math:`p_2`, has a MCSS, :math:`m`, then we compute the RMSD if 
 
-    .. math:: \\textrm{numHeavyAtoms}(mcss)\\geq \\frac{1}{2}\\textrm{min}(\\textrm{numHeavyAtoms}(pose_1),\\textrm{numHeavyAtoms}(pose_2))
+    .. math:: \\textrm{numHeavyAtoms}(m)\\geq \\frac{1}{2}\\textrm{min}(\\textrm{numHeavyAtoms}(p_1),\\textrm{numHeavyAtoms}(p_2))
 
     """
 
@@ -173,8 +173,8 @@ def group_mols_by_SMARTS(mols):
 
     Parameters
     ----------
-    mols : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of rdkit molecules
+    mols : `list[Mol]<list>`
+        List of :class:`~rdkit.Chem.rdchem.Mol` s to group by SMARTS pattern
 
     Returns
     -------
@@ -197,12 +197,12 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
 
     Parameters
     ----------
-    mols1 : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of rdkit molecules for the first ligand, specifying the poses of the ligand
+    mols1 : `list[Mol]<list>`
+        List of :class:`~rdkit.Chem.rdchem.Mol` for the first ligand, specifying the poses of the ligand
     idxs1 : list of int
         List of indices of the poses of the first ligand
-    mols2 : list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        List of rdkit molecules for the second ligand, specifying the poses of the ligand
+    mols2 : `list[Mol]<list>`
+        List of :class:`~rdkit.Chem.rdchem.Mol` for the second ligand, specifying the poses of the ligand
     idxs2 : list of int
         List of indices of the poses of the second ligand
 
@@ -283,7 +283,7 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
 
 def get_info_from_results(mcss_res):
     """
-    Check the results of :class:`~rdkit.Chem.rdFMCS.FindMCS` to check if finished successfully.
+    Check the results of :func:`~rdkit.Chem.rdFMCS.FindMCS` to check if finished successfully.
 
     If MCSS not found, then MCSS is returned as one carbon atom
     
@@ -368,11 +368,19 @@ def compute_mcss(st1, st2, current_params):
 
 def compute_mcss_mp(st1, st2):
     """
-    Multiprocessing wrapper for MCSS computation
+    Multiprocessing wrapper for :func:`~compute_mcss`.
 
-    st1, st2: rdkit.Mol
+    Parameters
+    ----------
+    st1: :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    st2: :class:`~rdkit.Chem.rdchem.Mol
+        Molecule 2
 
-    returns: ((smarts1, smarts2), (mcss, num_atoms, substruct_idx))
+    Returns
+    -------
+    tuple
+        Tuple of tuples containing the SMARTS strings of the two molecules and the MCSS, the number of atoms in the MCSS, and the indices of the atoms in the MCSS
 
     See Also
     --------
@@ -389,7 +397,7 @@ def setup_MCS_params():
 
     Returns
     -------
-    :class: `~rdkit.Chem.rdFMCS.MCSParameters`
+    params: :class:`~rdkit.Chem.rdFMCS.MCSParameters`
         The parameters for the MCSS calculation
     """
 
@@ -413,7 +421,7 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
     pose2 : :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 2
     eval_rmsd : bool, optional, default=False
-        Whether to evaluate the RMSD using the OpenBabel implementation .. .deprecated::
+        Whether to evaluate the RMSD using the OpenBabel implementation 
 
     Returns
     -------

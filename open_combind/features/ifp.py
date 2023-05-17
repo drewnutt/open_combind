@@ -18,7 +18,7 @@ def resname(atom):
 
     Parameters
     ----------
-    atom : :class: `~rdkit.Chem.rdchem.Atom`
+    atom : :class:`~rdkit.Chem.rdchem.Atom`
         The atom to get the residue name of.
 
     Returns
@@ -40,7 +40,7 @@ def atomname(atom):
 
     Parameters
     ----------
-    atom : :class: `~rdkit.Chem.rdchem.Atom`
+    atom : :class:`~rdkit.Chem.rdchem.Atom`
         The atom to get the atom name of.
 
     Returns
@@ -60,12 +60,12 @@ def coords(atom):
 
     Parameters
     ----------
-    atom : :class: `~rdkit.Chem.rdchem.Atom`
+    atom : :class:`~rdkit.Chem.rdchem.Atom`
         The atom to get the coordinates of.
 
     Returns
     -------
-    :class: `~rdkit.Geometry.rdGeometry.Point3D`
+    :class:`~rdkit.Geometry.rdGeometry.Point3D`
         The coordinates of the atom.
     """
     return atom.GetOwningMol().GetConformer(0).GetAtomPosition(atom.GetIdx())
@@ -77,11 +77,11 @@ def centroid_coords(atoms):
     Parameters
     ----------
     atoms : :class:`list[Atom]<list>`
-        The list of :class: `~rdkit.Chem.rdchem.Atom`s to get the centroid coordinates of.
+        The list of :class:`~rdkit.Chem.rdchem.Atom`s to get the centroid coordinates of.
 
     Returns
     -------
-    :class: `~rdkit.Geometry.rdGeometry.Point3D`
+    :class:`~rdkit.Geometry.rdGeometry.Point3D`
         The centroid coordinates of the atoms.
     """
 
@@ -95,9 +95,9 @@ def distance(atom1, atom2):
 
     Parameters
     ----------
-    atom1 : :class: `~rdkit.Chem.rdchem.Atom`
+    atom1 : :class:`~rdkit.Chem.rdchem.Atom`
         The first atom.
-    atom2 : :class: `~rdkit.Chem.rdchem.Atom`
+    atom2 : :class:`~rdkit.Chem.rdchem.Atom`
         The second atom.
 
     Returns
@@ -114,11 +114,11 @@ def angle_atom(atom1, atom2, atom3):
 
     Parameters
     ----------
-    atom1 : :class: `~rdkit.Chem.rdchem.Atom`
+    atom1 : :class:`~rdkit.Chem.rdchem.Atom`
         The first atom.
-    atom2 : :class: `~rdkit.Chem.rdchem.Atom`
+    atom2 : :class:`~rdkit.Chem.rdchem.Atom`
         The second atom.
-    atom3 : :class: `~rdkit.Chem.rdchem.Atom`
+    atom3 : :class:`~rdkit.Chem.rdchem.Atom`
         The third atom.
 
     Returns
@@ -137,9 +137,9 @@ def angle_vector(v1, v2):
 
     Parameters
     ----------
-    v1 : :class: `~rdkit.Geometry.rdGeometry.Point3D`
+    v1 : :class:`~rdkit.Geometry.rdGeometry.Point3D`
         The first vector.
-    v2 : :class: `~rdkit.Geometry.rdGeometry.Point3D`
+    v2 : :class:`~rdkit.Geometry.rdGeometry.Point3D`
         The second vector.
 
     Returns
@@ -163,7 +163,7 @@ class Molecule:
 
     Attributes
     ----------
-    mol : :class: `~rdkit.Chem.rdchem.Mol`
+    mol : :class:`~rdkit.Chem.rdchem.Mol`
         The molecule.
     is_protein : bool
         Whether the molecule is a protein.
@@ -185,7 +185,7 @@ class Molecule:
         """
         Parameters
         ----------
-        mol : :class: `~rdkit.Chem.rdchem.Mol`
+        mol : :class:`~rdkit.Chem.rdchem.Mol`
             The molecule.
         is_protein : bool
             Whether the molecule is a protein.
@@ -207,14 +207,14 @@ class Molecule:
 
         Parameters
         ----------
-        mol : :class: `~rdkit.Chem.rdchem.Mol`
+        mol : :class:`~rdkit.Chem.rdchem.Mol`
             The molecule to add hydrogens to.
         optimize : bool
             Whether to optimize the hydrogens with UFF.
 
         Returns
         -------
-        :class: `~rdkit.Chem.rdchem.Mol`
+        :class:`~rdkit.Chem.rdchem.Mol`
             The molecule with hydrogens added.
         """
 
@@ -237,13 +237,13 @@ class Molecule:
 
         Returns
         -------
-        :class:`~numpy.array`
+        coord: :class:`~numpy.ndarray`
             The coordinates of the atoms that can be involved in hydrophobic contacts.
-        :class:`~numpy.array`
+        vdw: :class:`~numpy.ndarray`
             The van der Waals radii of the atoms that can be involved in hydrophobic contacts.
-        :class:`list[str]<list>`
+        res_name: :class:`list[str]<list>`
             The residue names of the atoms that can be involved in hydrophobic contacts.
-        :class:`list[str]<list>`
+        atom_name: :class:`list[str]<list>`
             The atom names of the atoms that can be involved in hydrophobic contacts.
         """
 
@@ -283,7 +283,7 @@ class Molecule:
 
         Returns
         -------
-        :class: `~rdkit.Geometry.rdGeometry.Point3D`
+        :class:`~rdkit.Geometry.rdGeometry.Point3D`
             The centroid coordinates of the atoms.
         """
 
@@ -301,7 +301,7 @@ class Molecule:
 
         Returns
         -------
-        :class:`numpy.array`
+        :class:`~numpy.ndarray`
             The normal vector of the ring.
         """
 
@@ -319,9 +319,9 @@ class Molecule:
 
         Returns
         -------
-        :class:`list[Atom]<list>`
+        donors: :class:`list[Atom]<list>`
             The hydrogen bond donors of the molecule.
-        :class:`list[Atom]<list>`
+        acceptors: :class:`list[Atom]<list>`
             The hydrogen bond acceptors of the molecule.
         """
 
@@ -376,9 +376,9 @@ class Molecule:
 
         Returns
         -------
-        :class:`list[Atom]<list>`
+        charged: :class:`list[Atom]<list>`
             The charged atoms of the molecule.
-        :class:`list[list[Atom]]<list>`
+        charge_groups: :class:`list[list[Atom]]<list>`
             The charge groups of the molecule.
         """
 
