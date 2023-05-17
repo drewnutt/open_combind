@@ -1,6 +1,5 @@
 .. _topics-index:
 
-===============================
 Welcome to Open-ComBind's documentation!
 ===============================
 Open-Combind is an open-source fork of `ComBind <https://github.com/drorlab/combind>`_. Open-ComBind removes all calls to proprietary software and replaces the docking software GLIDE with `GNINA <https://github.com/gnina/gnina>`_.
@@ -8,6 +7,7 @@ Open-Combind is an open-source fork of `ComBind <https://github.com/drorlab/comb
 Open-ComBind is a molecular docking pipeline that harnesses multiple ligand predictions of a molecular docking software. Open-ComBind allows use of ligands without known docked poses to determine the docked pose of a query ligand. This is done through pairwise featurization of the poses and then minimization of the ComBind likelihood.
 
 .. _first-steps:
+
 First Steps
 ===========
 
@@ -28,6 +28,10 @@ First Steps
 User Guide
 ==========
 .. toctree::
+   :caption: User Guide
+   :hidden:
+   :maxdepth: 1
+
    api/index
    api/dock
    api/features
