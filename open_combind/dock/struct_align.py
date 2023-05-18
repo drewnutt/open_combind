@@ -51,7 +51,7 @@ def align_separate_ligand(struct, trans_matrix,
         If the ligand file existed and the transformation was performed
     """
     ligand_path = downloaded_ligand.format(pdbid=struct)
-    print(ligand_path)
+    # print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
 
