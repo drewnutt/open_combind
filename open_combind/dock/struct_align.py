@@ -68,7 +68,7 @@ def align_separate_ligand(struct, trans_matrix,
 def struct_align(template, structs, dist=15.0, retry=True,
                  filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
                  ligand_info='structures/raw/{pdbid}.info',
-                 aligned_prot='{pdbid}_aligned.pdb',
+                 aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
                  align_dir='structures/aligned'):
     """
     Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
@@ -92,8 +92,8 @@ def struct_align(template, structs, dist=15.0, retry=True,
         Format string for the path to the protein-ligand complexes given the PDB ID as `pdbid`
     ligand_info : str, default='structures/raw/{pdbid}.info'
         Format string for the path to the ligand `.info` files given the PDB ID as `pdbid`
-    aligned_prot : str, default='{pdbid}_aligned.pdb'
-        Format string for the new filename of the aligned protein-ligand complex given the PDB ID as `pdbid`
+    aligned_prot : str, default='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'
+        Format string for the path to the output, aligned protein-ligand complex given the PDB ID as `pdbid`
     align_dir : str, default='structures/aligned'
         Path to the aligned protein directory, all parent directories will be created if they do not exist
 
@@ -110,7 +110,6 @@ def struct_align(template, structs, dist=15.0, retry=True,
     if not os.path.isfile(template_path):
         print('template not processed', template_path)
         return
-    # .. |angst| replace:: \u212B
 
     template_st = parsePDB(template_path)
     template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
@@ -172,8 +171,9 @@ def struct_align(template, structs, dist=15.0, retry=True,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
-        aligned_lig = align_separate_ligand(filtered_protein.replace("_complex.pdb", "_lig.sdf").format(pdbid=struct),
-                transform_matrix, (align_dir+"/{pdbid}/{pdbid}_lig.sdf").format(pdbid=struct))
+        aligned_lig = align_separate_ligand(struct, transform_matrix,
+                downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
+                aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf")
         if aligned_lig:
             print("Successfully aligned separate ligand")
         else:
