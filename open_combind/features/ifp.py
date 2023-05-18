@@ -13,6 +13,20 @@ from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField, OptimizeMol
 import gzip
 
 def resname(atom):
+    """
+    Return the residue name of an atom.
+
+    Parameters
+    ----------
+    atom : :class:`~rdkit.Chem.rdchem.Atom`
+        The atom to get the residue name of.
+
+    Returns
+    -------
+    str
+        The residue name of the atom.
+    """
+
     info = atom.GetPDBResidueInfo()
     if info is None:
         return ''
@@ -21,28 +35,119 @@ def resname(atom):
                          info.GetResidueName(), info.GetInsertionCode()]))
 
 def atomname(atom):
+    """
+    Return the atom name of an atom.
+
+    Parameters
+    ----------
+    atom : :class:`~rdkit.Chem.rdchem.Atom`
+        The atom to get the atom name of.
+
+    Returns
+    -------
+    str
+        The atom name of the atom.
+    """
+
     pdb = atom.GetPDBResidueInfo()
     if pdb is None:
         return str(atom.GetIdx())
     return pdb.GetName().strip()
 
 def coords(atom):
+    """
+    Return the coordinates of an atom.
+
+    Parameters
+    ----------
+    atom : :class:`~rdkit.Chem.rdchem.Atom`
+        The atom to get the coordinates of.
+
+    Returns
+    -------
+    :class:`~rdkit.Geometry.rdGeometry.Point3D`
+        The coordinates of the atom.
+    """
     return atom.GetOwningMol().GetConformer(0).GetAtomPosition(atom.GetIdx())
 
 def centroid_coords(atoms):
+    """
+    Return the centroid coordinates of a list of atoms.
+
+    Parameters
+    ----------
+    atoms : :class:`list[Atom]<list>`
+        The list of :class:`~rdkit.Chem.rdchem.Atom`s to get the centroid coordinates of.
+
+    Returns
+    -------
+    :class:`~rdkit.Geometry.rdGeometry.Point3D`
+        The centroid coordinates of the atoms.
+    """
+
     _coords = np.array([coords(atom) for atom in atoms])
     _coords = _coords.mean(axis=0)
     return _coords
 
 def distance(atom1, atom2):
+    """
+    Return the distance between two atoms.
+
+    Parameters
+    ----------
+    atom1 : :class:`~rdkit.Chem.rdchem.Atom`
+        The first atom.
+    atom2 : :class:`~rdkit.Chem.rdchem.Atom`
+        The second atom.
+
+    Returns
+    -------
+    float
+        The distance between the two atoms.
+    """
+
     return coords(atom1).Distance(coords(atom2))
 
 def angle_atom(atom1, atom2, atom3):
+    """
+    Return the angle between three atoms.
+
+    Parameters
+    ----------
+    atom1 : :class:`~rdkit.Chem.rdchem.Atom`
+        The first atom.
+    atom2 : :class:`~rdkit.Chem.rdchem.Atom`
+        The second atom.
+    atom3 : :class:`~rdkit.Chem.rdchem.Atom`
+        The third atom.
+
+    Returns
+    -------
+    float
+        The angle between the three atoms in degrees.
+    """
+
     v1 = coords(atom1) - coords(atom2)
     v3 = coords(atom3) - coords(atom2)
     return v1.AngleTo(v3) * 180.0 / np.pi
 
 def angle_vector(v1, v2):
+    """
+    Return the angle between two vectors.
+
+    Parameters
+    ----------
+    v1 : :class:`~rdkit.Geometry.rdGeometry.Point3D`
+        The first vector.
+    v2 : :class:`~rdkit.Geometry.rdGeometry.Point3D`
+        The second vector.
+
+    Returns
+    -------
+    float
+        The angle between the two vectors in degrees.
+    """
+
     v1 /= np.linalg.norm(v1)
     v2 /= np.linalg.norm(v2)
     angle =  np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
@@ -53,7 +158,41 @@ def angle_vector(v1, v2):
     return angle
 
 class Molecule:
+    """
+    A class to represent a molecule.
+
+    Attributes
+    ----------
+    mol : :class:`~rdkit.Chem.rdchem.Mol`
+        The molecule.
+    is_protein : bool
+        Whether the molecule is a protein.
+    settings : dict
+        The settings for the molecule.
+    contacts : :class:`list[dict]<list>`
+        The contacts of the molecule.
+    hbond_donors : :class:`list[dict]<list>`
+        The hydrogen bond donors of the molecule.
+    hbond_acceptors : :class:`list[dict]<list>`
+        The hydrogen bond acceptors of the molecule.
+    charged : :class:`list[dict]<list>`
+        The charged atoms of the molecule.
+    charge_groups : :class:`list[dict]<list>`
+        The charge groups of the molecule.
+    """
+
     def __init__(self, mol, is_protein, settings):
+        """
+        Parameters
+        ----------
+        mol : :class:`~rdkit.Chem.rdchem.Mol`
+            The molecule.
+        is_protein : bool
+            Whether the molecule is a protein.
+        settings : dict
+            The settings for the molecule.
+        """
+
         self.is_protein = is_protein
         self.mol = mol if self.is_protein else self.init_hydrogens(mol)
         self.settings = settings
@@ -63,6 +202,22 @@ class Molecule:
         self.charged, self.charge_groups = self.init_saltbridge()
 
     def init_hydrogens(self, mol, optimize=True):
+        """
+        Add hydrogens to a molecule.
+
+        Parameters
+        ----------
+        mol : :class:`~rdkit.Chem.rdchem.Mol`
+            The molecule to add hydrogens to.
+        optimize : bool
+            Whether to optimize the hydrogens with UFF.
+
+        Returns
+        -------
+        :class:`~rdkit.Chem.rdchem.Mol`
+            The molecule with hydrogens added.
+        """
+
         mol_w_Hs = AddHs(mol,addCoords=True)
         if optimize:
             try:
@@ -76,6 +231,22 @@ class Molecule:
         return mol_w_Hs
 
     def init_contacts(self):
+        """
+        Determine the atoms of the molecule that can be involced in hydrophobic contacts
+        with other molecules.
+
+        Returns
+        -------
+        coord: :class:`~numpy.ndarray`
+            The coordinates of the atoms that can be involved in hydrophobic contacts.
+        vdw: :class:`~numpy.ndarray`
+            The van der Waals radii of the atoms that can be involved in hydrophobic contacts.
+        res_name: :class:`list[str]<list>`
+            The residue names of the atoms that can be involved in hydrophobic contacts.
+        atom_name: :class:`list[str]<list>`
+            The atom names of the atoms that can be involved in hydrophobic contacts.
+        """
+
         coord, vdw, atom_name, res_name = [], [], [], []
         for atom in self.mol.GetAtoms():
             if atom.GetAtomicNum() not in self.settings['nonpolar']: continue
@@ -90,14 +261,50 @@ class Molecule:
         return coord, vdw, res_name, atom_name
 
     def get_aromatic_rings(self):
+        """
+        Get the aromatic rings in the molecule.
+
+        Returns
+        -------
+        :class:`list[list[int]]<list>`
+            The aromatic rings in the molecule.
+        """
         return [ring for ring in self.mol.GetRingInfo().AtomRings()
                 if self.mol.GetAtomWithIdx(ring[0]).GetIsAromatic()]
 
     def get_centroid(self, atom_idx):
+        """
+        Get the centroid of a set of atoms.
+        
+        Parameters
+        ----------
+        atom_idx : :class:`list[int]<list>`
+            The indices of the atoms to get the centroid of.
+
+        Returns
+        -------
+        :class:`~rdkit.Geometry.rdGeometry.Point3D`
+            The centroid coordinates of the atoms.
+        """
+
         atoms = [self.mol.GetAtomWithIdx(a) for a in atom_idx]
         return centroid_coords(atoms)
 
     def get_normal(self, ring):
+        """
+        Get the normal vector of a ring.
+
+        Parameters
+        ----------
+        ring : :class:`list[int]<list>`
+            The indices of the atoms in the ring.
+
+        Returns
+        -------
+        :class:`~numpy.ndarray`
+            The normal vector of the ring.
+        """
+
         centroid = self.get_centroid(ring)
         coords1 = coords(self.mol.GetAtomWithIdx(ring[0])) - centroid
         coords2 = coords(self.mol.GetAtomWithIdx(ring[1])) - centroid
@@ -107,17 +314,56 @@ class Molecule:
         return normal
 
     def init_hbond(self):
+        """
+        Determine the hydrogen bond donors and acceptors of the molecule.
+
+        Returns
+        -------
+        donors: :class:`list[Atom]<list>`
+            The hydrogen bond donors of the molecule.
+        acceptors: :class:`list[Atom]<list>`
+            The hydrogen bond acceptors of the molecule.
+        """
+
         donors = [atom for atom in self.mol.GetAtoms() if self._is_donor(atom)]
         acceptors = [atom for atom in self.mol.GetAtoms() if self._is_acceptor(atom)]
         return donors, acceptors
 
     def _is_donor(self, atom):
+        """
+        Determine whether an atom is a hydrogen bond donor.
+
+        Parameters
+        ----------
+        atom : :class:`Atom`
+            The atom to check.
+
+        Returns
+        -------
+        bool
+            Whether the atom is a hydrogen bond donor.
+        """
+
         if atom.GetAtomicNum() in [7, 8]:
             if _get_bonded_hydrogens(atom):
                 return True
         return False
 
     def _is_acceptor(self, atom):
+        """
+        Determine whether an atom is a hydrogen bond acceptor.
+
+        Parameters
+        ----------
+        atom : :class:`Atom`
+            The atom to check.
+
+        Returns
+        -------
+        bool
+            Whether the atom is a hydrogen bond acceptor.
+        """
+
         if atom.GetAtomicNum() == 8:
             return True
         if atom.GetAtomicNum() == 7 and atom.GetExplicitValence() < 4:
@@ -125,6 +371,17 @@ class Molecule:
         return False
 
     def init_saltbridge(self):
+        """
+        Determine the charged atoms and charge groups of the molecule.
+
+        Returns
+        -------
+        charged: :class:`list[Atom]<list>`
+            The charged atoms of the molecule.
+        charge_groups: :class:`list[list[Atom]]<list>`
+            The charge groups of the molecule.
+        """
+
         charged = [atom for atom in self.mol.GetAtoms()
                    if atom.GetFormalCharge() != 0]
         if self.is_protein:
@@ -134,6 +391,15 @@ class Molecule:
         return charged, charge_groups
 
     def _charged_protein_atoms(self):
+        """
+        Determine the charged atoms of the protein.
+
+        Returns
+        -------
+        :class:`dict[str, list[Atom]]<dict>`
+            The charged atoms of the protein.
+        """
+
         protein_groups = {}
         for protein_atom in self.mol.GetAtoms():
             if atomname(protein_atom) in ['OD1', 'OD2', 'OE1', 'OE2', 'NH1', 'NH2','NZ','ND1']:
@@ -150,6 +416,14 @@ class Molecule:
         return protein_groups
 
     def _symmetric_charged_ligand_atoms(self):
+        """
+        Determine the charged atoms of the ligand.
+
+        Returns
+        -------
+        :class:`dict[str, list[Atom]]<dict>`
+            The charged atoms of the ligand.
+        """
         ligand_groups = {}
         # smartss = [('[CX3](=O)[O-,OH]', 2, [1, 2]),
         #            ('[CX3](=[NH2X3+])[NH2X3]', 1, [1, 2])]
@@ -181,6 +455,20 @@ class Molecule:
 # Compute atom-level interactions
 
 def _get_bonded_hydrogens(atom):
+    """
+    Get the hydrogens bonded to an atom.
+
+    Parameters
+    ----------
+    atom : :class:`Atom`
+        The atom to check.
+
+    Returns
+    -------
+    :class:`list[Atom]<list>`
+        The hydrogens bonded to the atom.
+    """
+
     hydrogens = []
     for bond in atom.GetBonds():
         if bond.GetBeginAtomIdx() != atom.GetIdx():
@@ -193,6 +481,24 @@ def _get_bonded_hydrogens(atom):
     return hydrogens
 
 def _hbond_hydrogen_angle(acceptor, donor):
+    """
+    Finds the hydrogen that maximizes the angle of the acceptor-donor bond.
+
+    Parameters
+    ----------
+    acceptor : :class:`~rdkit.Chem.rdchem.Atom`
+        The acceptor atom.
+    donor : :class:`~rdkit.Chem.rdchem.Atom`
+        The donor atom.
+
+    Returns
+    -------
+    :class:`~rdkit.Chem.rdchem.Atom`
+        The hydrogen that maximizes the angle of the acceptor-donor bond.
+    float
+        The angle of the acceptor-donor bond.
+    """
+
     best_angle, best_hydrogen = 0, None
     for hydrogen in _get_bonded_hydrogens(donor):
         _angle = angle_atom(donor, hydrogen, acceptor)
@@ -202,6 +508,26 @@ def _hbond_hydrogen_angle(acceptor, donor):
     return best_hydrogen, best_angle
 
 def _hbond_compute(donor_mol, acceptor_mol, settings, protein_is_donor):
+    """
+    Compute the hydrogen bonds between a donor and acceptor molecule.
+
+    Parameters
+    ----------
+    donor_mol : :class:`~open_combind.features.ifp.Molecule`
+        The donor molecule.
+    acceptor_mol : :class:`~open_combind.features.ifp.Molecule`
+        The acceptor molecule.
+    settings : dict
+        The settings for the hydrogen bond calculation.
+    protein_is_donor : bool
+        Whether the protein is the donor.
+
+    Returns
+    -------
+    :class:`list[dict]<list>`
+        The hydrogen bonds between the donor and acceptor molecule.
+    """
+
     hbonds = []
     for donor in donor_mol.hbond_donors:
         for acceptor in acceptor_mol.hbond_acceptors:
@@ -230,11 +556,45 @@ def _hbond_compute(donor_mol, acceptor_mol, settings, protein_is_donor):
     return hbonds
 
 def hbond_compute(protein, ligand, settings):
+    """
+    Identify and log the hydrogen bonds between the protein and ligand atoms
+
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        Protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        Ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+    Returns
+    -------
+    dict
+        dict containing all of the hydrogen bonds found between the protein and ligand atoms
+    """
+    
     donor = _hbond_compute(protein, ligand, settings, True)
     acceptor = _hbond_compute(ligand, protein, settings, False)
     return acceptor + donor
 
 def saltbridge_compute(protein, ligand, settings):
+    """
+    Identify and log the salt bridges between the protein and ligand atoms
+    
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        Protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        Ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+
+    Returns
+    -------
+    dict
+        dict containing all of the salt bridges found between the protein and ligand atoms
+    """
     # Note that much of the complexity here stems from taking into account
     # symetric atoms. Specifically for carboxylate and guanidinium groups,
     # we consider not just the atom that is arbitrarily assigned a formal
@@ -268,6 +628,24 @@ def saltbridge_compute(protein, ligand, settings):
     return saltbridges
 
 def contact_compute(protein, ligand, settings):
+    """
+    Identify and log the hydrophobic contacts between the protein and ligand atoms
+    
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        Protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        Ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+
+    Returns
+    -------
+    dict
+        dict containing all of the hydrophobic contacts found between the protein and ligand atoms
+    """
+    
     protein = protein.contacts
     ligand = ligand.contacts
 
@@ -290,6 +668,24 @@ def contact_compute(protein, ligand, settings):
 # Compute residue-level scores.
 
 def _piecewise(data, opt, cut):
+    """
+    Piecewise linear function that is 0 below cut, 1 above opt, and linear in between.
+    
+    Parameters
+    ----------
+    data : :class:`~numpy.ndarray`
+        Array of data to be transformed
+    opt : float
+        Optimal value
+    cut : float
+        Cutoff value
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        Transformed data
+    """
+
     slope = 1 / (cut-opt)
     intercept = cut * slope
 
@@ -299,12 +695,61 @@ def _piecewise(data, opt, cut):
     return data
 
 def _groupby_subset(df, index, col):
+    """
+    Group a dataframe by a subset of its columns
+
+    Parameters
+    ----------
+    df : :class:`~pandas.DataFrame`
+        Dataframe to be grouped
+    index : list
+        List of columns to group by
+    col : str
+        Column to be grouped
+
+    Returns
+    -------
+    :class:`~pandas.DataFrameGroupBy`
+        Grouped dataframe
+    """
+
     return df[index+[col]].groupby(index)
 
 def nodigits(s):
+    """
+    Remove digits from a string
+
+    Parameters
+    ----------
+    s : str
+        String to remove digits from
+
+    Returns
+    -------
+    str
+        String with digits removed
+    """
+
     return ''.join([i for i in s if not i.isdigit()])
 
 def compute_scores(raw, settings):
+    """
+    Given atomic level interactions between the protein and ligand compute the compute the residue level interactions.
+
+    Parameters
+    ----------
+    raw : :class:`~pandas.DataFrame`
+        Atomic level interactions between the protein and ligand
+    settings : :class:`~pandas.DataFrame`
+        Interaction fingerprint settings
+
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        Residue level interactions between the protein and ligand
+
+    """
+    
     # print("computing scores")
     if settings['level'] == 'atom':
         raw['protein_res'] = [r['protein_res']+':'+nodigits(r['protein_atom'])
@@ -347,12 +792,52 @@ def compute_scores(raw, settings):
 ################################################################################
 
 def fingerprint(protein, ligand, settings):
+    """
+    Determine the atomic level interactions present in a protein-ligand complex. The following interactions are detected:
+
+    * Hydrogen bonding
+    * Salt bridges
+    * Hydrophobic contacts
+    
+    Parameters
+    ----------
+    protein : :class:`~open_combind.features.ifp.Molecule`
+        Protein molecule
+    ligand : :class:`~open_combind.features.ifp.Molecule`
+        Ligand molecule
+    settings : dict
+        Settings for determining the presence of interactions
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        Dataframe containing all of the interactions found in the complex
+    """
+    
     fp  = hbond_compute(protein, ligand, settings)
     fp += saltbridge_compute(protein, ligand, settings)
     fp += contact_compute(protein, ligand, settings)
     return pd.DataFrame.from_dict(fp)
 
 def fingerprint_poseviewer(input_file, poses, settings):
+    """
+    Compute interaction fingerprint at the atomic level of the all of the ligand poses in `input_file`
+    
+    Parameters
+    ----------
+    input_file : str
+        Path to the gzipped SDF file containing all of the ligand poses
+    poses : int
+        Number of poses to read from `input_file`
+    settings : dict
+        Settings of the interaction fingerprint
+    
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        Interaction fingerprint of each pose
+    
+    """
+    
     prot_bname = input_file.split('-to-')[-1]
     prot_fname = re.sub('-docked.*\.sdf\.gz','_prot.pdb',prot_bname)
     prot_file = f"structures/proteins/{prot_fname}"
@@ -389,6 +874,22 @@ def fingerprint_poseviewer(input_file, poses, settings):
     return fps
 
 def ifp(settings, input_file, output_file, poses):
+    """
+    Compute interaction fingerprint of the all of the ligand poses in `input_file` and save to a CSV
+    
+    Parameters
+    ----------
+    settings : dict
+        Settings of the interaction fingerprint
+    input_file : str
+        Path to the gzipped SDF file containing all of the ligand poses
+    output_file : str
+        Path to the output CSV file containing all the interactions 
+    poses : int
+        Number of poses to read from `input_file`
+    
+    """
+    
     settings['nonpolar'] = {6:1.7, 9:1.47, 17:1.75, 35:1.85, 53:1.98}
 
     # Compute atom-level interactions.

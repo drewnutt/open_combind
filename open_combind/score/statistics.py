@@ -6,6 +6,21 @@ import os
 import pandas as pd
 
 def read_stats(stats_root, features):
+    """
+    Read statistics from a directory of density estimates.
+
+    Parameters
+    ----------
+    stats_root : str
+        Path to directory of density estimates.
+    features : `list[str]<list>`
+        List of features to read.
+
+    Returns
+    -------
+    stats : `dict<dict<DensityEstimate>>`
+        Dictionary of density estimates for each feature and interaction type.
+    """
     stats = {}
     for dist in ['native', 'reference']:
         for interaction in features:
@@ -16,6 +31,27 @@ def read_stats(stats_root, features):
     return stats
 
 def pair_features(protein, data_root, pairs_root, interactions=['hbond',  'saltbridge', 'contact', 'shape', 'mcss'], features_dir="features/"):
+    """
+    Compute features for all pairs of ligands for a given protein.
+
+    Parameters
+    ----------
+    protein : str
+        Name of protein.
+    data_root : str
+        Path to directory of data.
+    pairs_root : str
+        Path to directory to save pairs.
+    interactions : `list[str]`, default=['hbond',  'saltbridge', 'contact', 'shape', 'mcss']
+        List of interactions to compute.
+    features_dir : str, default="features/"
+        Path to directory of features.
+    
+    Returns
+    -------
+    df : `~pandas.DataFrame`
+        Dataframe of features for all pairs of ligands.
+    """
     features = Features(f"{data_root}/{protein}/{features_dir}", max_poses=100)
     features.load_features()
     ligand_names = sorted(set(features.raw['name1']))
@@ -57,6 +93,21 @@ def pair_features(protein, data_root, pairs_root, interactions=['hbond',  'saltb
     df.to_csv('{}/{}.csv'.format(pairs_root, protein), index=False)
 
 def compute_stats(protein, pairs_root, stats_root, features):
+    """
+    Compute statistics for a given protein and write to a directory of density estimates.
+
+    Parameters
+    ----------
+    protein : str
+        Name of protein.
+    pairs_root : str
+        Path to directory of pairs.
+    stats_root : str
+        Path to directory to save statistics.
+    features : `list[str]`
+        List of features to compute.
+    """
+
     df = pd.read_csv('{}/{}.csv'.format(pairs_root, protein))
     for feature in features:
         if feature == 'mcss':
@@ -78,6 +129,20 @@ def compute_stats(protein, pairs_root, stats_root, features):
         ref.write('{}/{}/reference_{}.de'.format(stats_root, protein, feature))
 
 def merge_stats(proteins, stats_root, merged_stats_fname, features):
+    """
+    Merge statistics for a list of proteins and write to a directory of density estimates.
+
+    Parameters
+    ----------
+    proteins : `list[str]`
+        List of proteins.
+    stats_root : str
+        Path to directory of statistics.
+    merged_stats_fname : str
+        Path to directory to save merged statistics.
+    features : `list[str]`
+        List of features to merge.
+    """
     for feature in features:
         nat_des, ref_des = [], []
         for protein in proteins:

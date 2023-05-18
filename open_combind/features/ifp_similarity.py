@@ -10,6 +10,16 @@ def merge_hbonds(ifp):
     changing the residue names allows for only donor+donor or acceptor+acceptor
     to be counted as overlapping, but them to be merged into the same similarity
     measure.
+
+    Parameters
+    ----------
+    ifp : :class:`~pandas.DataFrame`
+        IFP file read into a pandas DataFrame.
+
+    Returns
+    -------
+    :class:`~pandas.DataFrame`
+        IFP `DataFrame` with hbond donors and acceptors merged.
     """
 
     mask = ifp.label=='hbond_acceptor'
@@ -24,6 +34,20 @@ def merge_hbonds(ifp):
 def ifp_tanimoto(ifps1, ifps2, feature):
     """
     Computes the tanimoto distance between ifp1 and ifp2 for feature.
+
+    Parameters
+    ----------
+    ifps1 : list of :class:`~pandas.DataFrame`
+        List of IFP files read into pandas DataFrames.
+    ifps2 : list of :class:`~pandas.DataFrame`
+        List of IFP files read into pandas DataFrames.
+    feature : str
+        Feature to compute similarity for.
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        Similarity matrix.
     """
     if feature == 'hbond':
         ifps1 = [merge_hbonds(ifp) for ifp in ifps1]
@@ -52,7 +76,29 @@ def ifp_tanimoto(ifps1, ifps2, feature):
 
 def ifp_tanimoto_mp(ifps1, ifps2, feature, processes):
     """
+    Multiprocesing version of `ifp_tanimoto_mp`.
+
     Computes the tanimoto distance between ifp1 and ifp2 for feature.
+
+    Parameters
+    ----------
+    ifps1 : list of :class:`~pandas.DataFrame`
+        List of IFP files read into pandas DataFrames.
+    ifps2 : list of :class:`~pandas.DataFrame`
+        List of IFP files read into pandas DataFrames.
+    feature : str
+        Feature to compute similarity for.
+    processes : int
+        Number of processes to use.
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        Similarity matrix.
+
+    See Also
+    --------
+    ifp_tanimoto: serial version of the function.
     """
     if feature == 'hbond':
         ifps1 = [merge_hbonds(ifp) for ifp in ifps1]
@@ -74,6 +120,24 @@ def ifp_tanimoto_mp(ifps1, ifps2, feature, processes):
     return sims
 
 def calc_sim(ifp1,i,ifps2):
+    """
+    Calculates the similarity between ifp1 and each ifp2 in ifps2.
+
+    Parameters
+    ----------
+    ifp1 : :class:`~pandas.DataFrame`
+        IFP file read into a pandas DataFrame.
+    i : int
+        Index of ifp1 in ifps1.
+    ifps2 : list of :class:`~pandas.DataFrame`
+        List of IFP files read into pandas DataFrames.
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        1D matrix of the similarity between ifp1 and ifps2
+    """
+
     sims = np.zeros((1,len(ifps2)))
     for j, ifp2 in enumerate(ifps2):
         if j > i:
@@ -87,6 +151,20 @@ def calc_sim(ifp1,i,ifps2):
     return (sims, i)
 
 def mirror_bottom_triangle(matrix):
+    """
+    Mirrors the bottom triangle of a matrix to the top triangle.
+
+    Parameters
+    ----------
+    matrix : :class:`~numpy.ndarray`
+        Matrix with non-zero values in either top or bottom triangle and zeros elsewhere.
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        Mirrored matrix.
+    """
+
     # This way is slow, but makes intuitive sense
     # n, m = matrix.shape
     # top_indices = np.triu_indices(n,m=m,k=1)

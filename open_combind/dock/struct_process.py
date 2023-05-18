@@ -9,7 +9,7 @@ from open_combind.dock.ligand_handling import get_ligands_from_RCSB, ligand_sele
 
 def load_complex(prot_in, lig_id, other_lig=None):
     """
-    Loads the protein and separates it into separate ``ProDy.AtomGroups`` for the protein-ligand complex only, protein only, waters, heteroatoms, and ligand only.
+    Loads the protein and separates it into separate :class:`~prody.atomic.atomgroup.AtomGroup`s for the protein-ligand complex only, protein only, waters, heteroatoms, and ligand only.
 
     Parameters
     ----------
@@ -19,6 +19,19 @@ def load_complex(prot_in, lig_id, other_lig=None):
         Three letter residue name or ProDy selection string to identify the ligand
     other_lig : str, default=None
         ProDy selection string that identifies any ligands other the one in the desired pocket
+
+    Returns
+    -------
+    prot_only : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Protein only atoms
+    waters : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Water only atoms
+    heteros : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Heteroatoms and not water atoms
+    important_ligand : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Ligand only
+    lig_chain : str
+        Chain ID of the ligand
     """
 
     lig_chain = None
@@ -70,10 +83,12 @@ def struct_process(structs,
     """
     Filters a list of raw PDB file into its main separate components.
     Creates a pdb file for the following:
-    * Protein and ligand atoms only (only one ligand molecule)
-    * Protein only atoms
-    * Heteroatoms and not water
-    * Water only
+
+        * Protein and ligand atoms only (only one ligand molecule)
+        * Protein only atoms
+        * Heteroatoms and not water
+        * Water only
+
     Additionally, a ligand SDF is pulled from the PDB, if possible.
 
     Parameters

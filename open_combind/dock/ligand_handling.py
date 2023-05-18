@@ -1,22 +1,25 @@
 import requests
-import re
+# import re
 import urllib.parse
-import tempfile
 from rdkit import Chem
 from rdkit.Chem.AllChem import AssignBondOrdersFromTemplate
 from prody import writePDBStream
 # from bs4 import BeautifulSoup
 
 
-
 class RDKitParseException(Exception):
+    """
+    Exception raised when RDKit cannot parse a molecule
+    """
     def __init__(self, message):
         super().__init__(message)
 
 
-def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None, save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
+def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None,
+                        save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
     """
-    Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly from the RCSB as a SDF file
+    Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly
+    from the RCSB as a SDF file
 
     Parameters
     ----------
@@ -33,8 +36,8 @@ def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None, save_file="
 
     Returns
     -------
-    list of ` ``RDKit.rdchem.Mol`` <https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.Mol>`_
-        Ligands downloaded directly from the RCSB webpage
+    :class:`list[Mol]<list>`
+        Ligands downloaded directly from the RCSB webpage as a :class:`~rdkit.Chem.rdchem.Mol`
     """
 
     lig_retrieve_format = "https://models.rcsb.org/v1/{pdbid}/ligand?auth_seq_id={seq_id}&label_asym_id={chain_id}&encoding=sdf&filename={pdbid}_{chem_name}_{seq_id}.sdf"
@@ -53,7 +56,8 @@ def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None, save_file="
                 continue
             seq_id = chain_info['seq_id']
 
-            page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id, chain_id=chain_id, chem_name=chem_name)).text
+            page = requests.get(lig_retrieve_format.format(pdbid=pdbid, seq_id=seq_id,
+                                chain_id=chain_id, chem_name=chem_name)).text
             if not page.startswith(chem_name):
                 raise FileNotFoundError(f"Unable to retrieve instance coordinates for {chem_name} in entry {pdbid}")
             mol = Chem.MolFromMolBlock(page)
@@ -70,6 +74,24 @@ def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None, save_file="
     return molecules
 
 def ligand_selection_to_mol(ligand_selection, query_ligand, outfile=None):
+    """
+    Converts a :class:`~prody.atomic.atomgroup.AtomGroup` to a :class:`~rdkit.Chem.rdchem.Mol` using another :class:`~rdkit.Chem.rdchem.Mol` as a template for the correct bond orders of the :class:`~prody.atomic.atomgroup.AtomGroup`
+
+    Parameters
+    ----------
+    ligand_selection : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Selection from a PDB file containing the atoms of the ligand
+    query_ligand : :class:`~rdkit.Chem.rdchem.Mol`
+        Template molecule with correct bond orders (atomic coordinates are irrelevant)
+    outfile : str
+        Path to the output SDF file of ligand, if not specified then the ligand is not saved to a file
+
+    Returns
+    -------
+    :class:`~rdkit.Chem.rdchem.Mol`
+        Ligand with proper coordinates and bond orders
+    """
+    
     template_lig = ligand_selection.select("not water")
 
     mol_holder = DummyMolBlock()
@@ -91,7 +113,7 @@ def get_ligand_from_SMILES(lig_id):
     """
     Using the RCSB API, pulls the SMILES string containin stereochemical features for the given ligand ID.
 
-    If a ligand has a dedicated page at `https://www.rcsb.org/ligand/{ligand_id}` then it likely haas a SMILES string
+    If a ligand has a dedicated page at ``https://www.rcsb.org/ligand/{ligand_id}`` then it likely has a SMILES string
     (does not need to be a 2 or 3 letter identifier)
 
     Parameters
@@ -101,7 +123,7 @@ def get_ligand_from_SMILES(lig_id):
 
     Returns
     -------
-    mol
+    :class:`~rdkit.Chem.rdchem.Mol`
         RDKit molecule created by the SMILES string
 
     """

@@ -5,6 +5,24 @@ from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
 
 def align_successful(out_dir, struct):
+    """
+    Check if a given PDB ID has been aligned
+
+    Only checks for the presence of the file. Does not check if the file is valid.
+
+    Parameters
+    ----------
+    out_dir : str
+        Path to the aligned protein directory
+    struct : str
+        PDB ID of the protein-ligand complex to check
+    
+    Returns
+    -------
+    bool
+        If the structure with the provided PDB ID has been aligned
+    """
+
     if not os.path.isfile('{0}/{1}/{1}_aligned.pdb'.format(out_dir, struct)):
         return False
     else:
@@ -13,6 +31,25 @@ def align_successful(out_dir, struct):
 def align_separate_ligand(struct, trans_matrix,
         downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
         aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
+    """
+    Transform the the ligand using the provided transformation matrix and write it to a new file.
+
+    Parameters
+    ----------
+    struct : str
+		PDB ID of the original complex
+    trans_matrix : :class:`~numpy.ndarray`
+        Transformation matrix describing the transformation of the ligand
+	downloaded_ligand : str, default="structures/processed/{pdbid}/{pdbid}_lig.sdf"
+		Format string for the path to the ligand SDF file given the PDB ID as `pdbid`
+    aligned_lig: str, default="structures/aligned/{pdbid}/{pdbid}_lig.sdf"
+        Format string for the path to the transformed ligand SDF file for output
+
+    Returns
+    -------
+    bool
+        If the ligand file existed and the transformation was performed
+    """
     ligand_path = downloaded_ligand.format(pdbid=struct)
     # print(ligand_path)
     if not os.path.isfile(ligand_path):
@@ -34,8 +71,10 @@ def struct_align(template, structs, dist=15.0, retry=True,
                  aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
                  align_dir='structures/aligned'):
     """
-    .. include ::<isotech.txt>
     Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
+    
+    
+    Aligned files are put in :file:`{align_dir}/{<PDB ID>}/`
 
     If a separate ligand exists for a given PDB ID, then it will be transformed with the same matrix as used for the protein alignment.
 
@@ -60,8 +99,11 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
     Returns
     -------
-    ` ``ProDy.Transformation`` <http://prody.csb.pitt.edu/manual/reference/measure/transform.html#module-prody.measure.transform>`_
+    :class:`~prody.measure.transform.Transformation`
         Transformation object of the last alignment performed
+
+
+    .. include :: <isotech.txt>
     """
 
     template_path = filtered_protein.format(pdbid=template)
@@ -140,6 +182,26 @@ def struct_align(template, structs, dist=15.0, retry=True,
     return transform_matrix
 
 def get_selection_texts(liginfo_path, prot):
+    """
+    Get the selection text for the ligand and the chain of the ligand
+
+    Selects the ligand chain as the protein chain that is within 5 |angst| of the ligand
+
+    Parameters
+    ----------
+    liginfo_path : str
+        Path to the ligand info file
+    prot : :class:`~prody.atomic.atomgroup.AtomGroup`
+        Protein structure
+
+    Returns
+    -------
+    selection_text : str
+        Selection text for the ligand
+    lig_chain : str
+        Chain of the ligand
+    """
+
     liginfo = open(liginfo_path, 'r').readlines()
     if len(liginfo[0].strip('\n')) < 4:
         selection_text = 'hetatm'

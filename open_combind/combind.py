@@ -38,9 +38,8 @@ def structprep(templ_struct='', struct=''):
 
     Notes
     -----
-    The following directory structure is required:
+    The following directory structure is required::
 
-    ::
         structures/
             raw/
                 structure_name.pdb

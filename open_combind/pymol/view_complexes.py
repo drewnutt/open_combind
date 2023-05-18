@@ -77,7 +77,7 @@ def load_results(protein, scores, show_inter:bool=False, show_chembl_inter:bool=
     """
     USAGE
 
-    load_results protein, pose_prediction_csv
+    load_results protein, pose_prediction_csv, [show_inter=False], [show_chembl_inter=False]
 
     load all results from the ComBind docking for the ligands in [pose_prediction_csv]. Additionally, loads crystal structures for non-CHEMBL ligands
 
@@ -150,9 +150,10 @@ def show_interactions(ifp_file, interaction, protein, lig, ligand_file, pose, de
     """
     USAGE
 
-    show_interactions interaction_file, interaction, prot, ligand, pose_number,[delete=True],[disable=True]
+    show_interactions interaction_file, interaction, protein, ligand, ligand_file, pose_number,[delete=True],[disable=True]
 
     interaction is the type of interaction to show; can be one of: all, sb, hbond, contact
+    ligand is the name of the ligand object, while ligand_file is the name of the file containing the ligand
     """
     if interaction not in ['all','hbond','contact','sb']: raise IOError('interaction must be one of: all, hbond, contact, sb')
 

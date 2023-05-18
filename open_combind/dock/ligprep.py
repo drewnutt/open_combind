@@ -4,6 +4,26 @@ import gzip
 from rdkit.Chem import AllChem as Chem
 
 def construct_set_conformers(mol, *, num_confs, confgen, seed=-1):
+    """
+    Construct a set of 3D conformers for a molecule.
+
+    Parameters
+    ----------
+    mol : :class:`~rdkit.Chem.rdchem.Mol`
+        The molecule to construct conformers for.
+    num_confs : int
+        The number of conformers to generate.
+    confgen : str
+        The conformer generation algorithm to use. One of ``'etkdg_v1'``, ``'etkdg_v2'``, or ``'etkdg_v3'``.
+    seed : int, optional
+        The random seed to use for conformer generation. If not specified, a random seed will be used.
+
+    Returns
+    -------
+    `list[int]<list>`
+        The conformer IDs of the generated conformers.
+    """
+
     if confgen == 'etkdg_v1':
         ps = Chem.ETKDG()
     elif confgen == 'etkdg_v2':
@@ -26,6 +46,34 @@ def construct_set_conformers(mol, *, num_confs, confgen, seed=-1):
     return cids
 
 def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=50, maxIters=1000, seed=-1):
+    """
+    Generate a 3D conformer for a molecule.
+
+    Parameters
+    ----------
+    inmol : :class:`~rdkit.Chem.rdchem.Mol`
+        The molecule to generate a conformer for.
+    confgen : str
+        The conformer generation algorithm to use. One of ``'etkdg_v1'``, ``'etkdg_v2'``, or ``'etkdg_v3'``.
+    ff : str
+        The force field to use for energy minimization. One of ``'UFF'`` or ``'MMFF'``.
+    num_confs : int
+        The number of conformers to generate.
+    maxIters : int
+        The maximum number of iterations for energy minimization.
+    seed : int, optional
+        The random seed to use for conformer generation. If not specified, a random seed will be used.
+    
+    Returns
+    -------
+    :class:`~rdkit.Chem.rdchem.Mol`
+        The molecule with all of the generated conformers.
+    int
+        The conformer ID of the lowest enegy generated conformer.
+    `list[float]<list>`
+        The energies of the generated conformers.
+    """
+
     mol = Chem.Mol(inmol)
     Chem.SanitizeMol(mol)
     mol = Chem.AddHs(mol, addCoords=True)
@@ -53,6 +101,19 @@ def make3DConf(inmol, confgen='etkdg_v2', ff='UFF', num_confs=50, maxIters=1000,
 
 
 def write3DConf(inmol, out_fname, **kwargs):
+    """
+    Generate a 3D conformer for a molecule and write it to a file.
+
+    Parameters
+    ----------
+    inmol : :class:`~rdkit.Chem.rdchem.Mol`
+        The molecule to generate a conformer for.
+    out_fname : str
+        The name of the file to write the conformer to.
+    kwargs
+        Additional keyword arguments to pass to :func:`make3DConf`.
+    """
+
     mol, best_conf, _ = make3DConf(inmol, **kwargs)
 
     writer = Chem.SDWriter(out_fname)
@@ -60,6 +121,21 @@ def write3DConf(inmol, out_fname, **kwargs):
     writer.close()
 
 def write3DConfs(inmol, out_fname, num_out_confs=10, **kwargs):
+    """
+    Generate a set of 3D conformers for a molecule and write them to a file.
+    
+    Parameters
+    ----------
+    inmol : :class:`~rdkit.Chem.rdchem.Mol`
+        The molecule to generate conformers for.
+    out_fname : str
+        The name of the file to write the conformers to.
+    num_out_confs : int
+        The number of conformers to write to the file.
+    kwargs
+        Additional keyword arguments to pass to :func:`make3DConf`.
+    """
+
     mol, _, energies = make3DConf(inmol, **kwargs)
 
 
@@ -70,6 +146,19 @@ def write3DConfs(inmol, out_fname, num_out_confs=10, **kwargs):
     writer.close()
 
 def ligprocess(input_file, output_file, **kwargs):
+    """
+    Generate 3D conformers for a molecule given by `input_file` and write them to a file.
+
+    Parameters
+    ----------
+    input_file : str
+        The name of the file to read the molecule from. Can contain a SMILES string.
+    output_file : str
+        The name of the file to write the conformers to.
+    kwargs
+        Additional keyword arguments to pass to :func:`make3DConf`.
+    """
+
     input_info = open(input_file).readlines()
     if len(input_info) == 1:
         mol = Chem.MolFromSmiles(input_info[0].strip())
@@ -93,15 +182,68 @@ def ligprocess(input_file, output_file, **kwargs):
         # writer.close()
 
 def ligprep(smiles, **kwargs):
+    """
+    Generate 3D conformers for a molecule in `smiles` and write to a file with the same basename as `smiles`
+
+    Parameters
+    ----------
+    smiles : str
+        The name of the file to read the molecule from. Can contain a SMILES string.
+    kwargs
+        Additional keyword arguments to pass to :func:`make3DConf`.
+    """
+
     sdf_file = smiles.replace('.smi', '.sdf')
     ligprocess(smiles, sdf_file, **kwargs)
 
 def ligprep_mp(smiles, args):
+    """
+    Multiprocessing wrapper for :func:`ligprep`.
+
+    Parameters
+    ----------
+    smiles : str
+        The name of the file to read the molecule from. Can contain a SMILES string.
+    args : :class:`argparse.Namespace`
+        The command line arguments.
+
+    See Also
+    --------
+    ligprep
+    """
+
     ligprep(smiles, **args._asdict())
 
 def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
         confgen='etkdg_v2', ff='UFF', processes=1, num_confs=50, 
         maxIters=1000, num_out_confs=10):
+    """
+    Split a large SDF file into individual SDF files for each ligand.
+
+    Parameters
+    ----------
+    big_sdf : str
+        The name of the file to read the ligands from.
+    root : str
+        The root directory to write the ligands to.
+    multiplex : bool
+        Whether to multiplex the ligands into a single file.
+    name_prop : str
+        The name of the property to use as the ligand name.
+    confgen : str
+        The conformer generation method to use.
+    ff : str
+        The forcefield to use.
+    processes : int
+        The number of processes to use.
+    num_confs : int
+        The number of conformers to generate.
+    maxIters : int
+        The maximum number of iterations to use to minimize the conformers.
+    num_out_confs : int
+        The number of conformers to write to the file.
+    """
+
     if os.path.splitext(big_sdf)[-1] == ".gz":
         big_sdf_data = gzip.open(big_sdf)
     else:

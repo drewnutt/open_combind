@@ -1,3 +1,6 @@
+.. _intro/getting-started:
+
+===============
 Getting Started
 ===============
 

@@ -25,6 +25,40 @@ IFP = {'rd1':    {'version'           : 'rd1',
 class Features:
     """
     Organize feature computation and loading.
+    
+    Parameters
+    ----------
+    root : str
+        Path to root directory of poses/features
+    ifp_version : str, default='rd1'
+        Version of the interaction fingerprint to use for featurization
+    shape_version : str, default='pharm_max'
+        Version of the shape algorithm to use for featurization (not implemented)
+    max_poses : str, default=10000  
+        Maximum number of poses per ligand used to compute features
+    pv_root
+        Root of the directory containing the poses, if not specified then set to ``{root}/docking``
+    ifp_features : :class:`list[str]<list>`, default=['hbond', 'saltbridge', 'contact']
+        Interaction fingerprint features to calculate
+    cnn_scores : bool, default=True
+        Keep track of CNN produced scores from GNINA (i.e. CNNscore and CNNaffinity)
+        
+    Attributes
+    ----------
+    root : str
+        Root directory where the features/poses should be looked for
+    ifp_version : str
+        Which version of the interaction fingerprint to use
+    shape_version : str
+        (not currently used) which version of the shape algorithm to use for featurization
+    max_poses : int
+        Maximum number of poses to handle for each ligand
+    ifp_features : :class:`list[str]<list>`
+        Which interaction features to track
+    cnn_scores : bool
+        Keep track of CNN produced scores from GNINA (i.e. CNNscore and CNNaffinity)
+    raw : dict
+        Contains the raw data of the computed (or loaded) features where the key is the feature name
     """
     def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
                  max_poses=10000, pv_root=None,
@@ -52,6 +86,27 @@ class Features:
         self.raw = {}
 
     def get_molecules_from_files(self, pvs, native=False, center_ligand=None):
+        """
+        .. include :: <isotech.txt>
+        Load molecules from docked files containing many poses of a ligand.
+        
+        If `center_ligand` is set, then the poses will be filtered to only include poses
+        whose centroid are within 7.5 |angst| of the centroid of the `center_ligand`.
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            List of pose viewer files to load
+        native : bool, default=False
+            Whether the loaded file contains a native pose. Only one pose should be there.
+        center_ligand : :class:`~rdkit.Chem.rdchem.Mol`
+            Center ligand to use for filtering poses
+
+        Returns
+        -------
+        molbundle_dict : :class:`dict[str, list[~rdkit.Chem.rdchem.Mol]]<dict>`
+            Dictionary of pose viewer files to list of molecules
+        """
         molbundle_dict = dict()
         center = Point3D(0,0,0)
         if center_ligand is not None:
@@ -82,6 +137,26 @@ class Features:
         return molbundle_dict
 
     def path(self, name, base=False, pv=None, pv2=None):
+        """
+        Get the path to a feature file
+
+        Parameters
+        ----------
+        name : str
+            Name of the feature
+        base : bool, default=False
+            Whether to return the path to the base feature file
+        pv : str, default=None
+            Path to the pose viewer file
+        pv2 : str, default=None
+            Path to the second pose viewer file
+        
+        Returns
+        -------
+        path : str
+            Path to the feature file
+        """
+
         if base:
             return '{}/{}'.format(self.root, name)
 
@@ -98,6 +173,10 @@ class Features:
             return f'{self.root}/{name}.npy'
 
     def load_features(self):
+        """
+        Load all of the features into self.raw
+        """
+
         paths = glob(f'{self.root}/*.npy')
         for path in paths:
             name = path.split('/')[-1][:-4]
@@ -105,6 +184,19 @@ class Features:
 
     def get_view(self, ligands, features):
         """
+        Load the pairwise features `features` for the ligands in `ligands`
+
+        Parameters
+        ----------
+        ligands : :class:`list[str]<list>`
+            Ligands features should be loaded
+        features : :class:`list[str]<list>`
+            Features that should be loaded
+
+        Returns
+        -------
+        dict
+            Pairwise `features` for all of the ligand poses of the ligands in `ligands`
         """
         data = {}
         if self.cnn_scores:
@@ -132,6 +224,36 @@ class Features:
         return data
 
     def load_single_features(self, pvs, ligands=None, center_ligand=None):
+        """
+        Load the single pose features (e.g. docking score, RMSD, IFP, etc.) of the poses
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            Poses that need features loaded
+        ligands : 
+
+		center_ligand: :class:`~rdkit.Chem.rdchem.Mol`, default=None
+			Ligand to center the poses around
+
+        Returns
+        -------
+        list
+            List of rmsds to the native pose for each loaded ligand
+        list
+            List of docking scores for each loaded ligand
+        list
+            List of GNINA computed CNNaffinity scores for each loaded ligand
+        list
+            List of Vina Affinity scores for each loaded ligand
+        list
+            List of poses for each loaded ligand
+        list
+            List of names for each loaded ligand
+        list
+            List of IFPs for each loaded ligand
+        """
+
         if center_ligand is not None:
             center = ComputeCentroid(center_ligand.GetConformer())
         rmsds, gscores, gaffs, vaffs, poses, names, ifps = [], [], [], [], [], [], []
@@ -192,6 +314,16 @@ class Features:
         return rmsds, gscores, gaffs, vaffs, poses, names, ifps
 
     def compute_single_features(self, pvs, native_poses):
+        """
+        Compute all of the single pose features (e.g. GNINA scores, RMSD to native, etc.) for the provided poses
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            Path to poses to compute the single pose features
+        native_poses : :class:`list[str]<list>`
+            Path to pose of the native ligand structures, if they exist
+        """
         # For single features, there is no need to keep sub-sets of ligands
         # separated,  so just merge them at the outset to simplify the rest of
         # the method.
@@ -241,6 +373,27 @@ class Features:
                 self.compute_ifp(pv, out)
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
+        """
+        Computes the pairwise features for the poses in `pvs` and `pvs2`. If `pvs2` is not specified,
+        then the pairwise features are computed between the poses in `pvs`
+
+        Requires the `compute_single_features` method to have been run first as the IFPs are loaded from disk
+
+        Parameters
+        ----------
+        pvs : :class:`list[str]<list>`
+            Path to poses
+        pvs2 : list[str]<list
+            Path to second set of poses to pair with `pvs` for pairwise features
+        ifp : bool, default=True
+            Compute the pairwise interaction fingerprint feature
+        shape : bool, default=True
+            Compute the pairwise shape feature
+        mcss : bool, default=True
+            Compute the pairwise maximum common substructure RMSD feature
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
         mkdir(self.root)
         rmsds1, gscores1, gaffs1, vaffs1, poses1, names1, ifps1 = self.load_single_features(pvs, center_ligand=self.center_ligand)
         out = self.path('rmsd1')
@@ -255,7 +408,7 @@ class Features:
         np.save(out, names1)
         if pvs2 is None:
             (rmsds2, gscores2, poses2, names2, ifps2
-                ) = rmsds1, gscores1, poses1, names1, ifps1
+            ) = rmsds1, gscores1, poses1, names1, ifps1
         else:
             rmsds2, gscores2, poses2, names2, ifps2 = self.load_single_features(pvs2)
             out = self.path('rmsd2')
@@ -286,6 +439,17 @@ class Features:
 
     # Methods to calculate features
     def compute_name(self, bundle, out):
+        """
+        Get the name for all of the ligand poses and save as `.npy`
+
+        Parameters
+        ----------
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
+        out : str
+            Path to `.npy` file to save all of the pose names
+        """
+
         names = []
         docked_fname = os.path.basename(out).split('.')[0]
         name = docked_fname.replace('-docked_name','')
@@ -294,24 +458,71 @@ class Features:
         np.save(out, names)
 
     def compute_gaff(self, bundle, out):
+        """
+        Retrieve the GNINA computed CNNaffinity for all of the poses
+        
+        Parameters
+        ----------
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
+        out : str
+            Path to `.npy` file to save all of the pose CNNaffinities
+        """
+        
         gaffs = []
         for idx, st in enumerate(bundle):
             gaffs += [float(st.GetProp('CNNaffinity'))]
         np.save(out, gaffs)
 
     def compute_gscore(self, bundle, out):
+        """
+        Retrieve the GNINA computed CNNscore for all of the poses 
+        
+        Parameters
+        ----------
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
+        out : str
+            Path to `.npy` file to save all of the pose CNNaffinities
+        """
+        
         gscores = []
         for idx, st in enumerate(bundle):
             gscores += [logit(float(st.GetProp('CNNscore')))]
         np.save(out, gscores)
 
     def compute_vaff(self, bundle, out):
+        """
+        Retrieve the Autodock Vina scores for all of the poses
+        
+        Parameters
+        ----------
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
+        out : str
+            Path to `.npy` file to save all of the pose Vina scores
+        
+        """
+        
         vaffs = []
         for idx, st in enumerate(bundle):
             vaffs += [float(st.GetProp('minimizedAffinity'))]
         np.save(out, vaffs)
 
     def compute_rmsd(self, bundle, native_poses, out):
+        """
+        Compute the root mean square deviation (RMSD) from the pose to its native pose, if available.
+        
+        Parameters
+        ----------
+        bundle : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s to process
+        native_poses : :class:`dict[str,Mol]<dict>`
+            Dictionary with keys as ligand names and values as :class:`~rdkit.Chem.rdchem.Mol` s of the native ligand poses
+        out : str
+            Path to `.npy` file to save all of the pose RMSDs
+        """
+        
         rmsds = []
         name = os.path.basename(out).split('-')[0]
         # print(name)
@@ -327,11 +538,40 @@ class Features:
         np.save(out, rmsds)
 
     def compute_ifp(self, pv, out):
+        """
+        Compute the interaction fingerprint (IFP) of the ligand poses based on the ``ifp_version``
+        
+        Parameters
+        ----------
+        pv : :class:`list[str]<list>`
+            Path to poses
+        out : str
+            Path to `.npy` file to save all of the pose IFPs
+        
+        """
+        
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
 
     def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
+        """
+        Compute the pseudo-Tanimoto similarity between the given IFPs for the given features
+        
+        Parameters
+        ----------
+        ifps1 : :class:`list[DataFrame]<list>`
+            List of pose IFPs to calculate pairwise with `ifps2` 
+        ifps2 : :class:`list[DataFrame]<list>`
+            List of pose IFPs to calculate pairwise with `ifps1` 
+        feature : :class:`list[str]<list>`
+            List of IFP features to calculate the pseudo-Tanimoto similarity between
+        out : str
+            Path to `.npy` file to save all of the pairwise IFPs
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
+        
         if processes != 1:
             from open_combind.features.ifp_similarity import ifp_tanimoto_mp
             tanimotos = ifp_tanimoto_mp(ifps1, ifps2, feature, processes)
@@ -341,6 +581,20 @@ class Features:
         np.save(out, tanimotos)
 
     def compute_shape(self, poses1, poses2, out, processes=1):
+        """
+        Compute the pseudo-Tanimoto similarity of the shape between the given poses
+        
+        Parameters
+        ----------
+        poses1 : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses2` 
+        poses2 : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses1` 
+        out : str
+            Path to `.npy` file to save all of the pairwise shape similarities
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
         if processes != 1:
             from open_combind.features.shape import shape_mp
             sims = shape_mp(poses2, poses1, version=self.shape_version,processes=processes).T
@@ -352,6 +606,20 @@ class Features:
         np.save(out, sims)
 
     def compute_mcss(self, poses1, poses2, out, processes=1):
+        """
+        Compute the Maximum Common Substructure (MCSS) RMSD between the given poses
+        
+        Parameters
+        ----------
+        poses1 : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses2` 
+        poses2 : :class:`list[Mol]<list>`
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses1` 
+        out : str
+            Path to `.npy` file to save all of the MCSS RMSDs
+        processes : int, default=1
+            Number of processes to use for computing the pairwise features, if -1 then use all available cores
+        """
         if processes != 1:
             from open_combind.features.mcss import mcss_mp
             rmsds = mcss_mp(poses1, poses2, processes)
