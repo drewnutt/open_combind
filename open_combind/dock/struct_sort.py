@@ -6,8 +6,8 @@ from rdkit.Chem import MolFromPDBFile, SDWriter
 from pdbfixer import PDBFixer
 from openmm.app import PDBFile
 
-def split_complex(complex_loc, pdb_id, ligand_select='hetatm',
-                structures_loc="structures/"):
+def split_complex(complex_loc, pdb_id, structname, ligand_select='hetatm',
+    structures_loc = "structures/"):
     """
     Splits the complex into the object selected by `ligand_select`, the ligand, and everything else, the protein.
 
@@ -17,6 +17,8 @@ def split_complex(complex_loc, pdb_id, ligand_select='hetatm',
         Path to protein-ligand complex PDB file
     pdb_id : str
         PDB ID of the protein-ligand complex, used for naming
+    structname : str
+        Name of the protein-ligand complex, used for naming
     ligand_select : str, default='hetatm'
         `ProDy atom selection <http://prody.csb.pitt.edu/manual/reference/atomic/select.html#selections>`_ that defines the ligand atoms
     structures_loc : str, default="structures/"
@@ -32,9 +34,9 @@ def split_complex(complex_loc, pdb_id, ligand_select='hetatm',
 
     if not os.path.exists(lig_path):
         if not os.path.exists(aligned_lig_path):
-            print(f"No separate aligned ligand found for {complex_loc}")
+            print(f"No separate aligned ligand found for {structname}")
             lig_st = st.select(f'{ligand_select}') 
-            assert lig_st is not None, f"no ligand found in {complex_loc} using {ligand_select}"
+            assert lig_st is not None, f"no ligand found in {structname} using {ligand_select}"
             writePDB(lig_pdb_path, lig_st)
 
             rdk_lig = MolFromPDBFile(lig_pdb_path)
