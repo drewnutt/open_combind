@@ -1,3 +1,6 @@
+.. _intro/installation:
+
+============
 Installation
 ============
 
@@ -6,6 +9,18 @@ Open-Combind set-up
 Open-Combind is a fork of `Combind <https://github.com/drorlab/combind>`_ that uses open-source software for each component of the pipeline. Open-Combind is written in Python 3 and has been tested on Linux operating systems.
 
 Open-Combind can be installed directly from the `GitHub Repository <https://github.com/drewnutt/open_combind>`_.
+
+Pre-requisites
+--------------
+Open-Combind requires the following software to be installed:
+- PDBFixer
+
+PDBFixer can be installed using conda/mamba:
+
+.. code-block:: bash
+
+        conda install -c conda-forge pdbfixer
+
 
 Installation from source
 ------------------------

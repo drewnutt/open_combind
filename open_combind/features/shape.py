@@ -24,6 +24,24 @@ from open_combind.utils import mp
 
 
 def shape(conformers1, conformers2, version=None):
+    """
+    Calculate shape similarity between two sets of conformers.
+
+    Parameters
+    ----------
+    conformers1 : :class:`list[Mol]<list>`
+        List of conformers
+    conformers2 : :class:`list[Mol]<list>`
+        List of conformers
+    version : str, optional
+        Shape screening version, by default None
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        Shape similarity matrix
+    """
+
     shape_sims = []
     for i, conf1 in enumerate(conformers1):
         shape_sims += [np.zeros(len(conformers2)]
@@ -39,6 +57,26 @@ def shape(conformers1, conformers2, version=None):
     return filled_matrix
 
 def shape_mp(conformers1, conformers2, version=None, processes=1):
+    """
+    Calculate shape similarity between two sets of conformers in parallel.
+
+    Parameters
+    ----------
+    conformers1 : :class:`list[Mol]<list>`
+        List of conformers
+    conformers2 : :class:`list[Mol]<list>`
+        List of conformers
+    version : str, optional
+        Shape screening version, by default None
+    processes : int, default=1
+        Number of processes to use.
+
+    Returns
+    -------
+    :class:`~numpy.ndarray`
+        Shape similarity matrix
+    """
+
     def compute_shape_mp(conformation,idx):
         shape_sims = np.zeros(len(conformers2)
         for j, conf2 in enumerate(conformers2): 

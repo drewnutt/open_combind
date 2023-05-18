@@ -28,9 +28,12 @@ Maximum Common Substructure (MCSS)
 **********************************
 .. automodule:: open_combind.features.mcss
    :members:
+   :show-inheritance:
 
 Shape Similarity
 ****************
+These functions are currently untested.
+
 .. automodule:: open_combind.features.shape
    :members:
 

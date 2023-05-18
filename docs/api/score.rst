@@ -1,7 +1,7 @@
 .. _api/score:
 
 =================
-Scoring, DensityEstimator, and PosePrediction
+Statistics, DensityEstimator, and PosePrediction
 =================
 .. toctree::
    :maxdepth: 3

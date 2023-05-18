@@ -173,7 +173,7 @@ def group_mols_by_SMARTS(mols):
 
     Parameters
     ----------
-    mols : `list[Mol]<list>`
+    mols : :class:`list[Mol]<list>`
         List of :class:`~rdkit.Chem.rdchem.Mol` s to group by SMARTS pattern
 
     Returns
@@ -197,13 +197,13 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
 
     Parameters
     ----------
-    mols1 : `list[Mol]<list>`
+    mols1 : :class:`list[Mol]<list>`
         List of :class:`~rdkit.Chem.rdchem.Mol` for the first ligand, specifying the poses of the ligand
-    idxs1 : list of int
+    idxs1 : :class:`list[int]<list>`
         List of indices of the poses of the first ligand
-    mols2 : `list[Mol]<list>`
+    mols2 : :class:`list[Mol]<list>`
         List of :class:`~rdkit.Chem.rdchem.Mol` for the second ligand, specifying the poses of the ligand
-    idxs2 : list of int
+    idxs2 : :class:`list[int]<list>`
         List of indices of the poses of the second ligand
 
     Returns
@@ -374,7 +374,7 @@ def compute_mcss_mp(st1, st2):
     ----------
     st1: :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 1
-    st2: :class:`~rdkit.Chem.rdchem.Mol
+    st2: :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 2
 
     Returns

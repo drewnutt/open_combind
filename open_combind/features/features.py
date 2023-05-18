@@ -99,12 +99,12 @@ class Features:
             List of pose viewer files to load
         native : bool, default=False
             Whether the loaded file contains a native pose. Only one pose should be there.
-        center_ligand : :class:`rdkit.Chem.rdchem.Mol`
+        center_ligand : :class:`~rdkit.Chem.rdchem.Mol`
             Center ligand to use for filtering poses
 
         Returns
         -------
-        molbundle_dict : :class:`dict[str, list[rdkit.Chem.rdchem.Mol]]<dict>`
+        molbundle_dict : :class:`dict[str, list[~rdkit.Chem.rdchem.Mol]]<dict>`
             Dictionary of pose viewer files to list of molecules
         """
         molbundle_dict = dict()
@@ -233,8 +233,8 @@ class Features:
             Poses that need features loaded
         ligands : 
 
-		center_ligand: :class:`rdkit.Chem.rdchem.Mol<rdkit.Chem.rdchem.Mol>`
-			Ligand to center the poses around (default: None)
+		center_ligand: :class:`~rdkit.Chem.rdchem.Mol`, default=None
+			Ligand to center the poses around
 
         Returns
         -------
@@ -587,9 +587,9 @@ class Features:
         Parameters
         ----------
         poses1 : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses2` 
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses2` 
         poses2 : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses1` 
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses1` 
         out : str
             Path to `.npy` file to save all of the pairwise shape similarities
         processes : int, default=1
@@ -612,9 +612,9 @@ class Features:
         Parameters
         ----------
         poses1 : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses2` 
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses2` 
         poses2 : :class:`list[Mol]<list>`
-            :class:`~rdkit.Chem.rdchem.Mol`s of poses to calculate pairwise with `poses1` 
+            :class:`~rdkit.Chem.rdchem.Mol` s of poses to calculate pairwise with `poses1` 
         out : str
             Path to `.npy` file to save all of the MCSS RMSDs
         processes : int, default=1
