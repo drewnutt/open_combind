@@ -47,11 +47,11 @@ def downsample_helpers(helpers_to_use, num_helpers, random_seed=42):
 def run_featurization(root, helper_ligands, query_fname, protein_name, helper_list_root,
         native_loc='.', selection_criterion="affinity",processes=1,
         template='structures/template/*.template',check_center_ligs=False, skip_featurization=False,
-        extra_helper_ligands=[], num_helpers=None):
+        extra_helper_ligands=[], num_helpers=None, **kwargs):
     query_ligand = query_fname.split('/')[-1].split('-')[0].split('_')[0]
     helpers_to_use = query_to_helpers(query_ligand, protein_name, helper_list_root, selection_criterion)
     if num_helpers is not None and len(helpers_to_use) > num_helpers:
-        heleprs_to_use = downsample_helpers(helpers_to_use, num_helpers)
+        helpers_to_use = downsample_helpers(helpers_to_use, num_helpers, **kwargs)
     helper_ligands = [ligand for ligand in helper_ligands if ligand.split('/')[-1].split('-')[0] in helpers_to_use] + [query_fname]
     helper_ligands += extra_helper_ligands
     print(helper_ligands)
@@ -156,7 +156,8 @@ if __name__ == "__main__":
         no_mcss = False
     prot_features = run_featurization(args.feat_root,args.helper_ligands,args.query_ligand,args.protein_name,
             args.stats_root,native_loc=args.native, selection_criterion=args.selection_criterion,processes=args.processes,
-            check_center_ligs=args.check_center_ligs, skip_featurization=args.skip_featurization, extra_helper_ligands=args.extra_helper_ligands)
+            check_center_ligs=args.check_center_ligs, skip_featurization=args.skip_featurization, extra_helper_ligands=args.extra_helper_ligands,
+            num_helpers=args.num_helpers, random_seed=args.seed)
     if args.pose_csv is None:
         args.pose_csv = f"{args.protein_name}_{args.query_ligand.split('/')[-1].split('-')[0].split('_')[0]}_{args.selection_criterion}.csv"
     if args.merged_stats_root is None:
