@@ -147,7 +147,7 @@ class PosePrediction:
 
             print(poses)
             print('run {}, score {}'.format(i, score))
-        return best_poses
+        return best_poses, best_score
 
     def optimize_poses(self, poses, max_iterations):
         """

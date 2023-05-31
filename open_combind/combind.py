@@ -331,7 +331,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
     stats = read_stats(stats_root, features)
     
     ps = PosePrediction(ligands, features, data, stats, alpha)
-    best_poses = ps.max_posterior(max_iterations, restart)
+    best_poses, best_score = ps.max_posterior(max_iterations, restart)
 
     with open(out, 'w') as fp:
         fp.write('ID,POSE,COMBIND_RMSD,GNINA_RMSD,BEST_RMSD\n')
