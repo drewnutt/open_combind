@@ -41,7 +41,8 @@ def downsample_helpers(helpers_to_use, num_helpers, random_seed=42):
     Selects a random subset of `num_helpers` items from the list of `helpers_to_use`
     """
     random.seed(random_seed)
-    return random.sample(helpers_to_use, num_helpers)
+    random.shuffle(helpers_to_use)
+    return helpers_to_use[:num_helpers]
 
 
 def run_featurization(root, helper_ligands, query_fname, protein_name, helper_list_root,
