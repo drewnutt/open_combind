@@ -180,8 +180,8 @@ def get_selection_texts(liginfo_path, prot):
     ----------
     liginfo_path : str
         Path to the ligand info file
-    prot : :class:`~prody.atomic.atomgroup.AtomGroup`
-        Protein structure
+    prot : str
+        Name of the protein object in PyMOL
 
     Returns
     -------
@@ -198,7 +198,7 @@ def get_selection_texts(liginfo_path, prot):
         selection_text = liginfo[1].strip()
     # lig_chain = prot.select(selection_text).getChids()[0]
     # if selection_text == f'chain {lig_chain}':
-    unique_chains, counts = np.unique(prot.select(f'not {selection_text} and protein within 5 of {selection_text}').getChids(), return_counts=True)
-    lig_chain = unique_chains[counts.argmax()]
+    select('prot_chain',f'not {selection_text} and {prot} within 5 of {selection_text}')
+    lig_chain = sorted(get_chains('prot_chain'))[0]
 
     return selection_text, lig_chain
