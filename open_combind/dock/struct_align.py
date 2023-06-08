@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from prody import parsePDB, writePDB, matchChains, calcTransformation
+from pymol.cmd import load, select, align, save, delete, get_object_matrix, reinitialize, get_chains
 from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
 
@@ -99,8 +99,8 @@ def struct_align(template, structs, dist=15.0, retry=True,
 
     Returns
     -------
-    :class:`~prody.measure.transform.Transformation`
-        Transformation object of the last alignment performed
+    :class:`~numpy.ndarray`
+        Transformation matrix of the last alignment performed
 
 
     .. include :: <isotech.txt>
@@ -111,12 +111,15 @@ def struct_align(template, structs, dist=15.0, retry=True,
         print('template not processed', template_path)
         return
 
-    template_st = parsePDB(template_path)
-    template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
-    selection_text, templ_lig_chain = get_selection_texts(template_liginfo_path, template_st)
-    templ_prot_chain = template_st.select(f'not {selection_text} and (chain {templ_lig_chain} within {dist} of {selection_text}) and heavy')
-    transform_matrix = 0
+    if retry:
+        reinitialize()
+        load(f'{template_path}', 'target')
+        template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
+        selection_text, templ_lig_chain = get_selection_texts(template_liginfo_path, 'target')
+        select('target_to_align', f'(target and not hydrogens and not hetatm) within {dist} of (( {selection_text} ) and target )')
+
     for struct in structs:
+        transform_matrix = np.identity(4)
         query_path = filtered_protein.format(pdbid=struct)
         if align_successful(align_dir, struct):
             continue
@@ -133,37 +136,22 @@ def struct_align(template, structs, dist=15.0, retry=True,
         os.system('cp {} {}/{}'.format(template_path, _workdir, _template_fname))
         os.system('cp {} {}/{}'.format(query_path, _workdir, _query_fname))
 
-        query = parsePDB(f'{_workdir}/{_query_fname}')
+        load(f'{_workdir}/{_query_fname}', 'query')
         query_liginfo_path = query_path.replace(f'processed/{struct}', 'raw').replace('_complex.pdb', '.info')
 
-        selection_text, query_lig_chain = get_selection_texts(query_liginfo_path, query)
-        # query_to_align = query.select(f'calpha within {dist} of {selection_text}')
-        # print(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
-        query_prot_chain = query.select(f'not {selection_text} and (chain {query_lig_chain} within {dist} of {selection_text}) and heavy')
-        try:
-            # query_match, template_match, _, _ = matchChains(query_to_align, template_to_align, pwalign=True,
-            #                                                 seqid=1, overlap=1)[0]
-            # query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
-            #                                                 seqid=1, overlap=1)[0]
-            matches = matchChains(query_prot_chain, templ_prot_chain, pwalign=True,
-                                                            seqid=1, overlap=1)
-            # print([[match[2],match[3]] for match in matches])
-            query_match, template_match, _, _ = matches[0]
-        except IndexError as ie:
-            print(str(ie))
-            query_match, template_match, _, _ = matchChains(query_prot_chain, templ_prot_chain, pwalign=False,
-                                                            seqid=1, overlap=1)[0]
-        # if len(query_match) < 0.5 * min(len(query_prot_chain), len(templ_prot_chain)):
-        #     # print(len(query_match))
-        #     print(f"WARNING: Bad quality chain alignment of {struct}, "
-        #             "trying with only protein atoms on ligand chain")
-            # print(len(query_match))
-        transform = calcTransformation(query_match, template_match)
-        query_aligned = transform.apply(query)
+        selection_text, query_lig_chain = get_selection_texts(query_liginfo_path, 'query')
+        select('query_to_align', f'(query and not hydrogens and not hetatm) within {dist} of (( {selection_text} ) and query )')
 
-        transform_matrix = transform.getMatrix()
+        rms_aft, _,_, rms_bef, _, _, _ = align('query_to_align','target_to_align')
 
-        writePDB(aligned_prot.format(pdbid=struct), query_aligned)
+        transform_matrix = get_object_matrix('query')
+        assert transform_matrix is not None
+        transform_matrix = np.array(transform_matrix).reshape(4,4)
+        if rms_bef == 0 or rms_aft < rms_bef:
+            save(aligned_prot.format(pdbid=struct),'query')
+
+        delete('query')
+        delete('query_to_align')
 
         if retry and not align_successful(align_dir, struct):
             print('Alignment failed. Trying again with a larger radius.')
@@ -171,9 +159,10 @@ def struct_align(template, structs, dist=15.0, retry=True,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir)
         
-        aligned_lig = align_separate_ligand(struct, transform_matrix,
-                downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
-                aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf")
+        if retry:
+            aligned_lig = align_separate_ligand(struct, transform_matrix,
+                    downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
+                    aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf")
         if aligned_lig:
             print("Successfully aligned separate ligand")
         else:
@@ -191,8 +180,8 @@ def get_selection_texts(liginfo_path, prot):
     ----------
     liginfo_path : str
         Path to the ligand info file
-    prot : :class:`~prody.atomic.atomgroup.AtomGroup`
-        Protein structure
+    prot : str
+        Name of the protein object in PyMOL
 
     Returns
     -------
@@ -209,7 +198,7 @@ def get_selection_texts(liginfo_path, prot):
         selection_text = liginfo[1].strip()
     # lig_chain = prot.select(selection_text).getChids()[0]
     # if selection_text == f'chain {lig_chain}':
-    unique_chains, counts = np.unique(prot.select(f'not {selection_text} and protein within 5 of {selection_text}').getChids(), return_counts=True)
-    lig_chain = unique_chains[counts.argmax()]
+    select('prot_chain',f'not {selection_text} and {prot} within 5 of {selection_text}')
+    lig_chain = sorted(get_chains('prot_chain'))[0]
 
     return selection_text, lig_chain

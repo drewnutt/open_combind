@@ -14,12 +14,19 @@ Pre-requisites
 --------------
 Open-Combind requires the following software to be installed:
 - PDBFixer
+- PyMol
 
 PDBFixer can be installed using conda/mamba:
 
 .. code-block:: bash
 
         conda install -c conda-forge pdbfixer
+
+PyMol can be installed using conda/mamba:
+
+.. code-block:: bash
+
+        conda install -c conda-forge pymol-open-source
 
 
 Installation from source
