@@ -191,6 +191,7 @@ should be aggregrated. (Most query ligands have 20 associated helper ligands.)
     1. Install [Gnina](https://github.com/gnina/gnina). It's best to install GNINA from source, but you can use the pre-compiled binary for docking if you do not care to have GPU acceleration.
     2. Install [OpenMM](https://github.com/openmm/openmm). 
     3. Install [PDBFixer](https://github.com/openmm/pdbfixer)
+    4. Install [PyMol](https:/github.com/schrodinger/pymol-open-source). Easiest with conda/mamba: `conda install -c conda-forge pymol-open-source`
     3. Clone this repository
     4. `cd` into the cloned repository and run `pip install .`. This will install any remaining dependencies.
 

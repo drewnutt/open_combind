@@ -43,41 +43,12 @@ jobs:
         df -h
         ulimit -a
 
-    # - name: Install Dependencies (Linux)
-    #   if: runner.os == 'Linux'
-    #   run: |
-    #     sudo apt -yq install openbabel
-
-    # - name: Get OpenBabel (From Tarball)
-    #   if: runner.os == 'Linux'
-    #   shell: bash
-    #   run: |
-    #     wget https://github.com/openbabel/openbabel/releases/download/openbabel-3-1-1/openbabel-3.1.1-source.tar.bz2 && tar xjf openbabel-3.1.1-source.tar.bz2 -C "${{ runner.workspace }}"
-    #     mkdir "${{ runner.workspace }}/build" && cd "${{ runner.workspace }}/build"
-    #     cmake "${{ runner.workspace }}/openbabel-3.1.1"
-    #     cd "${{ runner.workspace }}/build" && make -j4
-    #     cd "${{ runner.workspace }}/build" && sudo make install
-
-    # - name: Setup conda
-    #   uses: s-weigand/setup-conda@v1
-    #   with:
-    #     update-conda: true
-    #     python-version: ${{ matrix.config.python-version }}
-    #     conda-channels: anaconda, conda-forge
-    # - name: Set up Python ${{ matrix.python-version }}
-    #   uses: actions/setup-python@v2
-    #   with:
-    #     python-version: ${{ matrix.python-version }}
     - name: Install OpenMM 
       uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
         activate-environment: opencombind-dev
         environment-file: devtools/conda-envs/test_env.yaml
-
-    # - name: Install PDBFixer
-    #   run: |
-    #      pip install git+https://github.com/openmm/pdbfixer.git
 
     - name: Testing Dependencies
       shell: bash -l {0}
