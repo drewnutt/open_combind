@@ -290,7 +290,7 @@ def prep_dock_and_predict(smiles,features,ligand_names,ligand_smiles,processes):
         in_lig = next(ForwardSDMolSupplier(lig_file))
         out_ligname = f"ligands/{lig_file.split('/')[-1]}"
         oc.dock.ligprep.write3DConf(in_lig, out_ligname, num_confs=100)
-    oc.dock_ligands(None, glob('ligands/*.sdf'), None, root='docked', screen=False, slurm=False, now=True)
+    oc.dock_ligands(glob('ligands/*.sdf'), template=None, dock_file="", root='docked', screen=False, slurm=False, now=True)
     no_mcss = not ('mcss' in features)
     use_shape = 'shape' in features
     oc.featurize('features', glob('docked/*.sdf.gz'), no_mcss=no_mcss, use_shape=use_shape,
