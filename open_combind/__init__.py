@@ -3,7 +3,7 @@
 # import subprocess
 # subprocess.run(['source','setup.sh'])
 # Add imports here
-from .combind import structprep, ligprep, dock_ligands, featurize, pose_prediction, scores_to_csv
+from .open_combind import structprep, ligprep, dock_ligands, featurize, pose_prediction, scores_to_csv
 from .features.features import Features
 # from .dock.struct_process import struct_process
 # from .dock.struct_align import struct_align
