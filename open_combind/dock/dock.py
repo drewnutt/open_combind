@@ -183,7 +183,7 @@ def run_gnina_docking(gnina_dock_file):
                 try:
                     subprocess.run(run_cmds, check=True, stderr=subprocess.STDOUT, stdout=log)
                 except FileNotFoundError as fnfe:
-                    if "No such file or directory: 'gnina': 'gnina'" in str(fnfe):
+                    if "No such file or directory: 'gnina'" in str(fnfe):
                         run_cmds[0] = "./gnina"
                         run_exec = True
                     else:

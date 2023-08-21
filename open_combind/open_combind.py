@@ -170,7 +170,7 @@ def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
         # ligsplit(smiles, root, multiplex=multiplex, processes=processes,
         #         num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
 
-def dock_ligands(ligands, template=None, dock_file="", root='docking', screen=False, slurm=False, now=False):
+def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=False, slurm=False, now=False):
     """
     Generate GNINA docking commands to dock `ligands` to `template`.
 
