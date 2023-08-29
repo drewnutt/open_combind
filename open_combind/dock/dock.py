@@ -43,7 +43,7 @@ def check_dock_line(infile):
 
     return infile
 
-def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=False):
+def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=False, processes=1):
     """
     Generate GNINA docking file that utilizes the receptor and autobox as defined in `template` to dock against each of the ligands in `ligands` using the format string `infile`
 
@@ -104,7 +104,7 @@ def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=
             fp.write(dock_line.format(lig=lig, out=out, exh=exh, log=gnina_log) + '\n')
 
     if now:
-        run_gnina_docking(gnina_in)
+        run_gnina_docking(gnina_in, processes=processes)
     elif slurm:
         receptor = dock_template.split('-r')[-1].strip().split(' ')[0]
         abox = dock_template.split('--autobox_ligand')[-1].strip().split(' ')[0]
@@ -148,7 +148,7 @@ def setup_slurm(gnina_in, ligands, receptor, abox):
 
     os.remove(os.path.abspath(custom_atom_typing))
 
-def run_gnina_docking(gnina_dock_file):
+def run_gnina_docking(gnina_dock_file, processes=1):
     """
     Iterates over the lines in `gnina_dock_file` and runs each line in serial.
 
@@ -175,6 +175,8 @@ def run_gnina_docking(gnina_dock_file):
     with open(gnina_dock_file) as gnina_cmds:
         for gnina_cmd in tqdm(gnina_cmds, total=get_num_lines(gnina_dock_file)):
             gnina_run, logfile = gnina_cmd.split('>')
+            if ' --cpu ' not in gnina_run:
+                gnina_run += ' --cpu {}'.format(processes)
             logfile = logfile.strip()
             with open(logfile, 'w') as log:
                 run_cmds = gnina_run.strip().split()
