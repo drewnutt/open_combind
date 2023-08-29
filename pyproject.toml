@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "versioningit~=2.0"]
+requires = ["setuptools>=62.0", "versioningit~=2.0"]
 build-backend = "setuptools.build_meta"
 
 # Self-descriptive entries which should always be present
@@ -42,6 +42,9 @@ test = [
   "pytest-runner"
 ]
 
+[project.scripts]
+open_combind = "open_combind.cli:cli"
+
 [tool.setuptools]
 # This subkey is a beta stage development and keys may change in the future, see https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html for more details
 #
@@ -73,9 +76,6 @@ open_combind = [
     "stats_data/default/*.de",
     "dock/crossdock_atom_types.txt",
 ]
-
-[project.scripts]
-open_combind = "open_combind:cli:cli"
 
 [tool.versioningit]
 default-version = "1+unknown"
