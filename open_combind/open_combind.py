@@ -15,7 +15,6 @@ from prody import confProDy, LOGGER
 ###############################################################################
 
 # Defaults
-STATS_ROOT = 'stats_data/default'
 SHAPE_VERSION = 'pharm_max'
 IFP_VERSION = 'rd1'
 
@@ -289,7 +288,7 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
 ################################################################################
 
 def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbond', 'saltbridge', 'contact'],
-                    alpha=1, stats_root=STATS_ROOT, restart=500, max_iterations=1000):
+                    alpha=1, stats_root=None, restart=500, max_iterations=1000):
     """
     Run ComBind pose prediction and generate a CSV, `out` with the selected pose numbers.
 
@@ -315,7 +314,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
     from open_combind.score.pose_prediction import PosePrediction
     from open_combind.score.statistics import read_stats
     from open_combind.features.features import Features
-    import pkg_resources
+    from importlib_resources import files
 
 
     protein = Features(root)
@@ -327,7 +326,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
 
     data = protein.get_view(ligands, features)
     if stats_root is None:
-        stats_root = pkg_resources.resource_filename(__name__, "stats_data/default/")
+        stats_root = files("open_combind").joinpath("stats_data/default/")
     stats = read_stats(stats_root, features)
     
     ps = PosePrediction(ligands, features, data, stats, alpha)

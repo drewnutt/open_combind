@@ -12,7 +12,6 @@ import open_combind as oc
 ###############################################################################
 
 # Defaults
-STATS_ROOT = 'stats_data/default'
 SHAPE_VERSION = 'pharm_max'
 IFP_VERSION = 'rd1'
 
@@ -175,7 +174,7 @@ def featurize(root, poseviewers, native, ifp_version,
 @click.argument('ligands', nargs=-1)
 @click.option('--features', default='mcss,hbond,saltbridge,contact')
 @click.option('--alpha', default=1.0)
-@click.option('--stats-root', default=STATS_ROOT)
+@click.option('--stats-root', default=None)
 @click.option('--restart', default=500)
 @click.option('--max-iterations', default=1000)
 def pose_prediction(root, out, ligands,
