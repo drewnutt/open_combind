@@ -109,7 +109,7 @@ def correct_sort_structs(list_of_pdbs):
     
     
 def test_struct_sort(list_of_pdbs, correct_sort_structs):
-    struct_sort(list_of_pdbs, opt_path = "open_combind/tests/structures/aligned/{pdbid}/{pdbid}_aligned.pdb")
+    struct_sort(list_of_pdbs, opt_path = "open_combind/tests/structures/aligned/{pdbid}/{pdbid}_aligned.pdb", align_dir="open_combind/tests/structures/aligned", raw_dir="open_combind/tests/structures/raw", protein_dir="open_combind/tests/structures/proteins",ligand_dir="open_combind/tests/structures/ligands")
     prot_paths, lig_paths = correct_sort_structs
 
     prot_test = "open_combind/tests/structures/proteins/{pdbid}_prot.pdb"

@@ -24,7 +24,10 @@ LigprepArgs = namedtuple('LigprepArgs', ['num_out_confs', 'num_confs', 'confgen'
 def main():
     pass
 
-def structprep(templ_struct='', struct=''):
+def structprep(templ_struct='', struct='', raw_dir='structures/raw',
+        align_dir='structures/aligned', processed_dir='structures/processed',
+        template_dir='structures/dir', ligand_dir='structures/ligands',
+        protein_dir='structures/proteins' ):
     """
     Prepare structures and make a docking template file.
 
@@ -34,29 +37,40 @@ def structprep(templ_struct='', struct=''):
         PDB ID to use as the template for docking. (defaults to PDB ID with alphabetically lowest name or `struct` if set)
     struct : str, optional
         PDB ID to use as the template for alignment, and docking if `templ_struct` not set. (Defaults to the structure with alphabetically lowest name)
+    raw_dir : str, optional, default='structures/raw'
+        Directory containing raw structures
+    align_dir : str, optional, default='structures/aligned'
+        Directory containing aligned structures
+    processed_dir : str, optional, default='structures/processed'
+        Directory containing processed structures
+    template_dir : str, optional, default='structures/template'
+        Directory containing docking templates
+    ligand_dir : str, optional, default='structures/ligands'
+        Directory containing ligands
+    protein_dir : str, optional, default='structures/proteins'
+        Directory containing proteins
 
     Notes
     -----
     The following directory structure is required::
 
-        structures/
-            raw/
+            <raw_dir>/
                 structure_name.pdb
                 structure_name.info (first line is Resname of ligand)
                 ...
-            processed/
+            <processed_dir>/
                 structure_name/structure_name_prot.pdb
                 ...
-            aligned/
+            <align_dir>/
                 structure_name/structure_name_aligned.pdb
                 ...
-            proteins/
+            <protein_dir>/
                 structure_name_prot.pdb
                 ...
-            ligands/
+            <ligand_dir>/
                 structure_name_lig.pdb
                 ...
-            template/
+            <template_dir>/
                 structure_name/structure_name
                 ...
 
@@ -72,9 +86,13 @@ def structprep(templ_struct='', struct=''):
     from open_combind.dock.struct_process import struct_process
     from open_combind.dock.grid import make_grid
 
-    assert os.path.exists('structures'), 'No structures directory.'
+    #iterate over the directories and check that the directories exist and make them if not
+    for directory in [align_dir, processed_dir, template_dir, ligand_dir, protein_dir]:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-    structs = sorted(glob('structures/raw/*.pdb*'))
+    structs = sorted(glob(f'{raw_dir}/*.pdb*'))
+    assert len(structs) > 0, f'No structures found in {raw_dir}'
     structs = [struct.split('/')[-1].split('.pdb')[0] for struct in structs]
     
     if not struct:
@@ -86,10 +104,12 @@ def structprep(templ_struct='', struct=''):
     print(f'Processing {structs}, aligning to {struct}, and creating a docking'
           f' templ for {templ_struct}')
 
-    struct_process(structs)
-    struct_align(struct, structs)
-    struct_sort(structs)
-    make_grid(templ_struct)
+    struct_process(structs, raw_dir=raw_dir, processed_dir=processed_dir)
+    struct_align(struct, structs, align_dir=align_dir,
+            process_dir=processed_dir, raw_dir=raw_dir)
+    struct_sort(structs, align_dir=align_dir, raw_dir=raw_dir,
+            protein_dir=protein_dir, ligand_dir=ligand_dir)
+    make_grid(templ_struct, protein_dir=protein_dir, ligand_dir=ligand_dir, template_dir=template_dir)
 
 # Not super sure what is absolutely necessary in this step, especially if starting from sdf
 # instead of starting from smiles
