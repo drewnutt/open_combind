@@ -29,8 +29,9 @@ def align_successful(out_dir, struct):
         return True
 
 def align_separate_ligand(struct, trans_matrix,
-        downloaded_ligand="structures/processed/{pdbid}/{pdbid}_lig.sdf",
-        aligned_lig = "structures/aligned/{pdbid}/{pdbid}_lig.sdf"):
+        downloaded_ligand="{process_dir}/{pdbid}/{pdbid}_lig.sdf",
+        aligned_lig = "{align_dir}/{pdbid}/{pdbid}_lig.sdf",
+        process_dir="structures/processed",align_dir="structures/aligned"):
     """
     Transform the the ligand using the provided transformation matrix and write it to a new file.
 
@@ -40,17 +41,21 @@ def align_separate_ligand(struct, trans_matrix,
 		PDB ID of the original complex
     trans_matrix : :class:`~numpy.ndarray`
         Transformation matrix describing the transformation of the ligand
-	downloaded_ligand : str, default="structures/processed/{pdbid}/{pdbid}_lig.sdf"
+	downloaded_ligand : str, default="{process_dir}/{pdbid}/{pdbid}_lig.sdf"
 		Format string for the path to the ligand SDF file given the PDB ID as `pdbid`
-    aligned_lig: str, default="structures/aligned/{pdbid}/{pdbid}_lig.sdf"
+    aligned_lig: str, default="{align_dir}/{pdbid}/{pdbid}_lig.sdf"
         Format string for the path to the transformed ligand SDF file for output
+    process_dir : str, default="structures/processed"
+        Path to the processed protein directory
+    align_dir : str, default="structures/aligned"
+        Path to the aligned protein directory, all parent directories will be created if they do not exist
 
     Returns
     -------
     bool
         If the ligand file existed and the transformation was performed
     """
-    ligand_path = downloaded_ligand.format(pdbid=struct)
+    ligand_path = downloaded_ligand.format(pdbid=struct, process_dir=process_dir)
     # print(ligand_path)
     if not os.path.isfile(ligand_path):
         return False
@@ -59,17 +64,18 @@ def align_separate_ligand(struct, trans_matrix,
     TransformConformer(lig_mol.GetConformer(), trans_matrix)
 
     # print("writing lig")
-    writer = SDWriter(aligned_lig.format(pdbid=struct))
+    writer = SDWriter(aligned_lig.format(pdbid=struct, align_dir=align_dir))
     writer.write(lig_mol)
     writer.close()
     return True
     
 
 def struct_align(template, structs, dist=15.0, retry=True,
-                 filtered_protein='structures/processed/{pdbid}/{pdbid}_complex.pdb',
-                 ligand_info='structures/raw/{pdbid}.info',
-                 aligned_prot='structures/aligned/{pdbid}/{pdbid}_aligned.pdb',
-                 align_dir='structures/aligned'):
+                 filtered_protein='{process_dir}/{pdbid}/{pdbid}_complex.pdb',
+                 ligand_info='{raw_dir}/{pdbid}.info',
+                 aligned_prot='{align_dir}/{pdbid}/{pdbid}_aligned.pdb',
+                 raw_dir = 'structures/raw',
+                 align_dir='structures/aligned', process_dir='structures/processed'):
     """
     Align protein-ligand complexes based on the atoms less than `dist` |angst| from the ligand heavy atoms.
     
@@ -88,14 +94,18 @@ def struct_align(template, structs, dist=15.0, retry=True,
         Distance, in |angst|, from the ligand for which to select the alignment atoms of the protein
     retry : bool,default=True
         If alignment is unsuccessful, try again with a `dist` of 25 |angst|
-    filtered_protein : str,default='structures/processed/{pdbid}/{pdbid}_complex.pdb'
+    filtered_protein : str,default='{process_dir}/{pdbid}/{pdbid}_complex.pdb'
         Format string for the path to the protein-ligand complexes given the PDB ID as `pdbid`
-    ligand_info : str, default='structures/raw/{pdbid}.info'
+    ligand_info : str, default='{raw_dir}/{pdbid}.info'
         Format string for the path to the ligand `.info` files given the PDB ID as `pdbid`
-    aligned_prot : str, default='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'
+    aligned_prot : str, default='{align_dir}/{pdbid}/{pdbid}_aligned.pdb'
         Format string for the path to the output, aligned protein-ligand complex given the PDB ID as `pdbid`
+    raw_dir : str, default='structures/raw'
+        Path to the raw protein directory
     align_dir : str, default='structures/aligned'
         Path to the aligned protein directory, all parent directories will be created if they do not exist
+    process_dir : str, default='structures/processed'
+        Path to the processed protein directory
 
     Returns
     -------
@@ -106,7 +116,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
     .. include :: <isotech.txt>
     """
 
-    template_path = filtered_protein.format(pdbid=template)
+    template_path = filtered_protein.format(pdbid=template, process_dir=process_dir)
     if not os.path.isfile(template_path):
         print('template not processed', template_path)
         return
@@ -114,13 +124,13 @@ def struct_align(template, structs, dist=15.0, retry=True,
     if retry:
         reinitialize()
         load(f'{template_path}', 'target')
-        template_liginfo_path = template_path.replace(f'processed/{template}', 'raw').replace('_complex.pdb', '.info')
+        template_liginfo_path = template_path.replace(f'{process_dir}/{template}', f'{raw_dir}').replace('_complex.pdb', '.info')
         selection_text, templ_lig_chain = get_selection_texts(template_liginfo_path, 'target')
         select('target_to_align', f'(target and not hydrogens and not hetatm) within {dist} of (( {selection_text} ) and target )')
 
     for struct in structs:
         transform_matrix = np.identity(4)
-        query_path = filtered_protein.format(pdbid=struct)
+        query_path = filtered_protein.format(pdbid=struct, process_dir=process_dir)
         if align_successful(align_dir, struct):
             continue
 
@@ -137,7 +147,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
         os.system('cp {} {}/{}'.format(query_path, _workdir, _query_fname))
 
         load(f'{_workdir}/{_query_fname}', 'query')
-        query_liginfo_path = query_path.replace(f'processed/{struct}', 'raw').replace('_complex.pdb', '.info')
+        query_liginfo_path = query_path.replace(f'{process_dir}/{struct}', f'{raw_dir}').replace('_complex.pdb', '.info')
 
         selection_text, query_lig_chain = get_selection_texts(query_liginfo_path, 'query')
         select('query_to_align', f'(query and not hydrogens and not hetatm) within {dist} of (( {selection_text} ) and query )')
@@ -148,7 +158,7 @@ def struct_align(template, structs, dist=15.0, retry=True,
         assert transform_matrix is not None
         transform_matrix = np.array(transform_matrix).reshape(4,4)
         if rms_bef == 0 or rms_aft < rms_bef:
-            save(aligned_prot.format(pdbid=struct),'query')
+            save(aligned_prot.format(pdbid=struct, align_dir=align_dir),'query')
 
         delete('query')
         delete('query_to_align')
@@ -157,12 +167,13 @@ def struct_align(template, structs, dist=15.0, retry=True,
             print('Alignment failed. Trying again with a larger radius.')
             transform_matrix = struct_align(template, [struct], dist=15.0, retry=False,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
-                     align_dir=align_dir)
+                     align_dir=align_dir, process_dir=process_dir, raw_dir=raw_dir)
         
         if retry:
             aligned_lig = align_separate_ligand(struct, transform_matrix,
                     downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
-                    aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf")
+                    aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf", process_dir=process_dir,
+                    align_dir=align_dir)
         if aligned_lig:
             print("Successfully aligned separate ligand")
         else:

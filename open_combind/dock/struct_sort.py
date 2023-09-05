@@ -7,7 +7,8 @@ from pdbfixer import PDBFixer
 from openmm.app import PDBFile
 
 def split_complex(complex_loc, pdb_id, structname, ligand_select='hetatm',
-    structures_loc = "structures/"):
+                align_dir="structures/aligned",
+                protein_dir = "structures/proteins", ligand_dir="structures/ligands"):
     """
     Splits the complex into the object selected by `ligand_select`, the ligand, and everything else, the protein.
 
@@ -21,16 +22,19 @@ def split_complex(complex_loc, pdb_id, structname, ligand_select='hetatm',
         Name of the protein-ligand complex, used for naming
     ligand_select : str, default='hetatm'
         `ProDy atom selection <http://prody.csb.pitt.edu/manual/reference/atomic/select.html#selections>`_ that defines the ligand atoms
-    structures_loc : str, default="structures/"
-        Base directory, containing directories ``proteins/`` and ``ligands/``, to place the separated protein and ligands, respectively
-
+    align_dir : str, default="structures/aligned"
+        Directory containing the aligned protein-ligand complexes
+    protein_dir : str, default="structures/proteins"
+        Directory to save the protein PDB file
+    ligand_dir : str, default="structures/ligands"
+        Directory to save the ligand SDF file
     """
 
     st = parsePDB(complex_loc)
-    lig_path = '{structures_loc}ligands/{pdb_id}_lig.sdf'.format(structures_loc=structures_loc, pdb_id=pdb_id)
-    aligned_lig_path = '{structures_loc}aligned/{pdb_id}/{pdb_id}_lig.sdf'.format(structures_loc=structures_loc, pdb_id=pdb_id)
-    prot_path = '{structures_loc}proteins/{pdb_id}_prot.pdb'.format(structures_loc=structures_loc, pdb_id=pdb_id)
-    lig_pdb_path = '{structures_loc}ligands/{pdb_id}_lig.pdb'.format(structures_loc=structures_loc, pdb_id=pdb_id)
+    lig_path = '{ligand_dir}/{pdb_id}_lig.sdf'.format(ligand_dir=ligand_dir, pdb_id=pdb_id)
+    aligned_lig_path = '{align_dir}/{pdb_id}/{pdb_id}_lig.sdf'.format(align_dir=align_dir, pdb_id=pdb_id)
+    prot_path = '{protein_dir}/{pdb_id}_prot.pdb'.format(protein_dir=protein_dir, pdb_id=pdb_id)
+    lig_pdb_path = '{ligand_dir}/{pdb_id}_lig.pdb'.format(ligand_dir=ligand_dir, pdb_id=pdb_id)
 
     if not os.path.exists(lig_path):
         if not os.path.exists(aligned_lig_path):
@@ -55,7 +59,10 @@ def split_complex(complex_loc, pdb_id, structname, ligand_select='hetatm',
         writePDB(prot_path,prot_st)
         protonate_protein(prot_path)
 
-def struct_sort(structs, opt_path='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'):
+def struct_sort(structs, align_dir='structures/aligned',
+                raw_dir='structures/raw',
+                protein_dir='structures/proteins',ligand_dir='structures/ligands',
+                opt_path='{align_dir}/{pdbid}/{pdbid}_aligned.pdb'):
     """
     Looks for each PDB ID in `structs` at the format string path given by `opt_path` and then splits that file based
     on the ligand information provided in::
@@ -66,24 +73,32 @@ def struct_sort(structs, opt_path='structures/aligned/{pdbid}/{pdbid}_aligned.pd
     ----------
     structs : iterable of str
         PDB IDs of all the protein-ligand complexes that should be split
-    opt_path : str, default='structures/aligned/{pdbid}/{pdbid}_aligned.pdb'
+    align_dir : str, default='structures/aligned'
+        Base directory containing the aligned protein-ligand complexes
+    raw_dir : str, default='structures/raw'
+        Base directory containing the raw protein-ligand complexes
+    protein_dir : str, default='structures/proteins'
+        Base directory to place the separated proteins
+    ligand_dir : str, default='structures/ligands'
+        Base directory to place the separated ligands
+    opt_path : str, default='{align_dir}/{pdbid}/{pdbid}_aligned.pdb'
         Format string of the protein-ligand complex paths, where ``pdbid`` will be replaced with each PDB ID.
     """
-    structures_loc = opt_path.replace("aligned/{pdbid}/{pdbid}_aligned.pdb", "")
-    os.system(f'mkdir -p {structures_loc+"proteins"} {structures_loc+"ligands"}')
+    # structures_loc = opt_path.replace("aligned/{pdbid}/{pdbid}_aligned.pdb", "")
+    os.system(f'mkdir -p {protein_dir} {ligand_dir}')
     for struct in structs:
-        opt_complex = opt_path.format(pdbid=struct)
+        opt_complex = opt_path.format(pdbid=struct, align_dir=align_dir)
 
         if os.path.exists(opt_complex):
             ligand_select = 'hetatm'  # 'hetero' == 'not (protein or nucleic)' so breaks if ATP or similar ligand
             # therefore switched to 'hetatm'
-            liginfo_path = opt_complex.replace(f'aligned/{struct}', 'raw').replace('_aligned.pdb', '.info')
+            liginfo_path = opt_complex.replace(f'{align_dir}/{struct}', f'{raw_dir}').replace('_aligned.pdb', '.info')
             liginfo = open(liginfo_path, 'r').readlines()
             if len(liginfo[0].strip('\n')) > 4:
                 ligand_select = liginfo[1]
             split_complex(opt_complex, struct, opt_complex,
-                    ligand_select=ligand_select,
-                    structures_loc = structures_loc)
+                    ligand_select=ligand_select, align_dir=align_dir,
+                    protein_dir=protein_dir, ligand_dir=ligand_dir)
 
 def protonate_protein(path_to_protein, pH=7.0):
     """
