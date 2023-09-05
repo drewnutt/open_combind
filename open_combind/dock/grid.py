@@ -6,9 +6,12 @@ from rdkit.Chem.rdmolfiles import MolFromMolFile
 CMD = "gnina -r {prot} --autobox_ligand {abox_lig} " 
 
 def make_grid(pdb,
-              PROTFILE='structures/proteins/{pdb}_prot.pdb',
-              LIGFILE='structures/ligands/{pdb}_lig.sdf',
-              DOCKTEMP='structures/template/{pdb}.template',
+              PROTFILE='{protein_dir}/{pdb}_prot.pdb',
+              LIGFILE='{ligand_dir}/{pdb}_lig.sdf',
+              DOCKTEMP='{template_dir}/{pdb}.template',
+              protein_dir='structures/proteins',
+              ligand_dir='structures/ligands',
+              template_dir='structures/templates',
               CUSTOMATOMS=None,
               box_add=8):
     """
@@ -18,12 +21,18 @@ def make_grid(pdb,
     ----------
     pdb : str
         The PDB code of the protein to make a template for.
-    PROTFILE : str
+    PROTFILE : str, default='{protein_dir}/{pdb}_prot.pdb'
         The path to the protein file.
-    LIGFILE : str
+    LIGFILE : str, default='{ligand_dir}/{pdb}_lig.sdf'
         The path to the ligand file.
-    DOCKTEMP : str
+    DOCKTEMP : str, default='{template_dir}/{pdb}.template'
         The path to the output template file.
+    protein_dir : str, default='structures/proteins'
+        The directory containing the protein files.
+    ligand_dir : str, default='structures/ligands'
+        The directory containing the ligand files.
+    template_dir : str, default='structures/templates'
+        The directory containing the template files.
     CUSTOMATOMS : str
         The path to a custom atom types file. If `None` and the template requires it, the default will be used.
     box_add : float
@@ -31,9 +40,9 @@ def make_grid(pdb,
     """
 
 
-    ligfile = os.path.abspath(LIGFILE.format(pdb=pdb))
-    protfile = os.path.abspath(PROTFILE.format(pdb=pdb))
-    docktemp = os.path.abspath(DOCKTEMP.format(pdb=pdb))
+    ligfile = os.path.abspath(LIGFILE.format(pdb=pdb, ligand_dir=ligand_dir))
+    protfile = os.path.abspath(PROTFILE.format(pdb=pdb, protein_dir=protein_dir))
+    docktemp = os.path.abspath(DOCKTEMP.format(pdb=pdb, template_dir=template_dir))
     atom_file = ''
     if '{atom_file}' in CMD:
         if CUSTOMATOMS is None:

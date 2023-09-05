@@ -73,13 +73,15 @@ def load_complex(prot_in, lig_id, other_lig=None):
 
 
 def struct_process(structs,
-                   protein_in='structures/raw/{pdbid}.pdb',
-                   ligand_info='structures/raw/{pdbid}.info',
-                   filtered_protein='structures/processed/{pdbid}/{pdbid}_prot.pdb',
-                   filtered_complex='structures/processed/{pdbid}/{pdbid}_complex.pdb',
-                   filtered_ligand='structures/processed/{pdbid}/{pdbid}_lig.sdf',
-                   filtered_hetero='structures/processed/{pdbid}/{pdbid}_het.pdb',
-                   filtered_water='structures/processed/{pdbid}/{pdbid}_wat.pdb'):
+                   raw_dir='structures/raw',
+                   process_dir='structures/processed',
+                   protein_in='{raw_dir}/{pdbid}.pdb',
+                   ligand_info='{raw_dir}/{pdbid}.info',
+                   filtered_protein='{process_dir}/{pdbid}/{pdbid}_prot.pdb',
+                   filtered_complex='{process_dir}/{pdbid}/{pdbid}_complex.pdb',
+                   filtered_ligand='{process_dir}/{pdbid}/{pdbid}_lig.sdf',
+                   filtered_hetero='{process_dir}/{pdbid}/{pdbid}_het.pdb',
+                   filtered_water='{process_dir}/{pdbid}/{pdbid}_wat.pdb'):
     """
     Filters a list of raw PDB file into its main separate components.
     Creates a pdb file for the following:
@@ -95,30 +97,32 @@ def struct_process(structs,
     -----------
     structs : iterable of str
         PDB IDs of the raw PDB files that need to be processed
-    protein_in : str, default='structures/raw/{pdbid}.pdb'
+    process_dir : str, default='structures/processed'
+        Path to the directory where the processed structures will be saved
+    protein_in : str, default='{raw_dir}/{pdbid}.pdb'
         Format string of the path to the protein, given the PDBID as `pdbid`
-    ligand_info : str, default='structures/raw/{pdbid}.info'
+    ligand_info : str, default='{raw_dir}/{pdbid}.info'
         Format string of the path to the ``.info`` file, given the PDBID as `pdbid`
-    filtered_protein : str, default='structures/processed/{pdbid}/{pdbid}_prot.pdb'
+    filtered_protein : str, default='{process_dir}/{pdbid}/{pdbid}_prot.pdb'
         Format string of the path to the processed protein only PDB file, given the PDBID as `pdbid`
-    filtered_complex : str, default='structures/processed/{pdbid}/{pdbid}_complex.pdb'
+    filtered_complex : str, default='{process_dir}/{pdbid}/{pdbid}_complex.pdb'
         Format string of the path to the processed protein-ligand only only PDB file, given the PDBID as `pdbid`
-    filtered_ligand : str, default='structures/processed/{pdbid}/{pdbid}_lig.sdf'
+    filtered_ligand : str, default='{process_dir}/{pdbid}/{pdbid}_lig.sdf'
         Format string of the path to the processed ligand only only SDF file, given the PDBID as `pdbid`
-    filtered_hetero : str, default='structures/processed/{pdbid}/{pdbid}_het.pdb'
+    filtered_hetero : str, default='{process_dir}/{pdbid}/{pdbid}_het.pdb'
         Format string of the path to the processed heteroatom only (no waters) PDB file, given the PDBID as `pdbid`
-    filtered_water : str, default='structures/processed/{pdbid}/{pdbid}_wat.pdb')
+    filtered_water : str, default='{process_dir}/{pdbid}/{pdbid}_wat.pdb')
         Format string of the path to the processed water only PDB file, given the PDBID as `pdbid`
     """
 
     for struct in structs:
-        _protein_in = protein_in.format(pdbid=struct)
-        _ligand_info = ligand_info.format(pdbid=struct)
-        _filtered_protein = filtered_protein.format(pdbid=struct)
-        _filtered_complex = filtered_complex.format(pdbid=struct)
-        _filtered_ligand = filtered_ligand.format(pdbid=struct)
-        _filtered_water = filtered_water.format(pdbid=struct)
-        _filtered_hetero = filtered_hetero.format(pdbid=struct)
+        _protein_in = protein_in.format(pdbid=struct, raw_dir=raw_dir)
+        _ligand_info = ligand_info.format(pdbid=struct, raw_dir=raw_dir)
+        _filtered_protein = filtered_protein.format(pdbid=struct, process_dir=process_dir)
+        _filtered_complex = filtered_complex.format(pdbid=struct, process_dir=process_dir)
+        _filtered_ligand = filtered_ligand.format(pdbid=struct, process_dir=process_dir)
+        _filtered_water = filtered_water.format(pdbid=struct, process_dir=process_dir)
+        _filtered_hetero = filtered_hetero.format(pdbid=struct, process_dir=process_dir)
         _workdir = os.path.dirname(_filtered_protein)
 
         if os.path.exists(_filtered_complex):

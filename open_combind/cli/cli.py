@@ -35,7 +35,10 @@ def cli(ctx):
 @cli.command()
 @click.argument('struct', default='')
 @click.option('--templ-struct')
-def structprep(struct, templ_struct):
+def structprep(templ_struct='', struct='', raw_dir='structures/raw',
+        align_dir='structures/aligned', processed_dir='structures/processed',
+        template_dir='structures/dir', ligand_dir='structures/ligands',
+        protein_dir='structures/proteins' ):
     """
     Prepare structures and make a docking template file.
 
@@ -43,29 +46,37 @@ def structprep(struct, templ_struct):
     template file. (Not the full path, generally just the PDB code.) Defaults to the
     structure with alphabetically lowest name.
 
+    "templ_struct" specifies the name of the structure to use as a template for
+    docking. Defaults to the structure with alphabetically lowest name.
+
+    raw_dir, align_dir, processed_dir, template_dir, ligand_dir, and protein_dir
+    specify the directories where the raw structures, aligned structures,
+    processed structures, docking templates, ligands, and proteins will be
+    written, respectively. Defaults to "structures/raw", "structures/aligned",
+    "structures/processed", "structures/templates", "structures/ligands", and
+    "structures/proteins", respectively.
+
     The following directory structure is required:
 
-    \b
-    structures/
-        raw/
-            structure_name.pdb
-            structure_name.info (first line is Resname of ligand)
-            ...
-        processed/
-            structure_name/structure_name_prot.pdb
-            ...
-        aligned/
-            structure_name/structure_name_aligned.pdb
-            ...
-        proteins/
-            structure_name_prot.pdb
-            ...
-        ligands/
-            structure_name_lig.pdb
-            ...
-        template/
-            structure_name/structure_name
-            ...
+            <raw_dir>/
+                structure_name.pdb
+                structure_name.info (first line is Resname of ligand)
+                ...
+            <processed_dir>/
+                structure_name/structure_name_prot.pdb
+                ...
+            <align_dir>/
+                structure_name/structure_name_aligned.pdb
+                ...
+            <protein_dir>/
+                structure_name_prot.pdb
+                ...
+            <ligand_dir>/
+                structure_name_lig.pdb
+                ...
+            <template_dir>/
+                structure_name/structure_name
+                ...
 
     The process can be started from any step, e.g. if you have processed
     versions of your structures, you can place these in the processed directory.
@@ -73,7 +84,10 @@ def structprep(struct, templ_struct):
     Files ending with _lig contain only the small molecule ligand present in the
     structure, and files ending with _prot contain everything else.
     """
-    oc.structprep(templ_struct=templ_struct, struct=struct)
+    oc.structprep(templ_struct=templ_struct, struct=struct, raw_dir=raw_dir,
+            align_dir=align_dir, processed_dir=processed_dir,
+            template_dir=template_dir, ligand_dir=ligand_dir,
+            protein_dir=protein_dir)
 
 
 @cli.command()
