@@ -19,7 +19,6 @@ build:
     #   - cd build && cmake ../openbabel
     #   - make -j4 && sudo make install
 python:
-  version: 3.8
   install:
     - method: pip
       path: .
