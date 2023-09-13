@@ -43,7 +43,7 @@ test = [
 ]
 
 [project.scripts]
-open_combind = "open_combind.cli:cli"
+open_combind = "open_combind.cli.cli:cli"
 
 [tool.setuptools]
 # This subkey is a beta stage development and keys may change in the future, see https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html for more details
@@ -68,7 +68,7 @@ zip-safe = false
 include-package-data = true
 [tool.setuptools.packages.find]
 namespaces = false
-where = ["open_combind"]
+where = ["."]
 
 # Ref https://setuptools.pypa.io/en/latest/userguide/datafiles.html#package-data
 [tool.setuptools.package-data]
