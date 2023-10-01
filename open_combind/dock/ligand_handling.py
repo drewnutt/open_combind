@@ -210,9 +210,13 @@ def get_ligand_info_RCSB(pdb_id):
     return entry_ligands_info
 
 def mol_to_sdf(mol, path_to_sdf):
-    writer = Chem.SDWriter(path_to_sdf)
-    writer.write(mol)
-    writer.close()
+    if path_to_sdf.endswith('.gz'):
+        with gzip.open(path_to_sdf,'wt') as f:
+            with Chem.SDWriter(f) as w:
+                w.write(mol)
+    else:
+        with Chem.SDWriter(f) as w:
+            w.write(mol)
 
 
 class DummyMolBlock():
