@@ -4,6 +4,7 @@ import urllib.parse
 from rdkit import Chem
 from rdkit.Chem.AllChem import AssignBondOrdersFromTemplate
 from prody import writePDBStream
+import gzip
 # from bs4 import BeautifulSoup
 
 
