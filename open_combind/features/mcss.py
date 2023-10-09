@@ -48,7 +48,7 @@ class CompareHalogens(rdFMCS.MCSAtomCompare):
 # of the smaller ligand. Hydrogen atoms were not included in the substructure nor when
 # determining the total number of atoms in each ligand.
 
-def mcss(sts1, sts2):
+def mcss(sts1, sts2, params='strict'):
     """
     Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for all pairs in the two lists of `Mol`s.
 
@@ -78,7 +78,12 @@ def mcss(sts1, sts2):
     """
 
     memo = {}
-    params = setup_MCS_params()
+    if params == 'strict':
+        params = setup_MCS_params()
+    elif params == 'relaxed':
+        params = setup_MCS_params(strict=False)
+    else:
+        raise ValueError('params must be "strict" or "relaxed"')
 
     bad_apples = []
     rmsds = []
@@ -92,18 +97,18 @@ def mcss(sts1, sts2):
             n_st2_atoms = st2.GetNumHeavyAtoms()
             sma2 = Chem.MolToSmarts(st2)
             if (sma1, sma2) in memo:
-                mcss, n_mcss_atoms, keep_idxs = memo[(sma1, sma2)]
+                mcss, n_mcss_atoms = memo[(sma1, sma2)]
             else:
-                mcss, n_mcss_atoms, keep_idxs = compute_mcss(st1, st2, params)
-                memo[(sma1, sma2)] = (mcss, n_mcss_atoms, keep_idxs)
-                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, {'st1':keep_idxs['st2'],'st2':keep_idxs['st1']})
+                mcss, n_mcss_atoms = compute_mcss(st1, st2, params)
+                memo[(sma1, sma2)] = (mcss, n_mcss_atoms)
+                memo[(sma2, sma1)] = (mcss, n_mcss_atoms)
 
             if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
                 # or n_mcss_atoms <= 10):
                 bad_apples += [(i,j)] #,2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms),n_mcss_atoms <= 10,st1.GetProp("_Name"),st2.GetProp("_Name"))]
                 continue
 
-            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, keep_idxs)
+            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, mcss)
 
     rmsds_bottom = np.vstack(rmsds)
     if len(bad_apples):
@@ -112,7 +117,7 @@ def mcss(sts1, sts2):
     filled_matrix = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
     return np.where(filled_matrix<0, np.inf, filled_matrix)
 
-def mcss_mp(sts1, sts2, processes=1):
+def mcss_mp(sts1, sts2, params='strict', processes=1):
     """
     Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
 
@@ -137,6 +142,9 @@ def mcss_mp(sts1, sts2, processes=1):
     mcss : non-parallelized
     """
 
+    if params not in ['strict', 'relaxed']:
+        raise ValueError('params must be "strict" or "relaxed"')
+
     unfinished = []
     mcss_calc_unfinished = []
     group_st1 = group_mols_by_SMARTS(sts1)
@@ -144,7 +152,7 @@ def mcss_mp(sts1, sts2, processes=1):
     for g1, g2 in itertools.product(group_st1, group_st2):
         if (g2[0],g2[1],g1[0],g1[1]) in unfinished:
             continue
-        mcss_calc_unfinished += [(g1[0][0], g2[0][0])]
+        mcss_calc_unfinished += [(g1[0][0], g2[0][0], params)]
         unfinished += [(g1[0],g1[1],g2[0],g2[1])]
 
     print("calculating mcss first")
@@ -220,7 +228,7 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
     smarts1 = Chem.MolToSmarts(mols1[0])
     smarts2 = Chem.MolToSmarts(mols2[0])
     assert (smarts1,smarts2) in mcss_info, f"can't find mcss info the pair: {mols1.GetProp('_Name')} and {mol2.GetProp('_Name')}"
-    mcss, n_mcss_atoms, keep_idxs = mcss_info[(smarts1,smarts2)] 
+    mcss, n_mcss_atoms = mcss_info[(smarts1,smarts2)] 
     if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
         # or n_mcss_atoms <= 10):
         for i,j in itertools.product(idxs1,idxs2):
@@ -229,9 +237,11 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
             else:
                 rmsds.append((i,j,-1))
     else:
+        # pretty sure atom indices will be ordered the same for all mols in each group
+        atom_map = mols_to_atommaps(mols1[i], mols2[j], mcss)
         # Get the RMSD for each unique pair with one pose from each group
         for i,j in itertools.product(range(len(mols1)), range(len(mols2))):
-            rmsd = compute_mcss_rmsd(mols1[i], mols2[j], keep_idxs, names=False)
+            rmsd = compute_mcss_rmsd(mols1[i], mols2[j], atom_map, names=False)
             if idxs1[i] > idxs2[j]:
                 rmsds.append((idxs2[j], idxs1[i],rmsd))
             else:
@@ -240,7 +250,7 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
     return rmsds
     
 
-def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
+def compute_mcss_rmsd(st1, st2, mcss_str, names=True):
     """
     Compute minimum RMSD between MCSS(s).
 
@@ -253,8 +263,8 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
         Molecule 1
     st2 : :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 2
-    keep_idxs : dict
-        Dictionary with keys 'st1' and 'st2' that contain lists of indices of atoms to keep in the substructure
+    mcss_str : str
+        SMARTS pattern for the MCSS
     names : bool,default=True
         Give the created sub-molecules the same name as the original molecules (helps with errors)
 
@@ -267,19 +277,38 @@ def compute_mcss_rmsd(st1, st2, keep_idxs, names=True):
     --------
     compute_mcss_rmsd_mp : used during multiprocessing
     """
+    atom_maps = mols_to_atommaps(st1, st2, mcss_str)
+    rmsd = calculate_rmsd(st1, st2, atom_maps)
 
-    rmsd = float('inf')
-    for kpatom_idx1 in keep_idxs['st1']:
-        ss1 = subMol(st1,kpatom_idx1)
-        if names:
-            ss1.SetProp('_Name', st1.GetProp('_Name'))
-        for kpatom_idx2 in keep_idxs['st2']:
-            ss2 = subMol(st2,kpatom_idx2)
-            if names:
-                ss2.SetProp('_Name', st2.GetProp('_Name'))
-            _rmsd = calculate_rmsd(ss1, ss2)
-            rmsd = min(_rmsd, rmsd)
     return rmsd
+
+def mols_to_atommaps(mol1, mol2, mcss_str):
+    """
+    Get atom maps corresponding to the MCSS for calculating the RMSD between the MCSS.
+
+    Parameters
+    ----------
+    mol1 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 1
+    mol2 : :class:`~rdkit.Chem.rdchem.Mol`
+        Molecule 2
+    mcss_str : str
+        SMARTS pattern for the MCSS
+
+    Returns
+    -------
+    list of lists
+        List of atom maps for the MCSS
+    """
+
+    mcss = Chem.MolFromSmarts(mcss_str)
+    mol1_match = st1.GetSubstructMatches(mcss)
+    mol2_match = st2.GetSubstructMatches(mcss)
+    atom_maps = [list(zip(matching1, matching2))
+                    for matching1 in mol1_match
+                    for matching2 in mol2_match]
+    return atom_maps
+
 
 def get_info_from_results(mcss_res):
     """
@@ -342,31 +371,31 @@ def compute_mcss(st1, st2, current_params):
     compute_mcss_mp : used during multiprocessing
     """
 
-    try:
-        res = rdFMCS.FindMCS([st1,st2], current_params)
-        mcss, num_atoms, mcss_mol = get_info_from_results(res)
-        if not res.canceled:
-            pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
-            pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
-            assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
-    except AssertionError:
-        print("in the assertion")
-        # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
-        # but this is slow, so only should do it when we need to do it (but checking is also slow)
+    # try:
+    res = rdFMCS.FindMCS([st1,st2], current_params)
+    mcss, num_atoms, _ = get_info_from_results(res)
+        #if not res.canceled:
+        #    pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
+        #    pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
+        #    assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
+    #except AssertionError:
+        #print("in the29965950_15 assertion")
+        ## some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
+        ## but this is slow, so only should do it when we need to do it (but checking is also slow)
 
-        #This is the same as ringCompare=rdFMC.RingCompare.PermissiveRingFusion
-        # see https://github.com/rdkit/rdkit/issues/5438
-        current_params.BondCompareParameters.MatchFusedRings = True
-        current_params.BondCompareParameters.MatchFusedRingsStrict = False
-        newres = rdFMCS.FindMCS([st1, st2], current_params)
-        mcss, num_atoms, mcss_mol = get_info_from_results(newres)
-        current_params.BondCompareParameters.MatchFusedRings = False
-    substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
-                    'st2': st2.GetSubstructMatches(mcss_mol)}
+        ##This is the same as ringCompare=rdFMC.RingCompare.PermissiveRingFusion
+        ## see https://github.com/rdkit/rdkit/issues/5438
+        #current_params.BondCompareParameters.MatchFusedRings = True
+        #current_params.BondCompareParameters.MatchFusedRingsStrict = False
+        #newres = rdFMCS.FindMCS([st1, st2], current_params)
+        #mcss, num_atoms, mcss_mol = get_info_from_results(newres)
+        #current_params.BondCompareParameters.MatchFusedRings = False
+    # substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
+    #                 'st2': st2.GetSubstructMatches(mcss_mol)}
 
-    return mcss, num_atoms, substruct_idx#, rmv_idx
+    return mcss, num_atoms#, substruct_idx#, rmv_idx
 
-def compute_mcss_mp(st1, st2):
+def compute_mcss_mp(st1, st2, params):
     """
     Multiprocessing wrapper for :func:`~compute_mcss`.
 
@@ -387,13 +416,24 @@ def compute_mcss_mp(st1, st2):
     compute_mcss : used during serial processing
     """
 
-    p = setup_MCS_params()
-    mcss, num_atoms, substruct_idx = compute_mcss(st1,st2, p)
-    return ((Chem.MolToSmarts(st1),Chem.MolToSmarts(st2)), (mcss, num_atoms, substruct_idx))
+    p = setup_MCS_params(strict=params)
+    mcss, num_atoms = compute_mcss(st1,st2, p)
+    return ((Chem.MolToSmarts(st1),Chem.MolToSmarts(st2)), (mcss, num_atoms))
 
-def setup_MCS_params():
+def setup_MCS_params(strict=True):
     """
-    Setup MCS parameters.
+    Setup strict MCS parameters.
+
+    if strict is True, then the following parameters are set:
+        RingMatchesRingOnly = True
+        CompleteRingsOnly = True
+        BondTyper = rdFMCS.BondCompare.CompareOrderExact
+        AtomTyper = CompareHalogens()
+    else:
+        RingMatchesRingOnly = False
+        CompleteRingsOnly = False
+        BondTyper = rdFMCS.BondCompare.CompareAny
+        AtomTyper = rdFMCS.AtomCompare.CompareAny
 
     Returns
     -------
@@ -402,15 +442,21 @@ def setup_MCS_params():
     """
 
     params = rdFMCS.MCSParameters()
-    params.AtomCompareParameters.RingMatchesRingOnly = True
-    params.AtomCompareParameters.CompleteRingsOnly = True
-    params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
-    params.AtomTyper = CompareHalogens()
     params.Timeout = 420
+    if strict == True:
+        params.AtomCompareParameters.RingMatchesRingOnly = True
+        params.AtomCompareParameters.CompleteRingsOnly = True
+        params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
+        params.AtomTyper = CompareHalogens()
+    else:
+        params.AtomCompareParameters.RingMatchesRingOnly = False
+        params.AtomCompareParameters.CompleteRingsOnly = False
+        params.BondTyper = rdFMCS.BondCompare.CompareAny
+        params.AtomTyper = rdFMCS.AtomCompare.CompareAny
 
     return params
 
-def calculate_rmsd(pose1, pose2, eval_rmsd=False):
+def calculate_rmsd(pose1, pose2, atom_map, eval_rmsd=False):
     """
     Calculates the RMSD between the two input molecules. Symmetry of molecules is respected during the RMSD calculation.
 
@@ -420,6 +466,8 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
         Molecule 1
     pose2 : :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 2
+    atom_map : :class:`list`
+        List of lists of atom indices tuples to map between the two molecules
     eval_rmsd : bool, optional, default=False
         Whether to evaluate the RMSD using the OpenBabel implementation 
 
@@ -429,14 +477,10 @@ def calculate_rmsd(pose1, pose2, eval_rmsd=False):
         RMSD between the two molecules
     """
 
-    assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1), f"{pose1.GetProp('_Name')}&{pose2.GetProp('_Name')}"
     try:
-        rmsd = Chem.CalcRMS(pose1,pose2)
-    except:
-        try:
-            rmsd = Chem.CalcRMS(pose2,pose1)
-        except:
-            print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, CalcRMS doesn't work either way")
+        rmsd = Chem.CalcRMS(pose1,pose2,map=atom_map)
+    except Exception as e:
+        print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, error: {e}")
     return rmsd
 
 def subMol(mol, match, merge_halogens=True):
