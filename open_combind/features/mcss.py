@@ -302,8 +302,8 @@ def mols_to_atommaps(mol1, mol2, mcss_str):
     """
 
     mcss = Chem.MolFromSmarts(mcss_str)
-    mol1_match = st1.GetSubstructMatches(mcss)
-    mol2_match = st2.GetSubstructMatches(mcss)
+    mol1_match = mol1.GetSubstructMatches(mcss)
+    mol2_match = mol2.GetSubstructMatches(mcss)
     atom_maps = [list(zip(matching1, matching2))
                     for matching1 in mol1_match
                     for matching2 in mol2_match]
