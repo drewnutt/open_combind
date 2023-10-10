@@ -97,18 +97,18 @@ def mcss(sts1, sts2, params='strict'):
             n_st2_atoms = st2.GetNumHeavyAtoms()
             sma2 = Chem.MolToSmarts(st2)
             if (sma1, sma2) in memo:
-                mcss, n_mcss_atoms = memo[(sma1, sma2)]
+                mcss, n_mcss_atoms, identity = memo[(sma1, sma2)]
             else:
-                mcss, n_mcss_atoms = compute_mcss(st1, st2, params)
-                memo[(sma1, sma2)] = (mcss, n_mcss_atoms)
-                memo[(sma2, sma1)] = (mcss, n_mcss_atoms)
+                mcss, n_mcss_atoms, identity = compute_mcss(st1, st2, params)
+                memo[(sma1, sma2)] = (mcss, n_mcss_atoms, identity)
+                memo[(sma2, sma1)] = (mcss, n_mcss_atoms, identity)
 
             if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
                 # or n_mcss_atoms <= 10):
                 bad_apples += [(i,j)] #,2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms),n_mcss_atoms <= 10,st1.GetProp("_Name"),st2.GetProp("_Name"))]
                 continue
 
-            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, mcss)
+            rmsds[-1][j] = compute_mcss_rmsd(st1, st2, mcss, identity)
 
     rmsds_bottom = np.vstack(rmsds)
     if len(bad_apples):
@@ -228,7 +228,7 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
     smarts1 = Chem.MolToSmarts(mols1[0])
     smarts2 = Chem.MolToSmarts(mols2[0])
     assert (smarts1,smarts2) in mcss_info, f"can't find mcss info the pair: {mols1.GetProp('_Name')} and {mol2.GetProp('_Name')}"
-    mcss, n_mcss_atoms = mcss_info[(smarts1,smarts2)] 
+    mcss, n_mcss_atoms, identity = mcss_info[(smarts1,smarts2)] 
     if (2*n_mcss_atoms < min(n_st1_atoms, n_st2_atoms)):
         # or n_mcss_atoms <= 10):
         for i,j in itertools.product(idxs1,idxs2):
@@ -241,7 +241,7 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
         atom_map = mols_to_atommaps(mols1[i], mols2[j], mcss)
         # Get the RMSD for each unique pair with one pose from each group
         for i,j in itertools.product(range(len(mols1)), range(len(mols2))):
-            rmsd = compute_mcss_rmsd(mols1[i], mols2[j], atom_map, names=False)
+            rmsd = compute_mcss_rmsd(mols1[i], mols2[j], atom_map, identity, names=False)
             if idxs1[i] > idxs2[j]:
                 rmsds.append((idxs2[j], idxs1[i],rmsd))
             else:
@@ -250,7 +250,7 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
     return rmsds
     
 
-def compute_mcss_rmsd(st1, st2, mcss_str, names=True):
+def compute_mcss_rmsd(st1, st2, mcss_str, identity, names=True):
     """
     Compute minimum RMSD between MCSS(s).
 
@@ -278,7 +278,7 @@ def compute_mcss_rmsd(st1, st2, mcss_str, names=True):
     compute_mcss_rmsd_mp : used during multiprocessing
     """
     atom_maps = mols_to_atommaps(st1, st2, mcss_str)
-    rmsd = calculate_rmsd(st1, st2, atom_maps)
+    rmsd = calculate_rmsd(st1, st2, atom_maps, identity)
 
     return rmsd
 
@@ -371,29 +371,37 @@ def compute_mcss(st1, st2, current_params):
     compute_mcss_mp : used during multiprocessing
     """
 
-    # try:
-    res = rdFMCS.FindMCS([st1,st2], current_params)
-    mcss, num_atoms, _ = get_info_from_results(res)
-        #if not res.canceled:
-        #    pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
-        #    pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
-        #    assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
-    #except AssertionError:
-        #print("in the29965950_15 assertion")
-        ## some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
-        ## but this is slow, so only should do it when we need to do it (but checking is also slow)
+    sma1 = Chem.MolToSmarts(st1)
+    sma2 = Chem.MolToSmarts(st2)
+    if sma1 == sma2:
+        mcss = sma1
+        num_atoms = st1.GetNumHeavyAtoms()
+        mcss_mol = Chem.MolFromSmarts(mcss)
+        return mcss, num_atoms, True
+    else:
+        try:
+            res = rdFMCS.FindMCS([st1,st2], current_params)
+            mcss, num_atoms, mcss_mol = get_info_from_results(res)
+            if not res.canceled:
+                pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
+                pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
+                assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
+        except AssertionError:
+            print("in the assertion")
+            # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
+            # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
-        ##This is the same as ringCompare=rdFMC.RingCompare.PermissiveRingFusion
-        ## see https://github.com/rdkit/rdkit/issues/5438
-        #current_params.BondCompareParameters.MatchFusedRings = True
-        #current_params.BondCompareParameters.MatchFusedRingsStrict = False
-        #newres = rdFMCS.FindMCS([st1, st2], current_params)
-        #mcss, num_atoms, mcss_mol = get_info_from_results(newres)
-        #current_params.BondCompareParameters.MatchFusedRings = False
+            #This is the same as ringCompare=rdFMC.RingCompare.PermissiveRingFusion
+            # see https://github.com/rdkit/rdkit/issues/5438
+            current_params.BondCompareParameters.MatchFusedRings = True
+            current_params.BondCompareParameters.MatchFusedRingsStrict = False
+            newres = rdFMCS.FindMCS([st1, st2], current_params)
+            mcss, num_atoms, mcss_mol = get_info_from_results(newres)
+            current_params.BondCompareParameters.MatchFusedRings = False
     # substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
     #                 'st2': st2.GetSubstructMatches(mcss_mol)}
 
-    return mcss, num_atoms#, substruct_idx#, rmv_idx
+    return mcss, num_atoms, False#, substruct_idx#, rmv_idx
 
 def compute_mcss_mp(st1, st2, params):
     """
@@ -456,7 +464,7 @@ def setup_MCS_params(strict=True):
 
     return params
 
-def calculate_rmsd(pose1, pose2, atom_map, eval_rmsd=False):
+def calculate_rmsd(pose1, pose2, atom_map, identity, eval_rmsd=False):
     """
     Calculates the RMSD between the two input molecules. Symmetry of molecules is respected during the RMSD calculation.
 
@@ -478,7 +486,10 @@ def calculate_rmsd(pose1, pose2, atom_map, eval_rmsd=False):
     """
 
     try:
-        rmsd = Chem.CalcRMS(pose1,pose2,map=atom_map)
+        if identity:
+            rmsd = Chem.CalcRMS(pose1,pose2)
+        else:
+            rmsd = Chem.CalcRMS(pose1,pose2,map=atom_map)
     except Exception as e:
         print(f"{pose1.GetProp('_Name')} and {pose2.GetProp('_Name')}, error: {e}")
     return rmsd
