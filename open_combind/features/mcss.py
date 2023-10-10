@@ -238,10 +238,10 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
                 rmsds.append((i,j,-1))
     else:
         # pretty sure atom indices will be ordered the same for all mols in each group
-        atom_map = mols_to_atommaps(mols1[i], mols2[j], mcss)
+        atom_map = mols_to_atommaps(mols1[0], mols2[0], mcss)
         # Get the RMSD for each unique pair with one pose from each group
         for i,j in itertools.product(range(len(mols1)), range(len(mols2))):
-            rmsd = compute_mcss_rmsd(mols1[i], mols2[j], atom_map, identity, names=False)
+            rmsd = calculate_rmsd(mols1[i], mols2[j], atom_map, identity)
             if idxs1[i] > idxs2[j]:
                 rmsds.append((idxs2[j], idxs1[i],rmsd))
             else:
@@ -302,8 +302,8 @@ def mols_to_atommaps(mol1, mol2, mcss_str):
     """
 
     mcss = Chem.MolFromSmarts(mcss_str)
-    mol1_match = mol1.GetSubstructMatches(mcss)
-    mol2_match = mol2.GetSubstructMatches(mcss)
+    mol1_match = mol1.GetSubstructMatches(mcss, uniquify=False)
+    mol2_match = mol2.GetSubstructMatches(mcss, uniquify=False)
     atom_maps = [list(zip(matching1, matching2))
                     for matching1 in mol1_match
                     for matching2 in mol2_match]
@@ -425,8 +425,8 @@ def compute_mcss_mp(st1, st2, params):
     """
 
     p = setup_MCS_params(strict=params)
-    mcss, num_atoms = compute_mcss(st1,st2, p)
-    return ((Chem.MolToSmarts(st1),Chem.MolToSmarts(st2)), (mcss, num_atoms))
+    mcss, num_atoms, identity = compute_mcss(st1,st2, p)
+    return ((Chem.MolToSmarts(st1),Chem.MolToSmarts(st2)), (mcss, num_atoms, identity))
 
 def setup_MCS_params(strict=True):
     """

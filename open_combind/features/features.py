@@ -622,7 +622,7 @@ class Features:
         """
         if processes != 1:
             from open_combind.features.mcss import mcss_mp
-            rmsds = mcss_mp(poses1, poses2, processes)
+            rmsds = mcss_mp(poses1, poses2, processes=processes)
         else:
             from open_combind.features.mcss import mcss
             rmsds = mcss(poses1, poses2)
