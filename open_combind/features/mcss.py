@@ -239,6 +239,8 @@ def compute_mcss_rmsd_mp(mols1, idxs1, mols2, idxs2):
     else:
         # pretty sure atom indices will be ordered the same for all mols in each group
         atom_map = mols_to_atommaps(mols1[0], mols2[0], mcss)
+        assert atom_map is not None and len(atom_map), f"atom_map is None or empty for the pair: {idxs1[0]} and {idxs2[0]}\nmcss:{mcss},natoms:{n_mcss_atoms}"
+
         # Get the RMSD for each unique pair with one pose from each group
         for i,j in itertools.product(range(len(mols1)), range(len(mols2))):
             rmsd = calculate_rmsd(mols1[i], mols2[j], atom_map, identity)
@@ -387,7 +389,7 @@ def compute_mcss(st1, st2, current_params):
                 pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
                 assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
         except AssertionError:
-            print("in the assertion")
+            # print("in the assertion")
             # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
             # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
