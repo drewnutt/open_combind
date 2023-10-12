@@ -48,7 +48,7 @@ class CompareHalogens(rdFMCS.MCSAtomCompare):
 # of the smaller ligand. Hydrogen atoms were not included in the substructure nor when
 # determining the total number of atoms in each ligand.
 
-def mcss(sts1, sts2, params='strict'):
+def mcss(sts1, sts2, param_string='strict'):
     """
     Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for all pairs in the two lists of `Mol`s.
 
@@ -78,12 +78,8 @@ def mcss(sts1, sts2, params='strict'):
     """
 
     memo = {}
-    if params == 'strict':
-        params = setup_MCS_params()
-    elif params == 'relaxed':
-        params = setup_MCS_params(strict=False)
-    else:
-        raise ValueError('params must be "strict" or "relaxed"')
+
+    params = setup_MCS_params(param_string=param_string)
 
     bad_apples = []
     rmsds = []
@@ -405,7 +401,7 @@ def compute_mcss(st1, st2, current_params):
 
     return mcss, num_atoms, False#, substruct_idx#, rmv_idx
 
-def compute_mcss_mp(st1, st2, params):
+def compute_mcss_mp(st1, st2, param_string):
     """
     Multiprocessing wrapper for :func:`~compute_mcss`.
 
@@ -426,11 +422,11 @@ def compute_mcss_mp(st1, st2, params):
     compute_mcss : used during serial processing
     """
 
-    p = setup_MCS_params(strict=params)
+    p = setup_MCS_params(param_string=param_string)
     mcss, num_atoms, identity = compute_mcss(st1,st2, p)
     return ((Chem.MolToSmarts(st1),Chem.MolToSmarts(st2)), (mcss, num_atoms, identity))
 
-def setup_MCS_params(strict=True):
+def setup_MCS_params(param_string='strict'):
     """
     Setup strict MCS parameters.
 
@@ -453,16 +449,18 @@ def setup_MCS_params(strict=True):
 
     params = rdFMCS.MCSParameters()
     params.Timeout = 420
-    if strict == True:
+    if param_string == 'strict':
         params.AtomCompareParameters.RingMatchesRingOnly = True
         params.AtomCompareParameters.CompleteRingsOnly = True
         params.BondTyper = rdFMCS.BondCompare.CompareOrderExact
         params.AtomTyper = CompareHalogens()
-    else:
+    elif param_string == 'relaxed':
         params.AtomCompareParameters.RingMatchesRingOnly = False
         params.AtomCompareParameters.CompleteRingsOnly = False
         params.BondTyper = rdFMCS.BondCompare.CompareAny
         params.AtomTyper = rdFMCS.AtomCompare.CompareAny
+    else:
+        raise ValueError('param_string must be "strict" or "relaxed"')
 
     return params
 
