@@ -113,7 +113,7 @@ def mcss(sts1, sts2, param_string='strict'):
     filled_matrix = rmsds_bottom + rmsds_bottom.T - np.diag(np.diag(rmsds_bottom))
     return np.where(filled_matrix<0, np.inf, filled_matrix)
 
-def mcss_mp(sts1, sts2, params='strict', processes=1):
+def mcss_mp(sts1, sts2, *, param_string='strict', processes=1):
     """
     Computes root mean square deviation (RMSD) between the maximum common substructure (MCSS) for atoms in two poseviewer files.
 
@@ -138,8 +138,9 @@ def mcss_mp(sts1, sts2, params='strict', processes=1):
     mcss : non-parallelized
     """
 
-    if params not in ['strict', 'relaxed']:
+    if param_string not in ['strict', 'relaxed']:
         raise ValueError('params must be "strict" or "relaxed"')
+    print(param_string)
 
     unfinished = []
     mcss_calc_unfinished = []
@@ -148,7 +149,7 @@ def mcss_mp(sts1, sts2, params='strict', processes=1):
     for g1, g2 in itertools.product(group_st1, group_st2):
         if (g2[0],g2[1],g1[0],g1[1]) in unfinished:
             continue
-        mcss_calc_unfinished += [(g1[0][0], g2[0][0], params)]
+        mcss_calc_unfinished += [(g1[0][0], g2[0][0], param_string)]
         unfinished += [(g1[0],g1[1],g2[0],g2[1])]
 
     print("calculating mcss first")
@@ -377,15 +378,17 @@ def compute_mcss(st1, st2, current_params):
         mcss_mol = Chem.MolFromSmarts(mcss)
         return mcss, num_atoms, True
     else:
+        st1_sm = Chem.MolFromSmiles(Chem.MolToSmiles(st1))
+        st2_sm = Chem.MolFromSmiles(Chem.MolToSmiles(st2))
         try:
-            res = rdFMCS.FindMCS([st1,st2], current_params)
+            res = rdFMCS.FindMCS([st1_sm,st2_sm], current_params)
             mcss, num_atoms, mcss_mol = get_info_from_results(res)
-            if not res.canceled:
+            if not res.canceled and current_params.AtomCompareParameters.RingMatchesRingOnly:
                 pose1 = subMol(st1,st1.GetSubstructMatch(mcss_mol))
                 pose2 = subMol(st2,st2.GetSubstructMatch(mcss_mol))
                 assert pose1.HasSubstructMatch(pose2) or pose2.HasSubstructMatch(pose1)
         except AssertionError:
-            # print("in the assertion")
+            print("in the assertion")
             # some pesky problem ligands (see SKY vs LEW on rcsb) get around default ringComparison
             # but this is slow, so only should do it when we need to do it (but checking is also slow)
 
@@ -393,7 +396,7 @@ def compute_mcss(st1, st2, current_params):
             # see https://github.com/rdkit/rdkit/issues/5438
             current_params.BondCompareParameters.MatchFusedRings = True
             current_params.BondCompareParameters.MatchFusedRingsStrict = False
-            newres = rdFMCS.FindMCS([st1, st2], current_params)
+            newres = rdFMCS.FindMCS([st1_sm, st2_sm], current_params)
             mcss, num_atoms, mcss_mol = get_info_from_results(newres)
             current_params.BondCompareParameters.MatchFusedRings = False
     # substruct_idx = {'st1': st1.GetSubstructMatches(mcss_mol),
@@ -430,12 +433,12 @@ def setup_MCS_params(param_string='strict'):
     """
     Setup strict MCS parameters.
 
-    if strict is True, then the following parameters are set:
+    if param_string=='strict', then the following parameters are set:
         RingMatchesRingOnly = True
         CompleteRingsOnly = True
         BondTyper = rdFMCS.BondCompare.CompareOrderExact
         AtomTyper = CompareHalogens()
-    else:
+    else if param_string=='relaxed', then the following parameters are set:
         RingMatchesRingOnly = False
         CompleteRingsOnly = False
         BondTyper = rdFMCS.BondCompare.CompareAny
