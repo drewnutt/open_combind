@@ -32,8 +32,8 @@ class Features:
         Path to root directory of poses/features
     ifp_version : str, default='rd1'
         Version of the interaction fingerprint to use for featurization
-    shape_version : str, default='pharm_max'
-        Version of the shape algorithm to use for featurization (not implemented)
+    mcss_param : str, default='strict'
+        MCSS parameter set to use for MCSS RMSD featurization, either ``'strict'`` or ``'relaxed'``
     max_poses : str, default=10000  
         Maximum number of poses per ligand used to compute features
     pv_root
@@ -47,8 +47,8 @@ class Features:
     ----------
     root : str
         Root directory where the features/poses should be looked for
-    ifp_version : str
-        Which version of the interaction fingerprint to use
+    mcss_param : str
+        Which parameters to use for MCSS featurization either ``'strict'`` or ``'relaxed'``
     shape_version : str
         (not currently used) which version of the shape algorithm to use for featurization
     max_poses : int
@@ -60,7 +60,7 @@ class Features:
     raw : dict
         Contains the raw data of the computed (or loaded) features where the key is the feature name
     """
-    def __init__(self, root, ifp_version='rd1', shape_version='pharm_max',
+    def __init__(self, root, ifp_version='rd1', mcss_param='strict',
                  max_poses=10000, pv_root=None,
                  ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True,
                  template='',check_center_ligs=False):
@@ -71,7 +71,7 @@ class Features:
             self.pv_root = pv_root
 
         self.ifp_version = ifp_version
-        self.shape_version = shape_version
+        self.mcss_param = mcss_param
         self.max_poses = max_poses
         self.ifp_features = ifp_features
         self.cnn_scores = cnn_scores
@@ -104,7 +104,7 @@ class Features:
 
         Returns
         -------
-        molbundle_dict : :class:`dict[str, list[~rdkit.Chem.rdchem.Mol]]<dict>`
+        molbundle_dict : :class:`dict[str, list[Mol]]<dict>`
             Dictionary of pose viewer files to list of molecules
         """
         molbundle_dict = dict()
@@ -231,7 +231,7 @@ class Features:
         ----------
         pvs : :class:`list[str]<list>`
             Poses that need features loaded
-        ligands : 
+        ligands : :class:`list[str]<list>`, default=None
 
 		center_ligand: :class:`~rdkit.Chem.rdchem.Mol`, default=None
 			Ligand to center the poses around
@@ -597,12 +597,12 @@ class Features:
         """
         if processes != 1:
             from open_combind.features.shape import shape_mp
-            sims = shape_mp(poses2, poses1, version=self.shape_version,processes=processes).T
+            sims = shape_mp(poses2, poses1,processes=processes).T
         else:
             from open_combind.features.shape import shape
             # More efficient to have longer pose list provided as second argument.
             # This only matters for screening.
-            sims = shape(poses2, poses1, version=self.shape_version).T
+            sims = shape(poses2, poses1).T
         np.save(out, sims)
 
     def compute_mcss(self, poses1, poses2, out, processes=1):
@@ -622,8 +622,8 @@ class Features:
         """
         if processes != 1:
             from open_combind.features.mcss import mcss_mp
-            rmsds = mcss_mp(poses1, poses2, processes)
+            rmsds = mcss_mp(poses1, poses2, param_string=self.mcss_param, processes=processes)
         else:
             from open_combind.features.mcss import mcss
-            rmsds = mcss(poses1, poses2)
+            rmsds = mcss(poses1, poses2, param_string=self.mcss_param)
         np.save(out, rmsds)

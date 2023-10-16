@@ -12,7 +12,7 @@ import open_combind as oc
 ###############################################################################
 
 # Defaults
-SHAPE_VERSION = 'pharm_max'
+MCSS_PARAM = 'strict'
 IFP_VERSION = 'rd1'
 
 
@@ -163,7 +163,7 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 @click.argument('poseviewers', nargs=-1)
 @click.option('--native', default='structures/ligands/*_lig.sdf')
 @click.option('--ifp-version', default=IFP_VERSION)
-@click.option('--shape-version', default=SHAPE_VERSION)
+@click.option('--mcss-param', default=MCSS_PARAM)
 @click.option('--screen', is_flag=True)
 @click.option('--max-poses', default=100)
 @click.option('--no-mcss', is_flag=True)
@@ -173,12 +173,12 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 @click.option('--template', default='structures/template/*.template')
 @click.option('--check-center-ligs', is_flag=True)
 def featurize(root, poseviewers, native, ifp_version,
-            shape_version, screen, no_mcss,
+            mcss_param, screen, no_mcss,
             use_shape, processes, max_poses, no_cnn, template, check_center_ligs):
 
     oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
                 max_poses=max_poses, no_cnn=no_cnn, screen=screen, ifp_version=ifp_version,
-                shape_version=shape_version, processes=processes, template=template, check_center_ligs=check_center_ligs)
+                mcss_param=mcss_param, processes=processes, template=template, check_center_ligs=check_center_ligs)
 ################################################################################
 
 

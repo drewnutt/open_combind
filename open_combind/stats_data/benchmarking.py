@@ -7,8 +7,7 @@ from glob import glob
 sys.path.append(os.path.expanduser('~anm329/git/combind'))
 
 # Defaults
-mcss_version = 'mcss16'
-shape_version = 'pharm_max'
+mcss_param = 'strict'
 ifp_version = 'rd1'
 
 def get_unique_helper_ligs(helper_list_root):
@@ -63,16 +62,16 @@ def run_featurization(root, helper_ligands, query_fname, protein_name, helper_li
         # sts = Chem.SDMolSupplier(native_path)
         native_poses[name] = native_path
     print(native_poses)
-    return featurize(root, helper_ligands, native_poses, ifp_version, mcss_version, shape_version, False, False, processes, 100, False,template_file=template_file,check_center_ligs=check_center_ligs,skip_featurization=skip_featurization)
+    return featurize(root, helper_ligands, native_poses, ifp_version, mcss_param, False, False, processes, 100, False,template_file=template_file,check_center_ligs=check_center_ligs,skip_featurization=skip_featurization)
 
 
-def featurize(root, poseviewers, native_loc, ifp_version, mcss_custom,
-              shape_version, no_mcss, use_shape, processes, max_poses, no_cnn,template_file='structures/template/*.template',check_center_ligs=False,skip_featurization=False):
+def featurize(root, poseviewers, native_loc, ifp_version, 
+              mcss_param, no_mcss, use_shape, processes, max_poses, no_cnn,template_file='structures/template/*.template',check_center_ligs=False,skip_featurization=False):
     from open_combind.features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
 
-    features = Features(root, ifp_version=ifp_version, shape_version=shape_version,
+    features = Features(root, ifp_version=ifp_version, mcss_param=mcss_param,
                         max_poses=max_poses, cnn_scores=not no_cnn,template=template_file,check_center_ligs=check_center_ligs)
     if not skip_featurization:
 
@@ -147,6 +146,7 @@ if __name__ == "__main__":
     parser.add_argument('--check_center_ligs',action='store_true',help='quazi-GLIDE inner box for docked poses')
     parser.add_argument('--skip_featurization',action='store_true',help='Do not run the featurization of the ligand molecules (assumes you already have the featurization)')
     parser.add_argument('--alpha',help='alpha for the combind objective')
+    parser.add_argument('--mcss_param',default=mcss_param, choices=['strict','relaxed'],help='MCSS parameters')
     parser.add_argument('--num-helpers',type=int,default=None,help='number of helper ligands to use')
     parser.add_argument('--seed','-S',type=int,default=None,help='seed for random number generator')
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     prot_features = run_featurization(args.feat_root,args.helper_ligands,args.query_ligand,args.protein_name,
             args.stats_root,native_loc=args.native, selection_criterion=args.selection_criterion,processes=args.processes,
             check_center_ligs=args.check_center_ligs, skip_featurization=args.skip_featurization, extra_helper_ligands=args.extra_helper_ligands,
-            num_helpers=args.num_helpers, random_seed=args.seed)
+            num_helpers=args.num_helpers, random_seed=args.seed, mcss_param=args.mcss_param)
     if args.pose_csv is None:
         args.pose_csv = f"{args.protein_name}_{args.query_ligand.split('/')[-1].split('-')[0].split('_')[0]}_{args.selection_criterion}.csv"
     if args.merged_stats_root is None:
