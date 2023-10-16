@@ -63,7 +63,7 @@ class Features:
     def __init__(self, root, ifp_version='rd1', mcss_param='strict',
                  max_poses=10000, pv_root=None,
                  ifp_features=['hbond', 'saltbridge', 'contact'], cnn_scores=True,
-                 template='',check_center_ligs=False):
+                 template='',check_center_ligs=False, **kwargs):
         self.root = os.path.abspath(root)
         if pv_root is None:
             self.pv_root = self.root + '/docking'
@@ -82,6 +82,10 @@ class Features:
                 template_line = tmpfile.readlines()[0]
             abox_ligand = template_line.split('--autobox_ligand')[-1].split()[0]
         self.center_ligand = Chem.MolFromMolFile(abox_ligand) if self.check_center_ligs else None
+
+        self.newscore = None
+        if newscore in kwargs:
+            self.newscore = kwargs['newscore']
 
         self.raw = {}
 
@@ -346,11 +350,14 @@ class Features:
                 if not os.path.exists(out):
                     self.compute_gscore(bundle, out)
 
-        print('Extracting Vina minimizedAffinity.')
+        if self.newscore is None:
+            print('Extracting Vina minimizedAffinity.')
+        else:
+            print(f'Extracting {self.newscore} score.')
         for pv, bundle in molbundles.items():
             out = self.path('vaff', pv=pv)
             if not os.path.exists(out):
-                self.compute_vaff(bundle, out)
+                self.compute_vaff(bundle, out, newscore=self.newscore)
 
         print('Extracting names.')
         for pv, bundle in molbundles.items():
@@ -490,9 +497,9 @@ class Features:
             gscores += [logit(float(st.GetProp('CNNscore')))]
         np.save(out, gscores)
 
-    def compute_vaff(self, bundle, out):
+    def compute_vaff(self, bundle, out, newscore=None):
         """
-        Retrieve the Autodock Vina scores for all of the poses
+        Retrieve the Autodock Vina score or score specified by ``newscore'' for all of the poses
         
         Parameters
         ----------
@@ -500,12 +507,14 @@ class Features:
             :class:`~rdkit.Chem.rdchem.Mol` s to process
         out : str
             Path to `.npy` file to save all of the pose Vina scores
+        newscore : str, default=None
+            Name of the new score to use, if None then use the default Vina score
         
         """
         
         vaffs = []
         for idx, st in enumerate(bundle):
-            vaffs += [float(st.GetProp('minimizedAffinity'))]
+            vaffs += [float(st.GetProp('minimizedAffinity' if newscore is None else newscore))]
         np.save(out, vaffs)
 
     def compute_rmsd(self, bundle, native_poses, out):

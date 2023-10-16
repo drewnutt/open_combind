@@ -172,13 +172,16 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file):
 @click.option('--processes', default=1)
 @click.option('--template', default='structures/template/*.template')
 @click.option('--check-center-ligs', is_flag=True)
+@click.option('--newscore', default=None)
+@click.option('--no-reverse', is_flag=False)
 def featurize(root, poseviewers, native, ifp_version,
-            mcss_param, screen, no_mcss,
-            use_shape, processes, max_poses, no_cnn, template, check_center_ligs):
+            mcss_param, screen, no_mcss, use_shape, processes, max_poses,
+            no_cnn, template, check_center_ligs, newscore, no_reverse):
 
     oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
                 max_poses=max_poses, no_cnn=no_cnn, screen=screen, ifp_version=ifp_version,
-                mcss_param=mcss_param, processes=processes, template=template, check_center_ligs=check_center_ligs)
+                mcss_param=mcss_param, processes=processes, template=template,
+                check_center_ligs=check_center_ligs, newscore=newscore, reverse=not no_reverse)
 ################################################################################
 
 
@@ -191,16 +194,17 @@ def featurize(root, poseviewers, native, ifp_version,
 @click.option('--stats-root', default=None)
 @click.option('--restart', default=500)
 @click.option('--max-iterations', default=1000)
-def pose_prediction(root, out, ligands,
-                    alpha, stats_root, features, restart,
-                    max_iterations):
+@click.option('--newscore', default=None)
+def pose_prediction(root, out, ligands, alpha, stats_root, features, restart,
+                    max_iterations, newscore):
     """
     Run ComBind pose prediction.
     """
     features = features.split(',')
 
     oc.pose_prediction(root, out=out, ligands=ligands, features=features,
-            alpha=alpha, stats_root=stats_root, restart=restart, max_iterations=max_iterations)
+            alpha=alpha, stats_root=stats_root, restart=restart, max_iterations=max_iterations,
+            newscore=newscore)
 
 # @main.command()
 # @click.argument('score-fname')
