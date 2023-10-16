@@ -23,7 +23,7 @@ class PosePrediction:
     pair: :class:`~numpy.ndarray`
         # ligands x # ligands x max_poses x max_poses, array of pairwise energy terms.
     """
-    def __init__(self, ligands, features, data, stats, alpha):
+    def __init__(self, ligands, features, data, stats, alpha, **kwargs):
         """
         Parameters
         ----------
@@ -47,6 +47,10 @@ class PosePrediction:
         self.single = self._get_single()
         self.pair = self._get_pair()
 
+        self.singlescore = 'gscore'
+        if 'newscore' in kwargs and kwargs['newscore'] is not None:
+            self.singlescore = kwargs['newscore']
+
     def _get_max_poses(self):
         """
         Get largest number of poses present for any ligand.
@@ -56,7 +60,7 @@ class PosePrediction:
         max_poses: int
            maximum number of poses for any ligand. 
         """
-        return max(len(self.data['gscore'][ligand]) for ligand in self.ligands)
+        return max(len(self.data[self.singlescore][ligand]) for ligand in self.ligands)
 
     def _get_single(self):
         """
@@ -69,7 +73,7 @@ class PosePrediction:
         single: :class:`~numpy.ndarray`
             1 x # ligands, array of ligand docking scores.
         """
-        single = [self.data['gscore'][ligand] for ligand in self.ligands]
+        single = [self.data[self.singlescore][ligand] for ligand in self.ligands]
         single = [self.pad(x, self.max_poses,C=np.nan) for x in single]
         single = np.vstack(single)
         single *= -self.alpha
