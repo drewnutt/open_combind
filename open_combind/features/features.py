@@ -47,8 +47,8 @@ class Features:
     ----------
     root : str
         Root directory where the features/poses should be looked for
-    ifp_version : str
-        Which version of the interaction fingerprint to use
+    mcss_param : str
+        Which parameters to use for MCSS featurization either ``'strict'`` or ``'relaxed'``
     shape_version : str
         (not currently used) which version of the shape algorithm to use for featurization
     max_poses : int
@@ -104,7 +104,7 @@ class Features:
 
         Returns
         -------
-        molbundle_dict : :class:`dict[str, list[~rdkit.Chem.rdchem.Mol]]<dict>`
+        molbundle_dict : :class:`dict[str, list[Mol]]<dict>`
             Dictionary of pose viewer files to list of molecules
         """
         molbundle_dict = dict()
@@ -231,7 +231,7 @@ class Features:
         ----------
         pvs : :class:`list[str]<list>`
             Poses that need features loaded
-        ligands : 
+        ligands : :class:`list[str]<list>`, default=None
 
 		center_ligand: :class:`~rdkit.Chem.rdchem.Mol`, default=None
 			Ligand to center the poses around

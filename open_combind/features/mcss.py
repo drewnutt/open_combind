@@ -7,12 +7,12 @@ from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import rdFMCS
 from rdkit.Chem.rdmolops import ReplaceSubstructs
 from rdkit.Chem.AllChem import AssignBondOrdersFromTemplate
-# from plumbum.cmd import obrms
 from open_combind.utils import mp
 
 class CompareHalogens(rdFMCS.MCSAtomCompare):
     """
-    Atom comparator for MCS that allows halogens to match with each other.
+    Atom comparator for MCS that is the same as rdFMCS.AtomCompare.CompareElements,
+    except any Halogen can match any other Halogen.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,6 +58,8 @@ def mcss(sts1, sts2, param_string='strict'):
         Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts2`
     sts2 : :class:`list[Mol]<list>`
         Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts1`
+    param_string : :class:`str`, default='strict'
+        Parameter string for the MCSS algorithm. See :func:`setup_MCS_params` for details.
 
     Returns
     -------
@@ -125,6 +127,8 @@ def mcss_mp(sts1, sts2, *, param_string='strict', processes=1):
         Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts2`
     sts2 : :class:`list[Mol]<list>`
         Set of ligand poses as :class:`~rdkit.Chem.rdchem.Mol` s to compute the MCSS RMSD with `sts1`
+    param_string : :class:`str`, default='strict'
+        Parameter string for the MCSS algorithm. See :func:`setup_MCS_params` for details.
     processes : int, default=1
         Number of processes to use for computing the pairwise features, if -1 then use all available cores
 
@@ -138,9 +142,8 @@ def mcss_mp(sts1, sts2, *, param_string='strict', processes=1):
     mcss : non-parallelized
     """
 
-    if param_string not in ['strict', 'relaxed']:
-        raise ValueError('params must be "strict" or "relaxed"')
-    print(param_string)
+    # ensure param_string is valid before starting
+    _ = setup_MCS_params(param_string=param_string)
 
     unfinished = []
     mcss_calc_unfinished = []
@@ -263,7 +266,9 @@ def compute_mcss_rmsd(st1, st2, mcss_str, identity, names=True):
     st2 : :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 2
     mcss_str : str
-        SMARTS pattern for the MCSS
+        SMARTS string for the MCSS
+    identity : bool
+        If True, compute the RMSD without any atom mapping (used for identical molecules)
     names : bool,default=True
         Give the created sub-molecules the same name as the original molecules (helps with errors)
 
@@ -362,8 +367,8 @@ def compute_mcss(st1, st2, current_params):
         SMARTS string of the MCSS
     int
         The number of heavy atoms in the MCSS
-    dict
-        Dictionary with keys 'st1' and 'st2' that contain lists of indices of atoms to keep in the substructure
+    bool
+        True if the input molecules are identical
 
     See Also
     --------
@@ -414,11 +419,13 @@ def compute_mcss_mp(st1, st2, param_string):
         Molecule 1
     st2: :class:`~rdkit.Chem.rdchem.Mol`
         Molecule 2
+    param_string : str
+        String to specify the parameters for the MCSS calculation
 
     Returns
     -------
     tuple
-        Tuple of tuples containing the SMARTS strings of the two molecules and the MCSS, the number of atoms in the MCSS, and the indices of the atoms in the MCSS
+        Tuple of tuples containing the SMARTS strings of the two molecules and the MCSS, the number of atoms in the MCSS, and a boolean if the molecules are identical
 
     See Also
     --------
@@ -444,6 +451,11 @@ def setup_MCS_params(param_string='strict'):
         BondTyper = rdFMCS.BondCompare.CompareAny
         AtomTyper = rdFMCS.AtomCompare.CompareAny
 
+    Parameters
+    ----------
+    param_string : str, default='strict'
+        String to specify the parameters for the MCSS calculation
+
     Returns
     -------
     params: :class:`~rdkit.Chem.rdFMCS.MCSParameters`
@@ -467,7 +479,7 @@ def setup_MCS_params(param_string='strict'):
 
     return params
 
-def calculate_rmsd(pose1, pose2, atom_map, identity, eval_rmsd=False):
+def calculate_rmsd(pose1, pose2, atom_map, identity):
     """
     Calculates the RMSD between the two input molecules. Symmetry of molecules is respected during the RMSD calculation.
 
@@ -479,8 +491,8 @@ def calculate_rmsd(pose1, pose2, atom_map, identity, eval_rmsd=False):
         Molecule 2
     atom_map : :class:`list`
         List of lists of atom indices tuples to map between the two molecules
-    eval_rmsd : bool, optional, default=False
-        Whether to evaluate the RMSD using the OpenBabel implementation 
+    identity : bool
+        Whether the two molecules are identical
 
     Returns
     -------
