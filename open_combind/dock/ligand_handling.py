@@ -1,11 +1,9 @@
 import requests
-# import re
 import urllib.parse
 from rdkit import Chem
 from rdkit.Chem.AllChem import AssignBondOrdersFromTemplate
 from prody import writePDBStream
-import gzip
-# from bs4 import BeautifulSoup
+import fileinput
 
 
 class RDKitParseException(Exception):
@@ -211,14 +209,20 @@ def get_ligand_info_RCSB(pdb_id):
     return entry_ligands_info
 
 def mol_to_sdf(mol, path_to_sdf):
-    if path_to_sdf.endswith('.gz'):
-        with gzip.open(path_to_sdf,'wt') as f:
-            with Chem.SDWriter(f) as w:
-                w.write(mol)
-    else:
-        with Chem.SDWriter(path_to_sdf) as w:
-                w.write(mol)
+    """
+    Writes an RDKit molecule to an SDF file.
 
+    Parameters
+    ----------
+    mol : :class:`~rdkit.Chem.rdchem.Mol`
+        RDKit molecule to be written to an SDF file.
+    path_to_sdf : str
+        Path to the output SDF file. Can be gzipped.
+
+    """
+    with fileinput.hook_compressed(path_to_sdf,'wt') as f:
+        with Chem.SDWriter(f) as w:
+            w.write(mol)
 
 class DummyMolBlock():
     def __init__(self):

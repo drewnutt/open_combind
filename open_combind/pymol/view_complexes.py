@@ -1,6 +1,6 @@
+import fileinput
 from pymol import cmd
 from rdkit import Chem
-import gzip
 import sys
 import pandas as pd
 from glob import glob
@@ -169,9 +169,9 @@ def show_interactions(ifp_file, interaction, protein, lig, ligand_file, pose, de
     enable(lig, pose)
 
     if lig_mol is None:
-        if isinstance(ligand_file,str) and ligand_file.endswith('.gz'):
-            ligand_file = gzip.open(ligand_file)
-        lig_mols = [mol for mol in Chem.ForwardSDMolSupplier(ligand_file)]
+        if isinstance(ligand_file,str):
+            with fileinput.hook_compressed(ligand_file,'rb') as lf:
+                lig_mols = [mol for mol in Chem.ForwardSDMolSupplier(ligand_file)]
         assert len(lig_mols), "No ligands found in {}".format(ligand_file)
         lig_mol = lig_mols[pose]
 

@@ -1,6 +1,6 @@
 import os
 import argparse
-import gzip
+import fileinput
 from rdkit.Chem import AllChem as Chem
 
 def construct_set_conformers(mol, *, num_confs, confgen, seed=-1):
@@ -244,11 +244,8 @@ def ligsplit(big_sdf, root, multiplex=False, name_prop='BindingDB MonomerID',
         The number of conformers to write to the file.
     """
 
-    if os.path.splitext(big_sdf)[-1] == ".gz":
-        big_sdf_data = gzip.open(big_sdf)
-    else:
-        big_sdf_data = open(big_sdf, 'rb')
-    ligands = Chem.ForwardSDMolSupplier(big_sdf_data)
+    with fileinput.hook_compressed(big_sdf_data, 'rb') as bsd:
+        ligands = Chem.ForwardSDMolSupplier(big_sdf_data)
     unfinished = []
     for count, ligand in enumerate(ligands):
         het_id = ligand.GetProp('Ligand HET ID in PDB')

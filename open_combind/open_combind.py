@@ -384,9 +384,9 @@ def extract_top_poses(scores, original_pvs):
     Write top-scoring poses to a single file.
     """
     from rdkit import Chem
-    import gzip
+    import fileinput
 
-    out = scores.replace('.csv', '.sdf.gz')
+    out = scores.replace('.csv', '.sdf').replace('.gz','')
     scores = pd.read_csv(scores).set_index('ID')
 
     writer = Chem.SDWriter(out)
@@ -394,7 +394,8 @@ def extract_top_poses(scores, original_pvs):
     counts = {}
     written = []
     for pv in original_pvs:
-        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+        with fileinput.hook_compressed(pv,'rb') as f:
+            sts = Chem.ForwardSDMolSupplier(f)
         for st in sts:
             name = st.GetProp("_Name")
             if name not in counts:

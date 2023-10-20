@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+import fileinput
 import os
 import numpy as np
 from rdkit import Chem
@@ -75,12 +76,8 @@ def get_pose(pv, pose):
     pose : :class:`~rdkit.Chem.rdchem.Mol`
         The selected pose.
     """
-    if os.path.splitext(pv)[-1] == ".gz":
-        import gzip
-        pv = gzip.open(pv)
-    else:
-        pv = open(pv)
-    sts = Chem.ForwardSDMolSupplier(pv)
+    with fileinput.hook_compressed(pv,'rb') as pvf:
+        sts = Chem.ForwardSDMolSupplier(pv)
     for i,st in enumerate(sts):
         if i == pose:
             break
@@ -159,10 +156,6 @@ def count_poses(pv):
     num_poses : int
         Number of poses in the file.
     """
-    if os.path.splitext(pv)[-1] == ".gz":
-        import gzip
-        pv = gzip.open(pv)
-    else:
-        pv = open(pv)
-    num_poses = [1 for i in Chem.ForwardSDMolSupplier(pv)]
+    with fileinput.hook_compressed(pv,'rb') as pvf:
+        num_poses = [1 for i in Chem.ForwardSDMolSupplier(pv)]
     return sum(num_poses)

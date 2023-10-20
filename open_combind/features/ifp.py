@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 from rdkit.Chem import MolFromSmarts,ForwardSDMolSupplier,MolFromPDBFile, AddHs
 from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField, OptimizeMolecule
-import gzip
 
 def resname(atom):
     """
@@ -826,7 +825,7 @@ def fingerprint_poseviewer(input_file, poses, settings):
     Parameters
     ----------
     input_file : str
-        Path to the gzipped SDF file containing all of the ligand poses
+        Path to the SDF file containing all of the ligand poses. Can be gzipped (`.sdf.gz') or not(`.sdf').
     poses : int
         Number of poses to read from `input_file`
     settings : dict
@@ -842,11 +841,7 @@ def fingerprint_poseviewer(input_file, poses, settings):
     prot_bname = input_file.split('-to-')[-1]
     prot_fname = re.sub('-docked.*\.sdf(\.gz)?','_prot.pdb',prot_bname)
     prot_file = f"structures/proteins/{prot_fname}"
-    # print(prot_file)
 
-    # print(input_file)
-    # if file ends with .gz, open with gzip
-    # otherwise open with open
     fps = []
     with fileinput.hook_compressed(input_file,'rb') as fp:
         mols = ForwardSDMolSupplier(fp, removeHs=False)
@@ -885,7 +880,7 @@ def ifp(settings, input_file, output_file, poses):
     settings : dict
         Settings of the interaction fingerprint
     input_file : str
-        Path to the gzipped SDF file containing all of the ligand poses
+        Path to the SDF file containing all of the ligand poses. Can be gzipped (`.sdf.gz') or not (`.sdf').
     output_file : str
         Path to the output CSV file containing all the interactions 
     poses : int
