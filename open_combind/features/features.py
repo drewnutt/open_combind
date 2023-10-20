@@ -114,7 +114,7 @@ class Features:
         for pv in pvs:
             # mol_bundle = Chem.FixedMolSizeMolBundle()
             mol_bundle = []
-            with fileinput.hook_compressed(pv) as pv_open:
+            with fileinput.hook_compressed(pv,'rb') as pv_open:
                 mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
                 mol_count = 0
                 for mol in mol_suppl:
