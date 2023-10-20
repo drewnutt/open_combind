@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
-import gzip
+import fileinput
 import os
 from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolAlign import CalcRMS
@@ -33,11 +33,7 @@ def coalesce_poses(docked_files, sort_by='CNNscore', filter_RMSD=None, reverse=T
     if isinstance(docked_files, str):
         docked_files = [docked_files]
     for dock_file in docked_files:
-        if dock_file.endswith('.gz'):
-            openfile = gzip.open
-        else:
-            openfile = open
-        with openfile(dock_file,'rb') as gz:
+        with fileinput.hook_compressed(dock_file,'rb') as gz:
             mols += [m for m in ForwardSDMolSupplier(gz)]
     sorted_mols = sorted(mols, key=lambda x: float(x.GetProp(sort_by)),reverse=reverse)
 
@@ -61,11 +57,7 @@ def write_poses(sorted_mols, out_file):
         Output file to write the poses to
     """
 
-    if out_file.endswith('.gz'):
-        openfile=gzip.open
-    else:
-        openfile=open
-    with openfile(out_file,'wt') as gz:
+    with fileinput.hook_compressed(out_file,'wt') as gz:
         writer = SDWriter(gz)
         for sm in sorted_mols:
             writer.write(sm)
