@@ -1,5 +1,5 @@
+import fileinput
 import os
-import gzip
 import numpy as np
 import pandas as pd
 from glob import glob
@@ -114,22 +114,20 @@ class Features:
         for pv in pvs:
             # mol_bundle = Chem.FixedMolSizeMolBundle()
             mol_bundle = []
-            pv_open = pv
-            if pv.endswith('.gz'):
-                pv_open = gzip.open(pv)
-            mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
-            mol_count = 0
-            for mol in mol_suppl:
-                lig_centroid = ComputeCentroid(mol.GetConformer())
-                displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
-                # print(distance)
-                if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
-                    print(f"skipped for {pv}")
-                    continue
-                mol_bundle.append(mol)
-                mol_count += 1
-                if mol_count == self.max_poses:
-                    break
+            with fileinput.hook_compressed(pv) as pv_open:
+                mol_suppl = Chem.ForwardSDMolSupplier(pv_open)
+                mol_count = 0
+                for mol in mol_suppl:
+                    lig_centroid = ComputeCentroid(mol.GetConformer())
+                    displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                    # print(distance)
+                    if center_ligand is not None and (np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5):
+                        print(f"skipped for {pv}")
+                        continue
+                    mol_bundle.append(mol)
+                    mol_count += 1
+                    if mol_count == self.max_poses:
+                        break
             if (native is False) and (mol_count != self.max_poses):
                 print(f"Did not get {self.max_poses} poses for {pv}, only {len(mol_bundle)} poses")
             print(mol_count,pv)
@@ -269,18 +267,19 @@ class Features:
             _ifps = [_ifps.loc[_ifps.pose==p] for p in range(max(_ifps.pose)+1)]
 
             #Need to check for if ligand is centered here.
-            sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
-            _poses = []
-            for st in sts:
-                if center_ligand is not None:
-                    lig_centroid = ComputeCentroid(st.GetConformer())
-                    displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
-                    # print(distance)
-                    if np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5:
-                        print(f"skipped for {pv}")
-                        continue
-                _poses.append(st)
-            print(len(poses))
+            with fileinput.hook_compressed(pv, 'rb') as pv_open:
+                sts = Chem.ForwardSDMolSupplier(pv_open)
+                _poses = []
+                for st in sts:
+                    if center_ligand is not None:
+                        lig_centroid = ComputeCentroid(st.GetConformer())
+                        displacement = lig_centroid.DirectionVector(center) * lig_centroid.Distance(center)
+                        # print(distance)
+                        if np.abs(displacement.x) > 7.5 or np.abs(displacement.y) > 7.5 or np.abs(displacement.z) > 7.5:
+                            print(f"skipped for {pv}")
+                            continue
+                    _poses.append(st)
+                print(len(poses))
 
             keep = []
             for i in range(len(_names)):

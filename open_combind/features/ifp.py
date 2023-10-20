@@ -2,6 +2,7 @@
 Compute interaction fingerprints for poseviewer files.
 """
 
+import fileinput
 import tempfile
 import os
 import re
@@ -839,13 +840,15 @@ def fingerprint_poseviewer(input_file, poses, settings):
     """
     
     prot_bname = input_file.split('-to-')[-1]
-    prot_fname = re.sub('-docked.*\.sdf\.gz','_prot.pdb',prot_bname)
+    prot_fname = re.sub('-docked.*\.sdf(\.gz)?','_prot.pdb',prot_bname)
     prot_file = f"structures/proteins/{prot_fname}"
     # print(prot_file)
 
     # print(input_file)
+    # if file ends with .gz, open with gzip
+    # otherwise open with open
     fps = []
-    with gzip.open(input_file) as fp:
+    with fileinput.hook_compressed(input_file,'rb') as fp:
         mols = ForwardSDMolSupplier(fp, removeHs=False)
         rdk_prot = MolFromPDBFile(prot_file,removeHs=False)
         if rdk_prot is None:
