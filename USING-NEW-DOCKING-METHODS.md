@@ -26,6 +26,6 @@ In order to compute new statistics, the benchmark dataset will be used. The step
 
 ## Open-ComBind docking ligands with a new pose generator
 
-Likely you will want to use the entire Open-ComBind pipeline, so you will want to reconfigure Open-ComBind to use your new pose generator by default. By following the steps below you can setup Open-ComBind to run the whole docking procedure with your pose generator:
+Likely you will want to use the entire Open-ComBind pipeline, so you will want to reconfigure Open-ComBind to use your new pose generator by default. This will require editing `open_combind/features/dock.py` to use your new pose generator rather than GNINA.
 
-1. 
+Pull requests to make Open-ComBind pose generator agnostic are welcome.
