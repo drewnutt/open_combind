@@ -1,10 +1,8 @@
 import pandas as pd
 import argparse
 import os
-import sys
 import random
 from glob import glob
-sys.path.append(os.path.expanduser('~anm329/git/combind'))
 
 # Defaults
 mcss_param = 'strict'
@@ -97,7 +95,7 @@ def merge_correct_stats(prot_name,stats_root, interactions):
 
     return '/'.join(merged_stats.split('/')[:-1])
 
-def pose_prediction(prot_features, out, stats_root, alpha=-0.6,
+def pose_prediction(prot_features, out, stats_root, alpha=-1,
                     features='mcss,hbond,saltbridge,contact', restart=500, max_iterations=1000):
     """
     Run ComBind pose prediction.
@@ -145,7 +143,7 @@ if __name__ == "__main__":
     parser.add_argument('--pose_csv',help='name of pose_csv to use, if not set then `<protein_name>_<query_ligand>_<selection_criterion>.csv`')
     parser.add_argument('--check_center_ligs',action='store_true',help='quazi-GLIDE inner box for docked poses')
     parser.add_argument('--skip_featurization',action='store_true',help='Do not run the featurization of the ligand molecules (assumes you already have the featurization)')
-    parser.add_argument('--alpha',help='alpha for the combind objective')
+    parser.add_argument('--alpha',default=-1,type=float,help='alpha for the combind objective')
     parser.add_argument('--mcss_param',default=mcss_param, choices=['strict','relaxed'],help='MCSS parameters')
     parser.add_argument('--num-helpers',type=int,default=None,help='number of helper ligands to use')
     parser.add_argument('--seed','-S',type=int,default=None,help='seed for random number generator')

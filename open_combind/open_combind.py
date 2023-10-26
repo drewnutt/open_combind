@@ -244,7 +244,8 @@ def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=
 def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
             no_mcss=False, use_shape=False, max_poses=100, no_cnn=False,
             screen=False, ifp_version=IFP_VERSION, mcss_param=MCSS_PARAM,
-            processes=1, check_center_ligs=False, template='structures/template/*.template'):
+            processes=1, check_center_ligs=False, template='structures/template/*.template',
+            newscore=None, reverse=True):
     """
     Featurize the set of docked ligand poses, `poseviewers`
 
@@ -271,15 +272,22 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
         Version of the shape similarity calculator
     processes : int, default=1
         Number of processes to use, -1 implies all cores.
+    newscore : str, default=None
+        Name of the new score to use for featurization
+    reverse : bool, default=True
+        Reverse the order of the poses before featurization, highest score first
     """
 
     from open_combind.dock.postprocessing import coalesce_poses, write_poses
     from open_combind.features.features import Features
     if use_shape:
         print("Shape is not currently implemented outside of Schrodinger\n Shape has not been evaluated for performance in pose-prediction")
+    if newscore is not None:
+        no_cnn = True
+        print("Using new score for featurization and not CNN scores")
     
     for poseviewer in poseviewers:
-        sorted_poses = coalesce_poses(poseviewer)
+        sorted_poses = coalesce_poses(poseviewer, sort_by=newscore if newscore is not None else 'CNNscore',reverse=reverse)
         write_poses(sorted_poses, poseviewer)
 
     native_poses = {}
@@ -290,8 +298,9 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
     print(native_poses)
 
     template_file = sorted(glob(template))[0]
-    features = Features(root, ifp_version=ifp_version, mcss_param=mcss_param,
-                        max_poses=max_poses, cnn_scores=not no_cnn, template=template_file, check_center_ligs=check_center_ligs)
+    features = Features(root, ifp_version=ifp_version, mcss_param=mcss_param,max_poses=max_poses, 
+                        cnn_scores=not no_cnn, template=template_file,
+                        check_center_ligs=check_center_ligs, newscore=newscore)
 
     print(poseviewers)
     features.compute_single_features(poseviewers, native_poses=native_poses)
@@ -308,7 +317,7 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
 ################################################################################
 
 def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbond', 'saltbridge', 'contact'],
-                    alpha=1, stats_root=None, restart=500, max_iterations=1000):
+                    alpha=1, stats_root=None, restart=500, max_iterations=1000, newscore=None):
     """
     Run ComBind pose prediction and generate a CSV, `out` with the selected pose numbers.
 
@@ -337,7 +346,10 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
     from importlib_resources import files
 
 
-    protein = Features(root)
+    cnn_scores = True
+    if newscore is not None:
+        cnn_scores = False
+    protein = Features(root, newscore=newscore, cnn_scores=no_cnn)
     protein.load_features()
 
     if not ligands:
@@ -349,7 +361,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
         stats_root = files("open_combind").joinpath("stats_data/default/")
     stats = read_stats(stats_root, features)
     
-    ps = PosePrediction(ligands, features, data, stats, alpha)
+    ps = PosePrediction(ligands, features, data, stats, alpha, newscore=newscore)
     best_poses, best_score = ps.max_posterior(max_iterations, restart)
 
     with open(out, 'w') as fp:
@@ -363,70 +375,69 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
                                         best_poses[ligand],
                                         crmsd, grmsd, brmsd])) + '\n')
 
-def screen(score_fname, root, stats_root, alpha, features):
-    """
-    Run ComBind screening.
-    """
-    from open_combind.score.screen import screen, load_features_screen
-    from open_combind.score.statistics import read_stats
+#def screen(score_fname, root, stats_root, alpha, features):
+#    """
+#    Run ComBind screening.
+#    """
+#    from open_combind.score.screen import screen, load_features_screen
+#    from open_combind.score.statistics import read_stats
 
-    features = features.split(',')
-    stats = read_stats(stats_root, features)
-    single, raw = load_features_screen(features, root)
+#    features = features.split(',')
+#    stats = read_stats(stats_root, features)
+#    single, raw = load_features_screen(features, root)
 
-    combind_energy = screen(single, raw, stats, alpha)
-    np.save(score_fname, combind_energy)
+#    combind_energy = screen(single, raw, stats, alpha)
+#    np.save(score_fname, combind_energy)
 
-################################################################################
+#################################################################################
 
-def extract_top_poses(scores, original_pvs):
-    """
-    Write top-scoring poses to a single file.
-    """
-    from rdkit import Chem
-    import fileinput
+#def extract_top_poses(scores, original_pvs):
+#    """
+#    Write top-scoring poses to a single file.
+#    """
+#    from rdkit import Chem
+#    import gzip
 
-    out = scores.replace('.csv', '.sdf').replace('.gz','')
-    scores = pd.read_csv(scores).set_index('ID')
+#    out = scores.replace('.csv', '.sdf.gz')
+#    scores = pd.read_csv(scores).set_index('ID')
 
-    writer = Chem.SDWriter(out)
+#    writer = Chem.SDWriter(out)
 
-    counts = {}
-    written = []
-    for pv in original_pvs:
-        with fileinput.hook_compressed(pv,'rb') as f:
-            sts = Chem.ForwardSDMolSupplier(f)
-        for st in sts:
-            name = st.GetProp("_Name")
-            if name not in counts:
-                counts[name] = 0
-            else:
-                # counts is zero indexed.
-                counts[name] += 1
+#    counts = {}
+#    written = []
+#    for pv in original_pvs:
+#        sts = Chem.ForwardSDMolSupplier(gzip.open(pv))
+#        for st in sts:
+#            name = st.GetProp("_Name")
+#            if name not in counts:
+#                counts[name] = 0
+#            else:
+#                # counts is zero indexed.
+#                counts[name] += 1
 
-            if name in scores.index and scores.loc[name, 'POSE'] == counts[name]:
-                writer.append(st)
-                written += [name]
+#            if name in scores.index and scores.loc[name, 'POSE'] == counts[name]:
+#                writer.append(st)
+#                written += [name]
 
-    assert len(written) == len(scores), written
-    for name in scores.index:
-        assert name in written
+#    assert len(written) == len(scores), written
+#    for name in scores.index:
+#        assert name in written
 
-def apply_scores(pv, scores, out):
-    """
-    Add ComBind screening scores to a poseviewer.
-    """
-    from open_combind.score.screen import apply_scores
-    if out is None:
-        out = pv.replace('_pv.maegz', '_combind_pv.maegz')
-    apply_scores(pv, scores, out)
+#def apply_scores(pv, scores, out):
+#    """
+#    Add ComBind screening scores to a poseviewer.
+#    """
+#    from open_combind.score.screen import apply_scores
+#    if out is None:
+#        out = pv.replace('_pv.maegz', '_combind_pv.maegz')
+#    apply_scores(pv, scores, out)
 
-def scores_to_csv(pv, out):
-    """
-    Write docking and ComBind scores to text.
-    """
-    from open_combind.score.screen import scores_to_csv
-    scores_to_csv(pv, out)
+#def scores_to_csv(pv, out):
+#    """
+#    Write docking and ComBind scores to text.
+#    """
+#    from open_combind.score.screen import scores_to_csv
+#    scores_to_csv(pv, out)
 
 if __name__ == "__main__":
     main()
