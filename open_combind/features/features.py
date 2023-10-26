@@ -84,7 +84,7 @@ class Features:
         self.center_ligand = Chem.MolFromMolFile(abox_ligand) if self.check_center_ligs else None
 
         self.newscore = None
-        if newscore in kwargs:
+        if 'newscore' in kwargs:
             self.newscore = kwargs['newscore']
 
         self.raw = {}

@@ -244,7 +244,7 @@ def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=
 def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
             no_mcss=False, use_shape=False, max_poses=100, no_cnn=False,
             screen=False, ifp_version=IFP_VERSION, mcss_param=MCSS_PARAM,
-            processes=1, check_center_ligs=False, template='structures/template/*.template'
+            processes=1, check_center_ligs=False, template='structures/template/*.template',
             newscore=None, reverse=True):
     """
     Featurize the set of docked ligand poses, `poseviewers`
