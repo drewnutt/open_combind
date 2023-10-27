@@ -283,14 +283,14 @@ class Features:
                             print(f"skipped for {pv}")
                             continue
                     _poses.append(st)
-                print(len(poses))
+                # print(len(poses))
 
             keep = []
             for i in range(len(_names)):
                 if ((ligands == None or (_names[i] in ligands))
                     and sum(_names[:i] == _names[i]) < self.max_poses):
                     keep += [i]
-            print(keep)
+            # print(keep)
             rmsds += [_rmsds[keep]]
             if self.cnn_scores:
                 gscores += [_gscores[keep]]
