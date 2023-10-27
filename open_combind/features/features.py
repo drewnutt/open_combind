@@ -283,14 +283,14 @@ class Features:
                             print(f"skipped for {pv}")
                             continue
                     _poses.append(st)
-                print(len(poses))
+                # print(len(poses))
 
             keep = []
             for i in range(len(_names)):
                 if ((ligands == None or (_names[i] in ligands))
                     and sum(_names[:i] == _names[i]) < self.max_poses):
                     keep += [i]
-            print(keep)
+            # print(keep)
             rmsds += [_rmsds[keep]]
             if self.cnn_scores:
                 gscores += [_gscores[keep]]
@@ -316,7 +316,7 @@ class Features:
             gscores = None
         return rmsds, gscores, gaffs, vaffs, poses, names, ifps
 
-    def compute_single_features(self, pvs, native_poses):
+    def compute_single_features(self, pvs, native_poses, processes=1):
         """
         Compute all of the single pose features (e.g. GNINA scores, RMSD to native, etc.) for the provided poses
 
@@ -372,11 +372,18 @@ class Features:
                 self.compute_rmsd(bundle, native_poses, out)
 
         print('Computing interaction fingerprints.')
+        comp_ifp = Features.compute_ifp_wrapper
+        if processes != 1:
+            ifp_unfinished = []
+            comp_ifp = ifp_unfinished.append
         for pv in molbundles.keys():
             # print(pv)
             out = self.path('ifp', pv=pv)
             if not os.path.exists(out):
-                self.compute_ifp(pv, out)
+                # self.compute_ifp(pv, out)
+                comp_ifp((self,pv,out))
+        if processes != 1:
+            mp(Features.compute_ifp_wrapper, ifp_unfinished, processes=processes)
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         """
@@ -561,6 +568,10 @@ class Features:
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
         ifp(settings, pv, out, self.max_poses)
+
+    @staticmethod
+    def compute_ifp_wrapper(self, pv, out):
+        self.compute_ifp(pv, out)
 
     def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
         """

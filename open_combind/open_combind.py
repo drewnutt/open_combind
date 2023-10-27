@@ -303,7 +303,7 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
                         check_center_ligs=check_center_ligs, newscore=newscore)
 
     print(poseviewers)
-    features.compute_single_features(poseviewers, native_poses=native_poses)
+    features.compute_single_features(poseviewers, native_poses=native_poses, processes=processes)
 
     if screen:
         assert len(poseviewers) == 2
