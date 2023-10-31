@@ -17,3 +17,4 @@ dependencies:
     - ProDy>=2.0
     - click
     - plumbum
+    - sphinx_rtd_theme
