@@ -51,6 +51,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.extlinks',
     'sphinx.ext.coverage',
+    'sphinx_rtd_theme'
 ]
 
 autosummary_generate = True
