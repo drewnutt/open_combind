@@ -1,9 +1,9 @@
+import fileinput
 import requests
 import urllib.parse
 from rdkit import Chem
 from rdkit.Chem.AllChem import AssignBondOrdersFromTemplate
 from prody import writePDBStream
-import fileinput
 
 
 class RDKitParseException(Exception):
@@ -17,7 +17,7 @@ class RDKitParseException(Exception):
 def get_ligands_from_RCSB(pdbid, lig_code=None, specific_chain=None,
                         save_file="{pdbid}_{chem_name}_{chain_id}_{seq_id}.sdf", first_only=False):
     """
-    Given a PDBFile (or a PDB Header file), download the ligands present in the PDB file directly
+    Given a PDB ID, download the ligands present in the PDB file directly
     from the RCSB as a SDF file
 
     Parameters
@@ -110,7 +110,7 @@ def ligand_selection_to_mol(ligand_selection, query_ligand, outfile=None):
 
 def get_ligand_from_SMILES(lig_id):
     """
-    Using the RCSB API, pulls the SMILES string containin stereochemical features for the given ligand ID.
+    Using the RCSB API, pulls the SMILES string containing stereochemical features for the given ligand ID.
 
     If a ligand has a dedicated page at ``https://www.rcsb.org/ligand/{ligand_id}`` then it likely has a SMILES string
     (does not need to be a 2 or 3 letter identifier)
@@ -140,38 +140,6 @@ def get_ligand_from_SMILES(lig_id):
         raise RDKitParseException(f"RDKit cannot parse the molecule, {lig_id}, downloaded from the PDB as a SMILES string")
 
     return mol
-
-
-
-# def scrape_rcsb_webpage(pdb_id):
-#     rec_page_url = "https://www.rcsb.org/structure/{receptor}"
-#     receptor_page = requests.get(rec_page_url.format(receptor=pdb_id))
-#     soup = BeautifulSoup(receptor_page.text, 'html.parser')
-#     ligand_rows = soup.find_all('tr', id=re.compile('ligand_row_\w{1,3}'))
-#     ligand_chain_info = dict()
-#     for lig_row in ligand_rows:
-#         lig_cols = lig_row.find_all('td')
-#         lig_name = lig_cols[0].a.text
-#         chain_info = dict()
-#         for link_tag in lig_cols[0].find_all('ul', class_='dropdown-menu')[0].find_all('a'):
-#             url = link_tag.get('href')
-#             if 'encoding=sdf' not in url:
-#                 continue
-#             text = link_tag.text.split(',')[-1]
-#             chain = text.split()[1]  # first word is always "chain"
-#             auth_chain = re.findall('\[auth ([A-Z])\]', text)
-#             if len(auth_chain) == 1:
-#                 auth_chain = auth_chain[0]
-#             elif len(auth_chain) > 1:
-#                 raise IndexError(f"more than one auth chain for {text} in {pdb_id}")
-#             else:
-#                 auth_chain = chain
-#             chain_info[chain] = {"auth_chain": auth_chain, "url": url}
-
-#         ligand_chain_info[lig_name] = chain_info
-
-#     return ligand_chain_info
-
 
 def get_ligand_info_RCSB(pdb_id):
     """

@@ -52,7 +52,7 @@ def structprep(templ_struct='', struct='', raw_dir='structures/raw',
 
     Notes
     -----
-    The following directory structure is required::
+    The following directory structure is recomended::
 
             <raw_dir>/
                 structure_name.pdb
@@ -144,9 +144,9 @@ def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
     num_confs: int, default=50
         Number of conformations for RDKit to generate initially with rdkit.EmbedMultipleConfs for later minimization
     confgen: str, default="etkdg_v2"
-        Conformation generation embedded parameters model to use (see: `rdkit.Chem.rdDistGeom <https://www.rdkit.org/docs/source/rdkit.Chem.rdDistGeom.html>`_)
+        Conformation generation embedded parameters model to use (see: :class:`~rdkit.Chem.rdDistGeom`)
     ff: str, default="UFF"
-        Force field to use for minimization (see: `rdkit.Chem.rdForceFieldHelpers <https://www.rdkit.org/docs/source/rdkit.Chem.rdForceFieldHelpers.html>`_)
+        Force field to use for minimization (see: :class:`~rdkit.Chem.rdForceFieldHelpers`)
     max_iterations: int, default=1000
         Number of iterations to minimize the generated conformations with the UFF force field
     seed: int, default=-1
@@ -189,7 +189,7 @@ def ligprep(smiles, root='ligands', multiplex=False, ligand_names="ID",
         # ligsplit(smiles, root, multiplex=multiplex, processes=processes,
         #         num_confs=num_confs, confgen=confgen, maxIters=max_iterations)
 
-def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=False, slurm=False, now=False):
+def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=False, slurm=False, now=False, processes=1):
     """
     Generate GNINA docking commands to dock `ligands` to `template`.
 
@@ -201,7 +201,7 @@ def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=
         Path to template file to use for docking (Defaults to alphabetically first `.template` file in `structures/template/`)
     dock_file : str
         Format string that will be used with all of the ligands to create a docking file. Defaults to::
-         -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 > {log}
+         -l {lig} -o {out} --exhaustiveness {exh} --num_modes 30 --min_rmsd_filter 0.01 > {log}
     root : str, default="docking"
         specifies where the docking results will be written.
     screen : bool, default=False
@@ -237,14 +237,14 @@ def dock_ligands(ligands, template=None, dock_file=None, root='docking', screen=
         ligs.append(ligand)
         names.append(name)
     print(f"Writing docking file for {len(ligs)} ligands")
-    dock(template, ligands, root, names, not screen, slurm=slurm, now=now, infile=dock_file)
+    dock(template, ligands, root, names, not screen, slurm=slurm, now=now, infile=dock_file, processes=processes)
 
 ################################################################################
 
 def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
             no_mcss=False, use_shape=False, max_poses=100, no_cnn=False,
-            screen=False, ifp_version=IFP_VERSION, mcss_param=MCSS_PARAM,
-            processes=1, check_center_ligs=False, template='structures/template/*.template',
+            ifp_version=IFP_VERSION, mcss_param=MCSS_PARAM, processes=1,
+            check_center_ligs=False, template='structures/template/*.template',
             newscore=None, reverse=True):
     """
     Featurize the set of docked ligand poses, `poseviewers`
@@ -305,19 +305,13 @@ def featurize(root, poseviewers, native='structures/ligands/*_lig.sdf',
     print(poseviewers)
     features.compute_single_features(poseviewers, native_poses=native_poses, processes=processes)
 
-    if screen:
-        assert len(poseviewers) == 2
-        features.compute_pair_features(poseviewers[:1],
-                                       pvs2 = poseviewers[1:],
-                                       mcss=not no_mcss, shape=use_shape)
-    else:
-        features.compute_pair_features(poseviewers,
-                                       mcss=not no_mcss, shape=use_shape, processes=processes)
+    features.compute_pair_features(poseviewers,
+                                   mcss=not no_mcss, shape=use_shape, processes=processes)
 
 ################################################################################
 
 def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbond', 'saltbridge', 'contact'],
-                    alpha=1, stats_root=None, restart=500, max_iterations=1000, newscore=None):
+                    alpha=-1, stats_root=None, restart=500, max_iterations=1000, newscore=None):
     """
     Run ComBind pose prediction and generate a CSV, `out` with the selected pose numbers.
 
