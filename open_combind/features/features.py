@@ -383,7 +383,7 @@ class Features:
                 # self.compute_ifp(pv, out)
                 comp_ifp((self,pv,out))
         if processes != 1:
-            mp(Features.compute_ifp_wrapper, ifp_unfinished, processes=processes)
+            mp(Features.compute_ifp_mp_wrapper, ifp_unfinished, processes=processes)
 
     def compute_pair_features(self, pvs, pvs2=None, ifp=True, shape=True, mcss=True, processes=1):
         """
@@ -570,7 +570,12 @@ class Features:
         ifp(settings, pv, out, self.max_poses)
 
     @staticmethod
-    def compute_ifp_wrapper(self, pv, out):
+    def compute_ifp_mp_wrapper(self, pv, out):
+        self.compute_ifp(pv, out)
+
+    @staticmethod
+    def compute_ifp_wrapper(inputs):
+        self, pv, out = inputs
         self.compute_ifp(pv, out)
 
     def compute_ifp_pair(self, ifps1, ifps2, feature, out, processes=1):
