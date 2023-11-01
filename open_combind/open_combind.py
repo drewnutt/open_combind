@@ -343,7 +343,7 @@ def pose_prediction(root, out="poses.csv", ligands=None, features=['mcss', 'hbon
     cnn_scores = True
     if newscore is not None:
         cnn_scores = False
-    protein = Features(root, newscore=newscore, cnn_scores=no_cnn)
+    protein = Features(root, newscore=newscore, cnn_scores=cnn_scores)
     protein.load_features()
 
     if not ligands:

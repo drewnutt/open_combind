@@ -43,13 +43,13 @@ class PosePrediction:
         self.stats = stats
         self.alpha = float(alpha)
 
-        self.max_poses = self._get_max_poses()
-        self.single = self._get_single()
-        self.pair = self._get_pair()
-
         self.singlescore = 'gscore'
         if 'newscore' in kwargs and kwargs['newscore'] is not None:
             self.singlescore = kwargs['newscore']
+
+        self.max_poses = self._get_max_poses()
+        self.single = self._get_single()
+        self.pair = self._get_pair()
 
     def _get_max_poses(self):
         """
