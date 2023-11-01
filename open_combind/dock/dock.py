@@ -38,8 +38,8 @@ def check_dock_line(infile):
     assert '{log}' in infile, "need to have {log} in your docking line to specify logfile"
     if '{exh}' not in infile:
         print('Warning: your docking line does not contain {exh}\n\
-                Docking will use either your specified exhaustiveness \
-                (if specified) or the default GNINA exchaustiveness of 8')
+                \t\tDocking will use either your specified exhaustiveness\n \
+                \t\t(if specified) or the default GNINA exhaustiveness of 8')
 
     return infile
 

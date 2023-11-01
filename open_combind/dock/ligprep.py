@@ -294,14 +294,14 @@ def process_both(inname,ext,outname, **kwargs):
 if __name__ == '__main__':
     def argument_parser():
         parser = argparse.ArgumentParser()
-        parser.add_argument('--input_file', '-I', required=True, help='Input file')
-        parser.add_argument('--output_file', '-O', required=True, help='Output file')
+        parser.add_argument('--input-file', '-I', required=True, help='Input file')
+        parser.add_argument('--output-file', '-O', required=True, help='Output file')
         parser.add_argument('--seed', '-S', default=-1, type=int, help='Random seed')
-        parser.add_argument('--num_out_confs', default=10, type=int, help='Number of output conformations')
+        parser.add_argument('--num-out-confs', default=10, type=int, help='Number of output conformations')
         parser.add_argument('--ff', default='UFF', help='Force field for conformer minimization')
         parser.add_argument('--confgen', default='etkdg_v2', help='Conformer generation method')
         parser.add_argument('--maxIters', default=1000, type=int, help='Maximum number of minimization iterations')
-        parser.add_argument('--num_confs', default=50, type=int, help='Number of conformations to generate with the embedding method')
+        parser.add_argument('--num-confs', default=50, type=int, help='Number of conformations to generate with the embedding method')
         return parser.parse_args()
 
     args = argument_parser()
