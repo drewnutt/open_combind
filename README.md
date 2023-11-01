@@ -6,6 +6,7 @@
 
 Open-source docking pipeline leveraging pairwise statistics
 
+Open-ComBind is currently a [preprint](https://doi.org/10.26434/chemrxiv-2023-xjl84)
 
 This is a fork of [ComBind](https://github.com/drorlab/combind) that removes all uses of proprietary API calls or proprietary software. This will produce similar (if not the exact same) results
 as the original ComBind and it will be completely free to use.
