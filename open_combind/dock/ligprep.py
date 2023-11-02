@@ -291,6 +291,12 @@ def process_both(inname,ext,outname, **kwargs):
         mol.SetProp('_Name', os.path.basename(inname).replace('.sdf', ''))
         write3DConfs(mol, outname, **kwargs)
 
+def main(args):
+    extension = check_filetype(args.input_file)
+    process_both(args.input_file, extension, args.output_file, num_out_confs=args.num_out_confs,
+            seed=args.seed, ff=args.ff, confgen=args.confgen, maxIters=args.maxIters,
+            num_confs=args.num_confs)
+
 if __name__ == '__main__':
     def argument_parser():
         parser = argparse.ArgumentParser()
@@ -303,9 +309,5 @@ if __name__ == '__main__':
         parser.add_argument('--maxIters', default=1000, type=int, help='Maximum number of minimization iterations')
         parser.add_argument('--num-confs', default=50, type=int, help='Number of conformations to generate with the embedding method')
         return parser.parse_args()
-
     args = argument_parser()
-    extension = check_filetype(args.input_file)
-    process_both(args.input_file, extension, args.output_file, num_out_confs=args.num_out_confs,
-            seed=args.seed, ff=args.ff, confgen=args.confgen, maxIters=args.maxIters,
-            num_confs=args.num_confs)
+    main(args)

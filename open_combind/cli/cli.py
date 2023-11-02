@@ -5,10 +5,12 @@ import numpy as np
 import click
 import os
 import sys
+from argparse import Namespace
 from glob import glob
 
 from open_combind.utils import *
 import open_combind as oc
+from open_combind.dock.ligprep import main as _single_ligprep
 ###############################################################################
 
 # Defaults
@@ -33,9 +35,9 @@ def cli(ctx):
 
 
 @cli.command()
-@click.argument('struct', default='', help='Structure to use for alignment. Defaults to alphabetically lowest.')
+@click.option('--align-struct', default='', help='Structure to use for alignment. Defaults to alphabetically lowest.')
 @click.option('--templ-struct', help='Structure to use as template for alignment. Defaults to alphabetically lowest.')
-def structprep(templ_struct='', struct='', raw_dir='structures/raw',
+def structprep(templ_struct='', align_struct='', raw_dir='structures/raw',
         align_dir='structures/aligned', processed_dir='structures/processed',
         template_dir='structures/dir', ligand_dir='structures/ligands',
         protein_dir='structures/proteins' ):
@@ -74,14 +76,14 @@ def structprep(templ_struct='', struct='', raw_dir='structures/raw',
     The process can be started from any step, e.g. if you have processed
     versions of your structures, you can place these in the processed directory.
     """
-    oc.structprep(templ_struct=templ_struct, struct=struct, raw_dir=raw_dir,
+    oc.structprep(templ_struct=templ_struct, struct=align_struct, raw_dir=raw_dir,
             align_dir=align_dir, processed_dir=processed_dir,
             template_dir=template_dir, ligand_dir=ligand_dir,
             protein_dir=protein_dir)
 
 
 @cli.command()
-@click.argument('smiles', required=True, help='Smiles file to prepare.')
+@click.argument('smiles', required=True)
 @click.option('--root', default='ligands',
         help='Root directory for output of ligprep', type=click.Path(), show_default=True)
 @click.option('--multiplex', is_flag=True, help='Write all ligands to one file.')
@@ -107,18 +109,41 @@ def ligprep(smiles, root, multiplex, ligand_names, ligand_smiles,
             delim, processes, sdffile, num_out_confs, num_confs, confgen,
             max_iterations, seed, ff):
     """
-    Prepare ligands for docking, from SMILES or SDF.
+    Prepare ligands in `smiles` for docking, from SMILES or SDF.
 
-    Specifically, this will utilize RDKit to generate a 3D conformer for each of the ligands 
+    Specifically, this will utilize RDKit to generate a set of 3D conformers for each of the ligands 
     """
     oc.ligprep(smiles, root=root, multiplex=multiplex, ligand_names=ligand_names,
             ligand_smiles=ligand_smiles, delim=delim, sdffile=sdffile,
             num_out_confs=num_out_confs, num_confs=num_confs, confgen=confgen,
             max_iterations=max_iterations, ff=ff, processes=processes, seed=seed)
 
+@cli.command()
+@click.argument('input-file', required=True)
+@click.argument('output-file', required=True)
+@click.option('--num-out-confs', default=10, help='Number of output conformers', show_default=True)
+@click.option('--num-confs', default=50,
+        help='Number of conformers to generate and query energy', show_default=True)
+@click.option('--confgen', default='etkdg_v2', help='Conformer generation method',
+        show_default=True)
+@click.option('--ff', default="UFF",
+        help='Force field for minimization and energy computation', show_default=True)
+@click.option('--max-iterations', default=1000,
+        help='Maximum number of iterations for minimization', show_default=True)
+@click.option('--seed', default=-1, help='Random seed for conformer generation')
+def singleligprep(input_file, output_file, num_out_confs, num_confs, confgen,
+            max_iterations, seed, ff):
+    """
+    Generate conformations for a single `input-file`, provided as a SMILES or SDF (detected via file extension). Output as an SDF to `output-file`
+    """
+
+    args = Namespace(input_file=input_file, output_file=output_file,
+            num_out_confs=num_out_confs, num_confs=num_confs, confgen=confgen,
+            maxIters=max_iterations, ff=ff, seed=seed)
+    _single_ligprep(args)
 
 @cli.command()
-@click.argument('ligands', nargs=-1, required=True, help='Ligand files to dock.')
+@click.argument('ligands', nargs=-1, required=True)
 @click.option('--root', default='docking',
         help='Root directory for output of docking', type=click.Path(), show_default=True)
 @click.option('--template',
@@ -143,8 +168,8 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file, process
 
 
 @cli.command()
-@click.argument('root', required=True, help='Root directory to place feature files')
-@click.argument('poseviewers', nargs=-1, required=True, help='Docked ligand files to featurize')
+@click.argument('root', required=True)
+@click.argument('poseviewers', nargs=-1, required=True)
 @click.option('--native', default='structures/ligands/*_lig.sdf', help='Native ligand files')
 @click.option('--ifp-version', default=IFP_VERSION, help='IFP version to use')
 @click.option('--mcss-param', default=MCSS_PARAM, help='MCSS parameter setup to use')
@@ -178,9 +203,9 @@ def featurize(root, poseviewers, native, ifp_version,
 
 
 @cli.command()
-@click.argument('root', required=True, help='Root directory of the feature files')
-@click.argument('out', default="poses.csv", help='Output file', show_default=True)
-@click.argument('ligands', nargs=-1, help='Ligands to predict poses for')
+@click.argument('root', required=True)
+@click.argument('ligands', nargs=-1)
+@click.option('--out', default="poses.csv", help='Output file', show_default=True)
 @click.option('--features', default='mcss,hbond,saltbridge,contact',
         help='Features to use for pose prediction', show_default=True)
 @click.option('--alpha', default=-1.0, help='Weight of the docking score', show_default=True)
@@ -191,7 +216,7 @@ def featurize(root, poseviewers, native, ifp_version,
 def pose_prediction(root, out, ligands, alpha, stats_root, features, restart,
                     max_iterations, newscore):
     """
-    Run ComBind pose prediction.
+    Run ComBind pose prediction. Using the features and ligands in `root`, unless `ligands` are specified.
     """
     features = features.split(',')
 
