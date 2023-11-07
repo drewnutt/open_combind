@@ -2,7 +2,7 @@ import os
 import subprocess
 from glob import glob
 
-GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 200 --min_rmsd_filter 0 > {log}'  #: default command for GNINA docking
+GNINA = ' -l {lig} -o {out} --exhaustiveness {exh} --num_modes 30 --min_rmsd_filter 0.01 > {log}'  #: default command for GNINA docking
 
 def docking_failed(gnina_log):
     if not os.path.exists(gnina_log):
@@ -38,8 +38,8 @@ def check_dock_line(infile):
     assert '{log}' in infile, "need to have {log} in your docking line to specify logfile"
     if '{exh}' not in infile:
         print('Warning: your docking line does not contain {exh}\n\
-                Docking will use either your specified exhaustiveness \
-                (if specified) or the default GNINA exchaustiveness of 8')
+                \t\tDocking will use either your specified exhaustiveness\n \
+                \t\t(if specified) or the default GNINA exhaustiveness of 8')
 
     return infile
 
@@ -79,7 +79,7 @@ def dock(template, ligands, root, name, enhanced, infile=None, slurm=False, now=
         infile = check_dock_line(infile)
     exh = 8
     if enhanced:
-        exh = 16
+        exh *= 2
     dock_template = open(template).readlines()[0].strip('\n')
     recname = os.path.splitext(os.path.split(dock_template.split('-r')[-1].strip().split(' ')[0])[1])[0]
     # aboxname = os.path.splitext(os.path.split(dock_template.split('--autobox_ligand')[-1].strip().split(' ')[0])[1])[0]

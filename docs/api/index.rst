@@ -7,9 +7,6 @@ Open-Combind is primarily used through its command line interface. It provides a
 
 .. toctree::
     
-Main Combind Commands
----------------------
-
 .. autofunction:: open_combind.structprep
 
 .. autofunction:: open_combind.ligprep
