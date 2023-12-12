@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from pymol.cmd import load, select, align, save, delete, get_object_matrix, reinitialize, get_chains
+from pymol.cmd import load, select, align, save, delete, get_object_matrix, reinitialize, get_chains, count_atoms
 from rdkit.Chem import ForwardSDMolSupplier, SDWriter
 from rdkit.Chem.rdMolTransforms import TransformConformer
 
@@ -174,10 +174,10 @@ def struct_align(template, structs, dist=15.0, retry=True,
                     downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
                     aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf", process_dir=process_dir,
                     align_dir=align_dir)
-        if aligned_lig:
-            print("Successfully aligned separate ligand")
-        else:
-            print("No separate ligand found to align")
+            if aligned_lig:
+                print("Successfully aligned separate ligand")
+            else:
+                print("No separate ligand found to align")
 
     return transform_matrix
 
@@ -202,6 +202,7 @@ def get_selection_texts(liginfo_path, prot):
         Chain of the ligand
     """
 
+    assert count_atoms(prot) > 0
     liginfo = open(liginfo_path, 'r').readlines()
     if len(liginfo[0].strip('\n')) < 4:
         selection_text = 'hetatm'
@@ -210,6 +211,7 @@ def get_selection_texts(liginfo_path, prot):
     # lig_chain = prot.select(selection_text).getChids()[0]
     # if selection_text == f'chain {lig_chain}':
     select('prot_chain',f'not {selection_text} and {prot} within 5 of {selection_text}')
+    assert count_atoms('prot_chain') > 0
     lig_chain = sorted(get_chains('prot_chain'))[0]
 
     return selection_text, lig_chain
