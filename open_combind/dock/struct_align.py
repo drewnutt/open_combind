@@ -169,15 +169,16 @@ def struct_align(template, structs, dist=15.0, retry=True,
                      filtered_protein=filtered_protein,aligned_prot=aligned_prot,
                      align_dir=align_dir, process_dir=process_dir, raw_dir=raw_dir)
         
+        aligned_lig = None
         if retry:
             aligned_lig = align_separate_ligand(struct, transform_matrix,
                     downloaded_ligand= filtered_protein.replace("_complex.pdb","_lig.sdf"),
                     aligned_lig= align_dir+"/{pdbid}/{pdbid}_lig.sdf", process_dir=process_dir,
                     align_dir=align_dir)
-            if aligned_lig:
-                print("Successfully aligned separate ligand")
-            else:
-                print("No separate ligand found to align")
+        if aligned_lig is not None:
+            print("Successfully aligned separate ligand")
+        else:
+            print("No separate ligand found to align")
 
     return transform_matrix
 
