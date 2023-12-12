@@ -26,7 +26,7 @@ def main():
 
 def structprep(templ_struct='', struct='', raw_dir='structures/raw',
         align_dir='structures/aligned', processed_dir='structures/processed',
-        template_dir='structures/dir', ligand_dir='structures/ligands',
+        template_dir='structures/template', ligand_dir='structures/ligands',
         protein_dir='structures/proteins' ):
     """
     Prepare structures and make a docking template file.
