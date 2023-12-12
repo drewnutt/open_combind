@@ -200,13 +200,14 @@ def create_correct_ligand_sdf(pdb_id, lig_id, ligand, save_file, ligand_chain=No
             print(str(rdkpe))
     if mol is None:
         print(f"WARNING: Unable to download ligand SDF directly from RCSB for {lig_id}, extracting from PDB and assigning bonds from RCSB SMILES entry")
-        try:
-            mol_from_smiles = get_ligand_from_SMILES(lig_id)
-            _ = ligand_selection_to_mol(ligand, mol_from_smiles, outfile=save_file)
-        except FileNotFoundError as fnfe:
-            if "Unable to retrieve instance coordinates" in str(fnfe):
-                print(str(fnfe))
-            else:
-                raise fnfe
-        except RDKitParseException as rdkpe:
-            print(str(rdkpe))
+        if ' ' not in lig_id:
+            try:
+                mol_from_smiles = get_ligand_from_SMILES(lig_id)
+                _ = ligand_selection_to_mol(ligand, mol_from_smiles, outfile=save_file)
+            except FileNotFoundError as fnfe:
+                if "Unable to retrieve instance coordinates" in str(fnfe):
+                    print(str(fnfe))
+                else:
+                    raise fnfe
+            except RDKitParseException as rdkpe:
+                print(str(rdkpe))
