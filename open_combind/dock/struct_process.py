@@ -199,8 +199,8 @@ def create_correct_ligand_sdf(pdb_id, lig_id, ligand, save_file, ligand_chain=No
         except RDKitParseException as rdkpe:
             print(str(rdkpe))
     if mol is None:
-        print(f"WARNING: Unable to download ligand SDF directly from RCSB for {lig_id}, extracting from PDB and assigning bonds from RCSB SMILES entry")
         if ' ' not in lig_id:
+            print(f"WARNING: Unable to download ligand SDF directly from RCSB for {lig_id}, extracting from PDB and assigning bonds from RCSB SMILES entry")
             try:
                 mol_from_smiles = get_ligand_from_SMILES(lig_id)
                 _ = ligand_selection_to_mol(ligand, mol_from_smiles, outfile=save_file)
