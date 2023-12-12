@@ -57,7 +57,7 @@ def load_complex(prot_in, lig_id, other_lig=None):
             important_ligand = prot_st.select(f'resname {lig_id}')
         assert important_ligand is not None, f"no ligand found with resname {lig_id} for {prot_in}"
     else:
-        important_ligand = prot_st.select(f'{lig_id} and not {other_lig}')
+        important_ligand = prot_st.select(f'{lig_id} and not {other_lig}' if other_lig is not None else f'{lig_id}')
         if other_lig is not None:
             prot_only = prot_only.select(f'not {other_lig} and not {lig_id}')
         assert important_ligand is not None, f"nothing found with {lig_id} for {prot_in} to select as ligand"
