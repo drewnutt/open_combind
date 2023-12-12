@@ -69,8 +69,13 @@ def load_complex(prot_in, lig_id, other_lig=None):
     if len(np.unique(important_ligand.getAltlocs())) > 1:
         altlocs = np.unique(important_ligand.getAltlocs())
         altlocs = [alt if alt != ' ' else '_' for alt in altlocs]
-        important_ligand = important_ligand.select(f'altloc {altlocs[0]}')
-        important_ligand.setAltlocs(' ')
+        fin_alt_lig = None
+        for alt in altlocs:
+            imp_ligand = important_ligand.select(f'altloc {alt}')
+            imp_ligand.setAltlocs(' ')
+            if fin_alt_lig is None or len(imp_ligand) > len(fin_alt_lig):
+                fin_alt_lig = imp_ligand
+        important_ligand = fin_alt_lig 
     important_ligand = important_ligand.select('not water')
     # remove the ligand from the protein
 
