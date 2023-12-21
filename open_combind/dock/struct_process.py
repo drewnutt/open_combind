@@ -144,7 +144,7 @@ def struct_process(structs,
 
         other_lig = None
         lig_info = open(_ligand_info,'r').readlines()
-        lig_info = [info_line.strip('\n') for info_line in lig_info]
+        lig_info = [info_line.strip() for info_line in lig_info]
         if len(lig_info[0]) > 3:
             lig_id = lig_info[1]
             print(f"Non-standard RCSB ligand name:{lig_info[0]}")
