@@ -92,9 +92,9 @@ def structprep(templ_struct='', struct='', raw_dir='structures/raw',
             os.makedirs(directory)
 
     structs = glob(f'{raw_dir}/*.pdb*') + glob(f'{raw_dir}/*.cif.*')
-    structs = sorted(structs, key=lambda x: x.split('/')[-1].split('.')[0])
+    structs = [struct.split('/')[-1].split('.')[0] for struct in structs]
+    structs = sorted(structs)
     assert len(structs) > 0, f'No structures found in {raw_dir}'
-    structs = [struct.split('/')[-1].split('.pdb')[0] for struct in structs]
     
     if not struct:
         struct = structs[0]
