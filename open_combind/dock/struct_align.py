@@ -205,7 +205,7 @@ def get_selection_texts(liginfo_path, prot):
 
     assert count_atoms(prot) > 0
     liginfo = open(liginfo_path, 'r').readlines()
-    if len(liginfo[0].strip('\n')) < 4:
+    if len(liginfo[0].strip()) < 4:
         selection_text = 'hetatm'
     else:
         selection_text = liginfo[1].strip()
