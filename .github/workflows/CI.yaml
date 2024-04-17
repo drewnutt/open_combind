@@ -28,7 +28,7 @@ jobs:
         - {
                 os: ubuntu-latest,
                 # os: [macOS-latest, ubuntu-latest, windows-latest]
-                python-version: 3.8,
+                python-version: 3.10,
                 cc: "gcc", cxx: "g++",
         # python-version: [3.7, 3.8, 3.9]
              }
@@ -44,7 +44,7 @@ jobs:
         ulimit -a
 
     - name: Install OpenMM 
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: ${{ matrix.python-version }}
         activate-environment: opencombind-dev
