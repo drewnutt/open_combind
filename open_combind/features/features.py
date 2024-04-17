@@ -86,6 +86,7 @@ class Features:
         self.newscore = None
         if 'newscore' in kwargs:
             self.newscore = kwargs['newscore']
+        self.kwargs = kwargs
 
         self.raw = {}
 
@@ -567,7 +568,7 @@ class Features:
         
         from open_combind.features.ifp import ifp
         settings = IFP[self.ifp_version]
-        ifp(settings, pv, out, self.max_poses)
+        ifp(settings, pv, out, self.max_poses, **self.kwargs)
 
     @staticmethod
     def compute_ifp_mp_wrapper(self, pv, out):

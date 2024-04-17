@@ -167,7 +167,7 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file, process
 ################################################################################
 
 
-@cli.command()
+@cli.command(context_settings=dict(ignore_unknown_options=True,allow_extra_args=True))
 @click.argument('root', required=True)
 @click.argument('poseviewers', nargs=-1, required=True)
 @click.option('--native', default='structures/ligands/*_lig.sdf', help='Native ligand files')
@@ -187,18 +187,25 @@ def dock_ligands(template, root, ligands, screen, slurm, now, dock_file, process
         help='If using a score other than Vina score, specify the name of the score here')
 @click.option('--no-reverse', is_flag=False,
         help='Sort the poses from lowest (first) to highest score')
-def featurize(root, poseviewers, native, ifp_version,
+@click.pass_context
+def featurize(ctx, root, poseviewers, native, ifp_version,
             mcss_param, no_mcss, use_shape, processes, max_poses,
             no_cnn, template, check_center_ligs, newscore, no_reverse):
     """
     Featurize docking poses.
 
     """
+    non_poseviewers = [arg for arg in poseviewers if not arg.endswith('.sdf.gz') or not arg.endswith('.sdf')]
+    kwargs = dict()
+    for i in range(len(non_poseviewers)):
+        if non_poseviewers[i].startswith('--'):
+            kwargs[non_poseviewers[i][2:]] = non_poseviewers[i+1]
+    print(kwargs)
 
     oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
                 max_poses=max_poses, no_cnn=no_cnn, ifp_version=ifp_version,
                 mcss_param=mcss_param, processes=processes, template=template,
-                check_center_ligs=check_center_ligs, newscore=newscore, reverse=not no_reverse)
+                check_center_ligs=check_center_ligs, newscore=newscore, reverse=not no_reverse, **kwargs)
 ################################################################################
 
 

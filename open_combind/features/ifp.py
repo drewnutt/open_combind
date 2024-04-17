@@ -818,7 +818,8 @@ def fingerprint(protein, ligand, settings):
     fp += contact_compute(protein, ligand, settings)
     return pd.DataFrame.from_dict(fp)
 
-def fingerprint_poseviewer(input_file, poses, settings):
+def fingerprint_poseviewer(input_file, poses, settings, protein_dir="structures/proteins",
+                           prot_fname=None,**kwargs):
     """
     Compute interaction fingerprint at the atomic level of the all of the ligand poses in `input_file`
     
@@ -830,6 +831,10 @@ def fingerprint_poseviewer(input_file, poses, settings):
         Number of poses to read from `input_file`
     settings : dict
         Settings of the interaction fingerprint
+    protein_dir: str, default='structures/proteins'
+        Directory containing the protein files
+    prot_fname: str, default=None
+        Name of the protein file, including ".pdb". If None, it is inferred from the input file name
     
     Returns
     -------
@@ -837,10 +842,10 @@ def fingerprint_poseviewer(input_file, poses, settings):
         Interaction fingerprint of each pose
     
     """
-    
-    prot_bname = input_file.split('-to-')[-1]
-    prot_fname = re.sub('-docked.*\.sdf(\.gz)?','_prot.pdb',prot_bname)
-    prot_file = f"structures/proteins/{prot_fname}"
+    if prot_fname is None:
+        prot_bname = input_file.split('-to-')[-1]
+        prot_fname = re.sub('-docked.*\.sdf(\.gz)?','_prot.pdb',prot_bname)
+    prot_file = f"{protein_dir}/{prot_fname}"
 
     fps = []
     with fileinput.hook_compressed(input_file,'rb') as fp:
@@ -871,7 +876,7 @@ def fingerprint_poseviewer(input_file, poses, settings):
     fps.loc[fps['hydrogen'].isna(), 'hydrogen'] = ''
     return fps
 
-def ifp(settings, input_file, output_file, poses):
+def ifp(settings, input_file, output_file, poses, **kwargs):
     """
     Compute interaction fingerprint of the all of the ligand poses in `input_file` and save to a CSV
     
@@ -891,7 +896,7 @@ def ifp(settings, input_file, output_file, poses):
     settings['nonpolar'] = {6:1.7, 9:1.47, 17:1.75, 35:1.85, 53:1.98}
 
     # Compute atom-level interactions.
-    fps = fingerprint_poseviewer(input_file, poses, settings)
+    fps = fingerprint_poseviewer(input_file, poses, settings, **kwargs)
 
     # Compute residue-level scores.
     scores = compute_scores(fps, settings)
