@@ -28,7 +28,7 @@ jobs:
         - {
                 os: ubuntu-latest,
                 # os: [macOS-latest, ubuntu-latest, windows-latest]
-                python-version: 3.10,
+                python-version: '3.10',
                 cc: "gcc", cxx: "g++",
         # python-version: [3.7, 3.8, 3.9]
              }
@@ -42,10 +42,6 @@ jobs:
         uname -a
         df -h
         ulimit -a
-
-    - name: Update env with python version
-      shell: bash
-      run: sed -i 's,python_version,'"${{ matrix.config.python-version}}"',' devtools/conda-envs/test_env.yaml
 
     - name: Install OpenMM 
       uses: conda-incubator/setup-miniconda@v3
