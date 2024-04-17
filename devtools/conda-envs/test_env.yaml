@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
     # Base depends
-  - python==3.10
+  - python==python_version
   - openmm
   - numpy
   - pip
