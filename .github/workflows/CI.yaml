@@ -45,7 +45,7 @@ jobs:
 
     - name: Update env with python version
       shell: bash
-      run: sed -i 's,python_version,'"${{ matrix.python-version}}"',' devtools/conda-envs/test_env.yml
+      run: sed -i 's,python_version,'"${{ matrix.python-version}}"',' open_combind/devtools/conda-envs/test_env.yml
 
     - name: Install OpenMM 
       uses: conda-incubator/setup-miniconda@v3
