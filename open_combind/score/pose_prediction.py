@@ -133,7 +133,7 @@ class PosePrediction:
             {ligand_name: pose_number, }, where pose_number is the pose number selected by the objective
         """
         if len(self.ligands) == 1:
-            return {self.ligands[0]: 0}
+            return -float('inf'),{self.ligands[0]: 0}
 
         best_score, best_poses = -float('inf'), None
         for i in range(restart):

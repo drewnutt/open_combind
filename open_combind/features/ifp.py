@@ -438,7 +438,7 @@ class Molecule:
                         ('c1nn[nH1]n1', 0, [1, 3]),
                         ('C(=O)N[OH1,O-,OX1]', 0, [1, 2]),
                         ('CO(=N[OH1,O-])', 0, [1, 2]),
-                        ('[$(N-[SX4](=O)(=O)[CX4](F)(F)F)]', 0, [1, 2])]
+                        ('[$(N-[SX4](=O)(=O)[CX4](F)(F)F)]', 0, [0])]
 
         smartss = [(MolFromSmarts(ss), k, v, +1) for ss, k, v in pos_smartss] + [(MolFromSmarts(ss), k, v, -1) for ss, k, v in neg_smartss]
         idx_to_atom = {atom.GetIdx(): atom for atom in self.mol.GetAtoms()}
