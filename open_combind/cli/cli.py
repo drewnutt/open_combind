@@ -40,7 +40,7 @@ def cli(ctx):
 @click.option('--template_only', is_flag=True, help='Only write the template file.')
 def structprep(templ_struct='', align_struct='', raw_dir='structures/raw',
         align_dir='structures/aligned', processed_dir='structures/processed',
-        template_dir='structures/templates', ligand_dir='structures/ligands',
+        template_dir='structures/template', ligand_dir='structures/ligands',
         protein_dir='structures/proteins', template_only=False):
     """
     Prepare structures and make a docking template file.
