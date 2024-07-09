@@ -94,11 +94,11 @@ def structprep(templ_struct='', struct='', raw_dir='structures/raw',
     if template_only:
         raw_dir = protein_dir
     structs = glob(f'{raw_dir}/*.pdb*') + glob(f'{raw_dir}/*.cif.*')
-    structs = sorted(structs, key=lambda x: x.split('/')[-1].split('.')[0])
+    structs = [struct.split('/')[-1].split('.')[0] for struct in structs]
+    structs = sorted(structs) #, key=lambda x: x.split('/')[-1].split('.')[0])
     if template_only:
         structs = [struct.replace('_prot','') for struct in structs]
     assert len(structs) > 0, f'No structures found in {raw_dir}'
-    # structs = [struct.split('/')[-1].split('.pdb')[0] for struct in structs]
     
     if not struct:
         struct = structs[0]
