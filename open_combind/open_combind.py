@@ -27,7 +27,7 @@ def main():
 def structprep(templ_struct='', struct='', raw_dir='structures/raw',
         align_dir='structures/aligned', processed_dir='structures/processed',
         template_dir='structures/dir', ligand_dir='structures/ligands',
-        protein_dir='structures/proteins' ):
+        protein_dir='structures/proteins', template_only=False ):
     """
     Prepare structures and make a docking template file.
 
@@ -91,6 +91,8 @@ def structprep(templ_struct='', struct='', raw_dir='structures/raw',
         if not os.path.exists(directory):
             os.makedirs(directory)
 
+    if template_only:
+        raw_dir = protein_dir
     structs = glob(f'{raw_dir}/*.pdb*') + glob(f'{raw_dir}/*.cif.*')
     structs = sorted(structs, key=lambda x: x.split('/')[-1].split('.')[0])
     assert len(structs) > 0, f'No structures found in {raw_dir}'
@@ -102,14 +104,17 @@ def structprep(templ_struct='', struct='', raw_dir='structures/raw',
     if not templ_struct:
         templ_struct = struct
 
-    print(f'Processing {structs}, aligning to {struct}, and creating a docking'
-          f' templ for {templ_struct}')
 
-    struct_process(structs, raw_dir=raw_dir, processed_dir=processed_dir)
-    struct_align(struct, structs, align_dir=align_dir,
-            process_dir=processed_dir, raw_dir=raw_dir)
-    struct_sort(structs, align_dir=align_dir, raw_dir=raw_dir,
-            protein_dir=protein_dir, ligand_dir=ligand_dir)
+    if not template_only:
+        print(f'Processing {structs}, aligning to {struct}, and creating a docking'
+              f' templ for {templ_struct}')
+        struct_process(structs, raw_dir=raw_dir, processed_dir=processed_dir)
+        struct_align(struct, structs, align_dir=align_dir,
+                process_dir=processed_dir, raw_dir=raw_dir)
+        struct_sort(structs, align_dir=align_dir, raw_dir=raw_dir,
+                protein_dir=protein_dir, ligand_dir=ligand_dir)
+    else:
+        print(f'Creating a docking template for {templ_struct}')
     make_grid(templ_struct, protein_dir=protein_dir, ligand_dir=ligand_dir, template_dir=template_dir)
 
 # Not super sure what is absolutely necessary in this step, especially if starting from sdf

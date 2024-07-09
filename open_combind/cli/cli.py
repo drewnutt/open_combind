@@ -37,10 +37,11 @@ def cli(ctx):
 @cli.command()
 @click.option('--align-struct', default='', help='Structure to use for alignment. Defaults to alphabetically lowest.')
 @click.option('--templ-struct', help='Structure to use as template for alignment. Defaults to alphabetically lowest.')
+@click.option('--template_only', is_flag=True, help='Only write the template file.')
 def structprep(templ_struct='', align_struct='', raw_dir='structures/raw',
         align_dir='structures/aligned', processed_dir='structures/processed',
         template_dir='structures/dir', ligand_dir='structures/ligands',
-        protein_dir='structures/proteins' ):
+        protein_dir='structures/proteins', template_only=False):
     """
     Prepare structures and make a docking template file.
 
@@ -79,7 +80,7 @@ def structprep(templ_struct='', align_struct='', raw_dir='structures/raw',
     oc.structprep(templ_struct=templ_struct, struct=align_struct, raw_dir=raw_dir,
             align_dir=align_dir, processed_dir=processed_dir,
             template_dir=template_dir, ligand_dir=ligand_dir,
-            protein_dir=protein_dir)
+            protein_dir=protein_dir, template_only=template_only)
 
 
 @cli.command()
