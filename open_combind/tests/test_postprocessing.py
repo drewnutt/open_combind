@@ -22,6 +22,8 @@ def test_coalesce_poses():
 def test_write_poses():
     sort_file = "open_combind/tests/test_sort.sdf"
     sorted_poses = coalesce_poses(sort_file)
+    for p in sorted_poses:
+        assert p is not None
     write_poses(sorted_poses, "open_combind/tests/test_write.sdf.gz")
     with fileinput.hook_compressed("open_combind/tests/test_write.sdf.gz") as f:
         supplier = ForwardSDMolSupplier(f)
