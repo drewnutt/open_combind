@@ -8,16 +8,16 @@ def test_coalesce_poses():
     assert len(sorted_poses) == 40
     last_score = 1.1
     for pose in sorted_poses:
-        assert pose.GetProp("CNNscore") <= last_score
-        last_score = pose.GetProp("CNNscore")
+        assert float(pose.GetProp("CNNscore")) <= last_score
+        last_score = float(pose.GetProp("CNNscore"))
 
     sort_files = [sort_file, "open_combind/tests/test_sort_1.sdf"]
     sorted_poses = coalesce_poses(sort_files)
     assert len(sorted_poses) == 80
     last_score = 1.1
     for pose in sorted_poses:
-        assert pose.GetProp("CNNscore") <= last_score
-        last_score = pose.GetProp("CNNscore")
+        assert float(pose.GetProp("CNNscore")) <= last_score
+        last_score = float(pose.GetProp("CNNscore"))
 
 def test_write_poses():
     sort_file = "open_combind/tests/test_sort.sdf"
