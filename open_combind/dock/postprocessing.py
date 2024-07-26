@@ -75,8 +75,8 @@ def parse_args():
 def main():
     args = parse_args()
 
-    sorted_mols = coalese_poses(args.DOCKED_POSES, args.coalesced, args.sort_by,
-            args.filter_RMSD, args.no_reverse)
+    sorted_mols = coalesce_poses(args.DOCKED_POSES, sort_by=args.sort_by,
+            filter_RMSD=args.filter_RMSD, reverse=args.no_reverse)
         
     write_poses(sorted_mols, args.coalesced)
 
