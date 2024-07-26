@@ -196,11 +196,17 @@ def featurize(ctx, root, poseviewers, native, ifp_version,
     Featurize docking poses.
 
     """
-    non_poseviewers = [arg for arg in poseviewers if not arg.endswith('.sdf.gz') or not arg.endswith('.sdf')]
+    non_poseviewers = [arg for arg in poseviewers if (not arg.endswith('.sdf.gz') and not arg.endswith('.sdf'))]
     kwargs = dict()
+    print(non_poseviewers)
+    poseviewers = list(set(poseviewers) - set(non_poseviewers))
     for i in range(len(non_poseviewers)):
         if non_poseviewers[i].startswith('--'):
-            kwargs[non_poseviewers[i][2:]] = non_poseviewers[i+1]
+            if len(non_poseviewers) > i+1 and non_poseviewers[i+1].startswith('-') or len(non_poseviewers) <= i+1 :
+                kwargs[non_poseviewers[i][2:]] = True
+            else:
+                print(i)
+                kwargs[non_poseviewers[i][2:]] = non_poseviewers[i+1]
     print(kwargs)
 
     oc.featurize(root, poseviewers, native=native, no_mcss=no_mcss, use_shape=use_shape,
